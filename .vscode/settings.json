@@ -1,0 +1,13 @@
+{
+  "editor.rulers": [100],
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "infra/cdk.out": true
+  },
+  // Guide preview: same 16 px indent for sub-sections as GitHub, coloured File / Hint labels.
+  "markdown.styles": [".vscode/markdown-preview.css"]
+}

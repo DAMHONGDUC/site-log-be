@@ -1,0 +1,9 @@
+{
+  "recommendations": [
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "vitest.explorer",
+    "ms-azuretools.vscode-docker",
+    "bierner.markdown-mermaid"
+  ]
+}

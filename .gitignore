@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+*.pem
+service-account*.json
+infra/cdk.out/
+.DS_Store

@@ -88,7 +88,7 @@
 | 9 | `POST` | `/uploads/:id/parts/refresh` | Bearer | New URLs for expired parts | F07 |
 | 10 | `GET` | `/verify/:code` | none | Facts about a code printed in a report | F10 |
 | 11 | `WS` | `/ws` | first message | Upload state for open sessions | F15 |
-| 12 | `POST` | `/devices` | Bearer | Register an APNs token | F16 |
+| 12 | `POST` | `/devices` | Bearer | Register an FCM token | F16 |
 | 13 | `DELETE` | `/devices/:token` | Bearer | Remove it on sign-out | F16 |
 
 </dd></dl>
@@ -370,13 +370,24 @@ GET /verify/K7M2QX9HTP
 
 ```json
 POST /devices
-{ "token": "<APNs device token, hex>", "environment": "sandbox" }
+{ "token": "<FCM registration token>", "platform": "ios" }
 → { "registered": true }
 ```
 
-- `environment`: `sandbox` for Debug builds, `production` for TestFlight and App Store.
+| Field | Rule |
+|---|---|
+| `token` | FCM registration token from the Firebase Messaging SDK (iOS too, never the raw APNs token); `[A-Za-z0-9_:-]`, 20–4096 chars |
+| `platform` | `ios` or `android`; picks the message shape |
+
 - `DELETE /devices/:token` → `{ "removed": true }` on sign-out.
-- A push carries `aps.alert`, `deepLink` (`sitelog://session/<id>`) and `account` (first 16 hex of SHA-256 of the uid): ignore a push whose `account` is not the signed-in user.
+- Register after sign-in and on every token refresh; a token FCM rejects is deleted by the server.
+
+| Platform | Push the app receives |
+|---|---|
+| `ios` | System alert (`notification` title, body) + data `deepLink` (`sitelog://session/<id>`), `account` |
+| `android` | Data only: `deepLink`, `account`, `title`, `body`; the app builds the notification |
+
+- `account` = first 16 hex of SHA-256 of the uid: ignore a push whose `account` is not the signed-in user.
 
 </dd></dl>
 

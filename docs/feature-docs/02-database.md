@@ -68,7 +68,7 @@
 |---|---|---|
 | `sync_state` | `uid` | `last_rev` (per-user counter), `purged_through_rev` (resync watermark) |
 | `uploads` | `id` (server uuid) | One row per upload job: key, size, hash, mode, S3 upload id, state, verification code, verify state |
-| `devices` | `token` | APNs token, owner, `sandbox` or `production` |
+| `devices` | `token` | FCM token, owner, `ios` or `android` |
 | `schema_migrations` | `name` | Migrations that ran |
 
 | `uploads.state` | Meaning |

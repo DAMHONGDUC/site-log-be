@@ -32,7 +32,7 @@
 | Stores every metadata row and serves delta sync to every device | Decide business rules — the app decides, the server records |
 | Signs S3 upload and download URLs, confirms uploads, issues verification codes | Receive or send file bytes (the app talks to S3 directly) |
 | Re-reads stored files and proves their SHA-256 | Render reports |
-| Pushes upload state over a WebSocket and APNs | Hold state in memory that matters (any process can die) |
+| Pushes upload state over a WebSocket and Firebase Cloud Messaging | Hold state in memory that matters (any process can die) |
 | Deletes an account and everything it owns | |
 
 </dd></dl>
@@ -52,7 +52,7 @@ flowchart LR
     API -->|"sign · head · complete<br/>never bytes"| S3
     Worker["worker container"] -->|"stream back, hash"| S3
     Worker --> RDS
-    Worker -->|"push"| APNs["Apple APNs"]
+    Worker -->|"push"| FCM["Firebase Cloud Messaging<br/>→ APNs for iOS"]
     RDS -.->|"pg_notify upload_events"| API
 ```
 
@@ -66,7 +66,7 @@ flowchart LR
 | `src/sync/` | Logic | Table registry, pull, push |
 | `src/realtime/` | Logic | WebSocket channel, `pg_notify` fan-out |
 | `src/workers/` | Jobs | Verify, abandoned uploads, purge |
-| `src/storage.ts`, `src/auth.ts`, `src/push/` | Adapters | S3, Firebase, APNs — the only files that talk to outside services |
+| `src/storage.ts`, `src/auth.ts`, `src/push/` | Adapters | S3, Firebase (Auth, Cloud Messaging) — the only files that talk to outside services |
 | `src/config.ts`, `src/db.ts`, `src/errors.ts`, `src/logger.ts` | Core | Settings, database, error contract, logging |
 
 - `app.ts` receives every adapter as a dependency (`AppDeps`), so tests pass fakes for Firebase and S3 and a real Postgres.
@@ -86,7 +86,7 @@ flowchart LR
 | Migrations | Numbered `.sql` files, a 60-line runner (`src/migrate.ts`) | — |
 | Files | Amazon S3, `@aws-sdk/client-s3` + `s3-request-presigner` | 3.1162 |
 | Tokens | `firebase-admin` | 14.5 |
-| Push | APNs over HTTP/2 (`node:http2`), JWT with `jose` | jose 6.2 |
+| Push | Firebase Cloud Messaging through `firebase-admin/messaging` ([B09](#b09--firebase-cloud-messaging-for-push)) | firebase-admin 14.5 |
 | Logs | pino (built into Fastify), JSON | pino 10.4 |
 | Tests | vitest, `aws-sdk-client-mock`, a real Postgres | vitest 5.1 |
 | Lint · format | ESLint (`typescript-eslint`) · Prettier | 10.14 · 3.9 |
@@ -186,6 +186,20 @@ flowchart LR
 
 </dd></dl>
 
+### B09 — Firebase Cloud Messaging for push
+
+<dl><dd>
+
+- **Decision:** both apps register an FCM token; the worker sends with `firebase-admin/messaging` and the Firebase service account it already has. The APNs key lives in the Firebase project, not on the server.
+- **Why:** one sender and one `devices` contract for iOS and Android; no APNs JWT, HTTP/2 client or extra secret to run.
+
+| Rejected | Why not |
+|---|---|
+| Direct APNs (HTTP/2 + `jose`) for iOS, FCM for Android | Two senders, two token formats, `.p8` key in SSM |
+| Amazon SNS mobile push | A second vendor next to Firebase; still needs the FCM and APNs credentials |
+
+</dd></dl>
+
 </dd></dl>
 
 ## 5. Environments
@@ -223,7 +237,7 @@ flowchart LR
 |---|---|
 | Domain | ~10–15 / year |
 | Route 53 health check (prod) | ~0.5–1 / month |
-| Firebase Auth, APNs, GitHub Actions (free tiers) | 0 |
+| Firebase Auth, Cloud Messaging, GitHub Actions (free tiers) | 0 |
 
 - Staging + production: ~$90/month. To save, stop the staging server and database when not testing (`aws ec2 stop-instances`, `aws rds stop-db-instance`).
 - What grows with users: S3 storage (~$25 per TB per month) and downloads to phones (~$0.12/GB after the free 100 GB). Uploads into S3 are free.

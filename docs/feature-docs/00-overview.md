@@ -213,7 +213,7 @@ flowchart LR
 | `staging` | EC2 `SiteLog-Staging` | RDS | S3 `sitelog-staging-<account>` | `sitelog-dev` project | Every push to `main` |
 | `prod` | EC2 `SiteLog-Prod` | RDS, deletion protected | S3 `sitelog-prod-<account>` | `sitelog-prod` project | A `v*` tag, after approval |
 
-- The app's build configurations map to these: Debug → `dev` or `staging`, Release → `prod` (iOS `SiteLog/App/Config/`).
+- The apps' builds map to these: iOS Debug → `dev` or `staging`, Release → `prod` (`SiteLog/App/Config/`); Android `debug` → `dev` or `staging`, `staging` → `staging`, `release` → `prod`.
 
 </dd></dl>
 

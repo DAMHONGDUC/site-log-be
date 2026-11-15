@@ -2,7 +2,7 @@
 
 <dl><dd>
 
-- Every endpoint and WebSocket message the backend serves. The iOS app codes against this page; the backend tests check it.
+- Every endpoint and WebSocket message the backend serves. The iOS and Android apps code against this page; the backend tests check it.
 - How each one works inside: [03-sync-uploads-realtime](03-sync-uploads-realtime.md).
 
 </dd></dl>
@@ -43,6 +43,7 @@
 | Caching | Nothing may be cached: the app reads its clock offset from the `Date` header |
 
 - Swift: `ISO8601DateFormatter` with `[.withInternetDateTime, .withFractionalSeconds]` reads and writes this timestamp format.
+- Kotlin: an `Instant` serializer with `DateTimeFormatter.ISO_INSTANT`, truncated to milliseconds.
 
 </dd></dl>
 
@@ -426,15 +427,15 @@ POST /devices
 
 - These must match on both sides; the backend reads them from its environment ([04-aws-operations](04-aws-operations.md#3-configuration)).
 
-| Constant | Value | iOS |
-|---|---|---|
-| Single-PUT threshold | 5 MiB (5,242,880 bytes) | `UploadConstants.singlePutThresholdBytes` |
-| Part size | 8 MiB (8,388,608 bytes) | `UploadConstants.partSizeBytes` |
-| Presigned URL lifetime | 1 hour | proactive refresh before `expiresAt` |
-| Pull page size | ≤ 500 | `SyncConstants.pullPageSize` |
-| Push batch size | ≤ 200 | `SyncConstants.pushBatchSize` |
-| Tombstone retention | 90 days | `SyncConstants.tombstoneRetentionDays` |
-| WebSocket auth timeout | 5 s | `RealtimeConstants.authTimeout` |
-| WebSocket max message | 64 KiB | `RealtimeConstants.maxMessageBytes` |
+| Constant | Value | iOS | Android |
+|---|---|---|---|
+| Single-PUT threshold | 5 MiB (5,242,880 bytes) | `UploadConstants.singlePutThresholdBytes` | `UploadConstants.SINGLE_PUT_THRESHOLD_BYTES` |
+| Part size | 8 MiB (8,388,608 bytes) | `UploadConstants.partSizeBytes` | `UploadConstants.PART_SIZE_BYTES` |
+| Presigned URL lifetime | 1 hour | proactive refresh before `expiresAt` | proactive refresh before `expiresAt` |
+| Pull page size | ≤ 500 | `SyncConstants.pullPageSize` | `SyncConstants.PULL_PAGE_SIZE` |
+| Push batch size | ≤ 200 | `SyncConstants.pushBatchSize` | `SyncConstants.PUSH_BATCH_SIZE` |
+| Tombstone retention | 90 days | `SyncConstants.tombstoneRetentionDays` | `SyncConstants.TOMBSTONE_RETENTION_DAYS` |
+| WebSocket auth timeout | 5 s | `RealtimeConstants.authTimeout` | `RealtimeConstants.AUTH_TIMEOUT_MS` |
+| WebSocket max message | 64 KiB | `RealtimeConstants.maxMessageBytes` | `RealtimeConstants.MAX_MESSAGE_BYTES` |
 
 </dd></dl>

@@ -2,7 +2,7 @@
 
 <dl><dd>
 
-- What the SiteLog backend does, how it is built and why. The app side: [SiteLog iOS](https://github.com/DAMHONGDUC/site_log_swift_ui).
+- What the SiteLog backend does, how it is built and why. The app side: [SiteLog iOS](https://github.com/DAMHONGDUC/site_log_swift_ui) · [SiteLog Android](https://github.com/DAMHONGDUC/site-log-android).
 - Contract the app codes against: [01-api](01-api.md). Build order: [feature guides](../feature-guide/README.md).
 
 </dd></dl>

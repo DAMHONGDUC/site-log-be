@@ -355,11 +355,6 @@ LOG_LEVEL=info
 # SINGLE_PUT_THRESHOLD_BYTES=5242880
 # PART_SIZE_BYTES=8388608
 
-# F16 push (optional locally): APNs key from developer.apple.com → Keys
-# APNS_KEY_P8_BASE64=
-# APNS_KEY_ID=
-# APNS_TEAM_ID=
-# APNS_BUNDLE_ID=app.dd.site.log
 ```
 
 </details>
@@ -585,13 +580,6 @@ export function loadConfig(env: Env = process.env): Config {
 ```ts
 // Reads every setting from environment variables once, at startup.
 
-export interface ApnsConfig {
-  keyP8: string;
-  keyId: string;
-  teamId: string;
-  bundleId: string;
-}
-
 export interface Config {
   nodeEnv: string;
   port: number;
@@ -614,7 +602,6 @@ export interface Config {
   verifyRateLimitPerMinute: number;
   uploadRateLimitPerMinute: number;
   maxSocketsPerUser: number;
-  apns: ApnsConfig | undefined;
 }
 
 type Env = Record<string, string | undefined>;
@@ -647,19 +634,6 @@ function integer(env: Env, name: string, fallback: number): number {
   return value;
 }
 
-function loadApns(env: Env): ApnsConfig | undefined {
-  const keyBase64 = optional(env, 'APNS_KEY_P8_BASE64');
-  if (keyBase64 === undefined) {
-    return undefined;
-  }
-  return {
-    keyP8: Buffer.from(keyBase64, 'base64').toString('utf8'),
-    keyId: required(env, 'APNS_KEY_ID'),
-    teamId: required(env, 'APNS_TEAM_ID'),
-    bundleId: required(env, 'APNS_BUNDLE_ID'),
-  };
-}
-
 export function loadConfig(env: Env = process.env): Config {
   return {
     nodeEnv: optional(env, 'NODE_ENV') ?? 'development',
@@ -683,7 +657,6 @@ export function loadConfig(env: Env = process.env): Config {
     verifyRateLimitPerMinute: integer(env, 'VERIFY_RATE_LIMIT_PER_MINUTE', 30),
     uploadRateLimitPerMinute: integer(env, 'UPLOAD_RATE_LIMIT_PER_MINUTE', 600),
     maxSocketsPerUser: integer(env, 'MAX_SOCKETS_PER_USER', 5),
-    apns: loadApns(env),
   };
 }
 ```

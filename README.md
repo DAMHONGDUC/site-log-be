@@ -2,7 +2,7 @@
 
 <dl><dd>
 
-- The server behind the SiteLog [iOS](https://github.com/DAMHONGDUC/site_log_swift_ui) and [Android](https://github.com/DAMHONGDUC/site-log-android) apps: sign-in check, delta sync, presigned S3 uploads, verification codes, realtime upload state, push.
+- The server behind the SiteLog [iOS](https://github.com/DAMHONGDUC/site_log_swift_ui) and [Android](https://github.com/DAMHONGDUC/site-log-android) apps: sign-in check, delta sync, presigned S3 uploads, verification codes, realtime upload state, push (Firebase Cloud Messaging).
 - Node 24 · TypeScript · Fastify · PostgreSQL 16 · AWS (EC2 + Docker Compose, RDS, S3), infrastructure in AWS CDK.
 - Built step by step from the guides in [docs/feature-guide](docs/feature-guide/README.md), sprint by sprint, next to the iOS app.
 
@@ -85,7 +85,7 @@ site-log-be/
 │   ├── sync/               # pull, push, the table registry
 │   ├── realtime/           # WebSocket channel and pg_notify fan-out
 │   ├── workers/            # the worker's jobs
-│   └── push/               # APNs
+│   └── push/               # Firebase Cloud Messaging sender
 ├── migrations/             # numbered .sql files, run once each, forward only
 ├── test/                   # vitest against a real Postgres
 ├── deploy/                 # what runs on the EC2 server: compose.yml, Caddyfile, deploy.sh

@@ -126,7 +126,7 @@ flowchart LR
 | `pino` | 10.4.0 | `@types/node` | 24.19.2 |
 | `firebase-admin` | 14.5.0 | `@types/pg` | 8.23.1 |
 | `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner` | 3.1162.0 | `aws-cdk-lib` | 2.275.0 |
-| `jose` | 6.2.15 | `aws-cdk` (CLI) | 2.1147.0 |
-| PostgreSQL | 16 | `constructs` | 10.8.1 |
+| PostgreSQL | 16 | `aws-cdk` (CLI) | 2.1147.0 |
+| | | `constructs` | 10.8.1 |
 
 </dd></dl>

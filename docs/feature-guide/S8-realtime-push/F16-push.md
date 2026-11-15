@@ -2,8 +2,8 @@
 
 <dl><dd>
 
-- Sprint [S8](README.md) · 3h · the app registers its APNs token; when the last upload of a session is verified, the user's phones get one push that opens that session.
-- iOS side: [F16 Push and deep links](https://github.com/DAMHONGDUC/site_log_swift_ui/blob/main/docs/feature-guide/S8-realtime-push-quality/F16-push-deeplinks.md). Contract: [01-api §10](../../feature-docs/01-api.md#10-devices).
+- Sprint [S8](README.md) · 3h · each app registers its Firebase Cloud Messaging (FCM) token; when the last upload of a session is verified, the user's phones get one push that opens that session.
+- App side: [iOS F16](https://github.com/DAMHONGDUC/site_log_swift_ui/blob/main/docs/feature-guide/S8-realtime-push-quality/F16-push-deeplinks.md) · [Android F16](https://github.com/DAMHONGDUC/site-log-android/blob/main/docs/feature-guide/S8-realtime-push-quality/F16-push-deeplinks.md). Contract: [01-api §10](../../feature-docs/01-api.md#10-devices). Why FCM: [B09](../../feature-docs/00-overview.md#b09--firebase-cloud-messaging-for-push).
 
 </dd></dl>
 
@@ -12,7 +12,7 @@
 <dl><dd>
 
 1. [Overview](#overview)
-2. [1. APNs key](#1-apns-key)
+2. [1. Firebase setup](#1-firebase-setup)
 3. [2. Devices](#2-devices)
 4. [3. Sending](#3-sending)
 5. [Tests](#tests)
@@ -24,14 +24,14 @@
 
 <dl><dd>
 
-- **Goal:** token-based APNs from the worker; tokens Apple rejects are forgotten.
-- **Demo:** the app registers on a real iPhone (Debug → `sandbox`); finish a session's uploads; a notification "Uploads verified" opens the session.
+- **Goal:** the worker sends through FCM with the Firebase service account it already has; tokens FCM rejects are forgotten.
+- **Demo:** the app registers (iOS Debug or Android); finish a session's uploads; a notification "Uploads verified" opens the session.
 
 | Step | Hours | Files |
 |---|---|---|
-| [1](#1-apns-key) | 0.5 | Apple Developer key → `.env` and SSM |
+| [1](#1-firebase-setup) | 0.5 | Firebase console: APNs key for iOS; no new backend secret |
 | [2](#2-devices) | 1 | `migrations/0011_devices.sql`, `src/routes/devices.ts`, `src/routes/account.ts`, `src/app.ts` |
-| [3](#3-sending) | 1 | `src/push/apns.ts`, `src/workers/verify.ts`, `src/worker.ts` |
+| [3](#3-sending) | 1 | `src/push/fcm.ts`, `src/workers/verify.ts`, `src/worker.ts` |
 | [Tests](#tests) | 0.5 | `test/worker.test.ts`, `test/devices.test.ts`, `test/push.test.ts` |
 
 ```mermaid
@@ -39,51 +39,39 @@ sequenceDiagram
     participant App
     participant API
     participant W as worker
+    participant FCM
     participant APNs
-    App->>API: POST /devices {token, environment}
-    W->>W: last upload of session verified
-    W->>APNs: POST /3/device/<token> (JWT, apns-topic)
-    alt 200
-        APNs-->>W: sent
-    else 410 / 400
-        APNs-->>W: unregistered → delete device
+    App->>API: POST /devices {token: "fX3k…:APA91b…", platform: "ios"}
+    W->>W: last upload of session 42 verified
+    W->>FCM: messaging.send(message) (service account)
+    alt sent
+        FCM->>APNs: iOS token → APNs (key in Firebase)
+        APNs-->>App: alert, deepLink sitelog://session/42
+    else registration-token-not-registered
+        FCM-->>W: unregistered → delete device
     end
-    APNs-->>App: alert, deepLink sitelog://session/<id>
 ```
 
-```bash
-npm install jose
-```
+- No new package: `firebase-admin` (F02) has `firebase-admin/messaging`.
 
 </dd></dl>
 
-## 1. APNs key
+## 1. Firebase setup
 
 <dl><dd>
+
+- Android needs nothing here: FCM is built into its Firebase app.
+- iOS: FCM forwards to APNs with an APNs key that lives in Firebase, never on the server.
 
 | # | Where | Do |
 |---|---|---|
 | 1 | [developer.apple.com](https://developer.apple.com/account/resources/authkeys/list) → **Keys** → **+** | Name `SiteLog APNs`, tick **Apple Push Notifications service (APNs)** |
 | 2 | Download | The `.p8` file downloads **once**: save it as `~/secrets/AuthKey_<KEYID>.p8` |
-| 3 | Note | **Key ID** (10 characters), **Team ID** (top right of the account page), bundle id `app.dd.site.log` |
+| 3 | Firebase console → `sitelog-dev` → Project settings → **Cloud Messaging** → Apple app `app.dd.site.log` | **APNs Authentication Key** → Upload: the `.p8`, **Key ID**, **Team ID** |
+| 4 | Same in `sitelog-prod` | Done in F18, with the same key |
 
-- Local `.env`:
-
-```bash
-echo "APNS_KEY_P8_BASE64=$(base64 -i ~/secrets/AuthKey_<KEYID>.p8)" >> .env
-```
-
-- And set `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID` in `.env`. On AWS, one parameter each:
-
-```bash
-aws ssm put-parameter --name /sitelog/staging/APNS_KEY_P8_BASE64 --type SecureString --value "$(base64 -i ~/secrets/AuthKey_<KEYID>.p8)"
-```
-
-```bash
-for n in APNS_KEY_ID:<KEYID> APNS_TEAM_ID:<TEAMID> APNS_BUNDLE_ID:app.dd.site.log; do aws ssm put-parameter --name /sitelog/staging/${n%%:*} --type SecureString --value ${n#*:}; done
-```
-
-- One key works for both `sandbox` and `production`; only the host differs.
+- One APNs key covers sandbox and production; FCM picks the APNs host from the token.
+- The service account in `FIREBASE_SERVICE_ACCOUNT_BASE64` (F00a) already has the right to send: no new `.env` line, no new SSM parameter.
 
 </dd></dl>
 
@@ -97,7 +85,7 @@ for n in APNS_KEY_ID:<KEYID> APNS_TEAM_ID:<TEAMID> APNS_BUNDLE_ID:app.dd.site.lo
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `migrations/0011_devices.sql` | `devices (token pk, uid, environment, created_at, updated_at)` |
+| <b class="tag-new">New</b> | `migrations/0011_devices.sql` | `devices (token pk, uid, platform, created_at, updated_at)` |
 | <b class="tag-new">New</b> | `src/routes/devices.ts` | `POST /devices` (a token moves to the last user who registered it), `DELETE /devices/:token` |
 | <b class="tag-edit">Edit</b> | `src/routes/account.ts` | `devices` joins `serverTables` |
 | <b class="tag-edit">Edit</b> | `src/app.ts` | Registers the device routes |
@@ -118,11 +106,11 @@ for n in APNS_KEY_ID:<KEYID> APNS_TEAM_ID:<TEAMID> APNS_BUNDLE_ID:app.dd.site.lo
 <summary><b>Code</b></summary>
 
 ```sql
--- F16: APNs device tokens, one row per installed app.
+-- F16: FCM registration tokens, one row per installed app.
 create table devices (
     token       text primary key,
     uid         text not null,
-    environment text not null check (environment in ('sandbox', 'production')),
+    platform    text not null check (platform in ('ios', 'android')),
     created_at  timestamptz not null default now(),
     updated_at  timestamptz not null default now()
 );
@@ -147,7 +135,10 @@ import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance, preHandlerAsyncHookHandler } from 'fastify';
 import type { AppDeps } from '../app.js';
 
-// The app registers its APNs token after sign-in and removes it on sign-out.
+// An FCM token: letters, digits, '_', '-' and ':'.
+const TOKEN_PATTERN = '^[A-Za-z0-9_:-]{20,4096}$';
+
+// The app registers its FCM token after sign-in and removes it on sign-out.
 export function deviceRoutes(
   app: FastifyInstance,
   deps: AppDeps,
@@ -156,25 +147,22 @@ export function deviceRoutes(
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
 
   const Body = Type.Object({
-    token: Type.String({ pattern: '^[0-9a-f]{64,200}$' }),
-    environment: Type.Union([Type.Literal('sandbox'), Type.Literal('production')]),
+    token: Type.String({ pattern: TOKEN_PATTERN }),
+    platform: Type.Union([Type.Literal('ios'), Type.Literal('android')]),
   });
 
   typed.post('/devices', { preHandler: requireUser, schema: { body: Body } }, async (request) => {
     // A token moves to whoever signed in last on that phone.
     await deps.pool.query(
-      `insert into devices (token, uid, environment) values ($1, $2, $3)
-       on conflict (token) do update set uid = excluded.uid, environment = excluded.environment, updated_at = now()`,
-      [request.body.token, request.uid, request.body.environment],
+      `insert into devices (token, uid, platform) values ($1, $2, $3)
+       on conflict (token) do update set uid = excluded.uid, platform = excluded.platform, updated_at = now()`,
+      [request.body.token, request.uid, request.body.platform],
     );
-    request.log.info(
-      { uid: request.uid, environment: request.body.environment },
-      'device registered',
-    );
+    request.log.info({ uid: request.uid, platform: request.body.platform }, 'device registered');
     return { registered: true };
   });
 
-  const Params = Type.Object({ token: Type.String({ pattern: '^[0-9a-f]{64,200}$' }) });
+  const Params = Type.Object({ token: Type.String({ pattern: TOKEN_PATTERN }) });
 
   typed.delete(
     '/devices/:token',
@@ -301,9 +289,14 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/push/apns.ts` | `PushSender` interface, `ApnsSender` (HTTP/2 + ES256 JWT reused 50 min), `pushPayload`, `hashedAccount` |
+| <b class="tag-new">New</b> | `src/push/fcm.ts` | `PushSender` interface, `FcmSender` (`firebase-admin/messaging`), `pushMessage`, `hashedAccount` |
 | <b class="tag-edit">Edit</b> | `src/workers/verify.ts` | `push` in `WorkerDeps`; one push when a session has nothing left to verify |
-| <b class="tag-edit">Edit</b> | `src/worker.ts` | Builds `ApnsSender` when the APNs settings exist |
+| <b class="tag-edit">Edit</b> | `src/worker.ts` | Builds `FcmSender` when the Firebase service account is set |
+
+| Platform | FCM message | Why |
+|---|---|---|
+| `ios` | `notification` (title, body) + `data` (`deepLink`, `account`) + `apns.payload.aps.sound` | iOS shows the alert itself, even when the app is closed |
+| `android` | `data` only (`deepLink`, `account`, `title`, `body`), `android.priority: "high"` | The app builds the notification, so it can drop a push for another account |
 
 </dd></dl>
 
@@ -312,22 +305,23 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 <dl><dd>
 
 <details open>
-<summary><strong>3.1 APNs</strong></summary>
+<summary><strong>3.1 FCM</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/push/apns.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/push/fcm.ts`
 
-<b>Explain</b> · Apple accepts a JWT signed with your `.p8` key for up to an hour; signing one per push would be refused as too frequent. The payload carries a destination only — no names, no coordinates.
+<b>Explain</b> · `messaging.send(message)` delivers to one token; for an iOS token FCM calls APNs with the key from step 1. The message carries a destination only — no names, no coordinates.
 
 <b>Think</b>
 
-- Why does the payload carry a hash of the uid instead of the uid? (Who can read a notification on a lock screen or in logs?)
+- Why does the message carry a hash of the uid instead of the uid? (Who can read a notification on a lock screen or in logs?)
 
 <details open>
 <summary><b>Hint 2 · APIs</b></summary>
 
-- `importPKCS8(pem, 'ES256')`, `new SignJWT({}).setProtectedHeader({ alg: 'ES256', kid }).setIssuer(teamId).setIssuedAt().sign(key)`.
-- `http2.connect(host)`, `session.request({ ':method': 'POST', ':path': …, authorization, 'apns-topic', 'apns-push-type': 'alert' })`, `request.on('response', headers => headers[':status'])`.
+- `import { getMessaging, type Message } from 'firebase-admin/messaging'`, `getMessaging(app).send(message)`.
+- `initializeApp({ credential: cert(json) }, 'push')`: a named app, so it never clashes with the default one.
+- A rejected token throws an error whose `code` is `messaging/registration-token-not-registered` or `messaging/invalid-registration-token`.
 
 </details>
 
@@ -336,11 +330,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
 ```ts
 import { createHash } from 'node:crypto';
-import http2 from 'node:http2';
-import { SignJWT, importPKCS8 } from 'jose';
-import type { ApnsConfig } from '../config.js';
+import { cert, initializeApp } from 'firebase-admin/app';
+import { getMessaging, type Message, type Messaging } from 'firebase-admin/messaging';
 
-export type PushOutcome = 'sent' | 'unregistered' | 'failed';
+export type DevicePlatform = 'ios' | 'android';
+export type PushOutcome = 'sent' | 'unregistered';
 
 export interface PushMessage {
   title: string;
@@ -349,13 +343,9 @@ export interface PushMessage {
   uid: string;
 }
 
-// Sends one notification. Tests use a fake; production talks to Apple over HTTP/2.
+// Sends one notification. Tests use a fake; production goes through Firebase Cloud Messaging.
 export interface PushSender {
-  send(
-    deviceToken: string,
-    environment: 'sandbox' | 'production',
-    message: PushMessage,
-  ): Promise<PushOutcome>;
+  send(token: string, platform: DevicePlatform, message: PushMessage): Promise<PushOutcome>;
 }
 
 // The app ignores a push meant for another account signed in earlier on the same phone.
@@ -363,80 +353,59 @@ export function hashedAccount(uid: string): string {
   return createHash('sha256').update(uid).digest('hex').slice(0, 16);
 }
 
-export function pushPayload(message: PushMessage): object {
-  // Only a destination: no names, no coordinates.
+// Only a destination: no names, no coordinates.
+export function pushMessage(
+  token: string,
+  platform: DevicePlatform,
+  message: PushMessage,
+): Message {
+  const account = hashedAccount(message.uid);
+  if (platform === 'ios') {
+    return {
+      token,
+      notification: { title: message.title, body: message.body },
+      data: { deepLink: message.deepLink, account },
+      apns: { payload: { aps: { sound: 'default' } } },
+    };
+  }
   return {
-    aps: { alert: { title: message.title, body: message.body }, sound: 'default' },
-    deepLink: message.deepLink,
-    account: hashedAccount(message.uid),
+    token,
+    data: { deepLink: message.deepLink, account, title: message.title, body: message.body },
+    android: { priority: 'high' },
   };
 }
 
-const HOSTS = {
-  sandbox: 'https://api.sandbox.push.apple.com',
-  production: 'https://api.push.apple.com',
-};
+// FCM answers with these codes when the app was removed or the token is stale.
+const UNREGISTERED_CODES = [
+  'messaging/registration-token-not-registered',
+  'messaging/invalid-registration-token',
+];
 
-// Token-based APNs auth: a short JWT signed with the .p8 key, reused for up to an hour.
-export class ApnsSender implements PushSender {
-  private readonly config: ApnsConfig;
-  private cachedJwt: { value: string; createdAt: number } | undefined;
+export class FcmSender implements PushSender {
+  private readonly messaging: Messaging;
 
-  constructor(config: ApnsConfig) {
-    this.config = config;
-  }
-
-  private async jwt(): Promise<string> {
-    const fiftyMinutes = 50 * 60 * 1000;
-    if (this.cachedJwt !== undefined && Date.now() - this.cachedJwt.createdAt < fiftyMinutes) {
-      return this.cachedJwt.value;
-    }
-    const key = await importPKCS8(this.config.keyP8, 'ES256');
-    const value = await new SignJWT({})
-      .setProtectedHeader({ alg: 'ES256', kid: this.config.keyId })
-      .setIssuer(this.config.teamId)
-      .setIssuedAt()
-      .sign(key);
-    this.cachedJwt = { value, createdAt: Date.now() };
-    return value;
+  constructor(serviceAccountBase64: string) {
+    const json = Buffer.from(serviceAccountBase64, 'base64').toString('utf8');
+    const serviceAccount = JSON.parse(json);
+    const firebaseApp = initializeApp({ credential: cert(serviceAccount) }, 'push');
+    this.messaging = getMessaging(firebaseApp);
   }
 
   async send(
-    deviceToken: string,
-    environment: 'sandbox' | 'production',
+    token: string,
+    platform: DevicePlatform,
     message: PushMessage,
   ): Promise<PushOutcome> {
-    const jwt = await this.jwt();
-    const session = http2.connect(HOSTS[environment]);
     try {
-      const status = await new Promise<number>((resolve, reject) => {
-        const request = session.request({
-          ':method': 'POST',
-          ':path': `/3/device/${deviceToken}`,
-          authorization: `bearer ${jwt}`,
-          'apns-topic': this.config.bundleId,
-          'apns-push-type': 'alert',
-          'apns-priority': '10',
-        });
-        let code = 0;
-        request.on('response', (headers) => {
-          code = Number(headers[':status']);
-        });
-        request.on('error', reject);
-        request.on('end', () => resolve(code));
-        request.resume();
-        request.end(JSON.stringify(pushPayload(message)));
-      });
-      if (status === 200) {
-        return 'sent';
-      }
-      // 410: the app was removed; 400 is usually a token from the other environment.
-      if (status === 410 || status === 400) {
+      await this.messaging.send(pushMessage(token, platform, message));
+      return 'sent';
+    } catch (error) {
+      const code = (error as { code?: string }).code ?? '';
+      if (UNREGISTERED_CODES.includes(code)) {
         return 'unregistered';
       }
-      return 'failed';
-    } finally {
-      session.close();
+      // Anything else (quota, network) goes to the caller, which logs it.
+      throw error;
     }
   }
 }
@@ -453,7 +422,7 @@ export class ApnsSender implements PushSender {
 ```diff
 @@ -3,2 +3,3 @@
  import type { Logger } from 'pino';
-+import type { PushSender } from '../push/apns.js';
++import type { DevicePlatform, PushSender } from '../push/fcm.js';
  import { notifyUploadEvent } from '../realtime/events.js';
 @@ -9,2 +10,3 @@
    storage: Storage;
@@ -486,13 +455,13 @@ export class ApnsSender implements PushSender {
 +  if (pending.rows.length > 0) {
 +    return;
 +  }
-+  const devices = await deps.pool.query<{ token: string; environment: 'sandbox' | 'production' }>(
-+    'select token, environment from devices where uid = $1',
++  const devices = await deps.pool.query<{ token: string; platform: DevicePlatform }>(
++    'select token, platform from devices where uid = $1',
 +    [uid],
 +  );
 +  for (const device of devices.rows) {
 +    try {
-+      const outcome = await deps.push.send(device.token, device.environment, {
++      const outcome = await deps.push.send(device.token, device.platform, {
 +        title: 'Uploads verified',
 +        body: 'Every file in the session is stored and checked.',
 +        deepLink: `sitelog://session/${sessionId}`,
@@ -501,9 +470,9 @@ export class ApnsSender implements PushSender {
 +      if (outcome === 'unregistered') {
 +        await deps.pool.query('delete from devices where token = $1', [device.token]);
 +      }
-+      deps.log.info({ uid, sessionId, outcome }, 'push sent');
++      deps.log.info({ uid, sessionId, platform: device.platform, outcome }, 'push sent');
 +    } catch (error) {
-+      deps.log.error({ err: error, uid, sessionId }, 'push failed');
++      deps.log.error({ err: error, uid, sessionId, platform: device.platform }, 'push failed');
 +    }
 +  }
 +}
@@ -516,7 +485,7 @@ export class ApnsSender implements PushSender {
 import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import type { Logger } from 'pino';
-import type { PushSender } from '../push/apns.js';
+import type { DevicePlatform, PushSender } from '../push/fcm.js';
 import { notifyUploadEvent } from '../realtime/events.js';
 import type { Storage } from '../storage.js';
 
@@ -609,13 +578,13 @@ async function pushWhenSessionVerified(
   if (pending.rows.length > 0) {
     return;
   }
-  const devices = await deps.pool.query<{ token: string; environment: 'sandbox' | 'production' }>(
-    'select token, environment from devices where uid = $1',
+  const devices = await deps.pool.query<{ token: string; platform: DevicePlatform }>(
+    'select token, platform from devices where uid = $1',
     [uid],
   );
   for (const device of devices.rows) {
     try {
-      const outcome = await deps.push.send(device.token, device.environment, {
+      const outcome = await deps.push.send(device.token, device.platform, {
         title: 'Uploads verified',
         body: 'Every file in the session is stored and checked.',
         deepLink: `sitelog://session/${sessionId}`,
@@ -624,9 +593,9 @@ async function pushWhenSessionVerified(
       if (outcome === 'unregistered') {
         await deps.pool.query('delete from devices where token = $1', [device.token]);
       }
-      deps.log.info({ uid, sessionId, outcome }, 'push sent');
+      deps.log.info({ uid, sessionId, platform: device.platform, outcome }, 'push sent');
     } catch (error) {
-      deps.log.error({ err: error, uid, sessionId }, 'push failed');
+      deps.log.error({ err: error, uid, sessionId, platform: device.platform }, 'push failed');
     }
   }
 }
@@ -641,14 +610,14 @@ async function pushWhenSessionVerified(
 ```diff
 @@ -4,2 +4,3 @@
  import { createLogger } from './logger.js';
-+import { ApnsSender, type PushSender } from './push/apns.js';
++import { FcmSender, type PushSender } from './push/fcm.js';
  import { Storage, createS3Client } from './storage.js';
 @@ -18,3 +19,7 @@
  );
 -const deps: WorkerDeps = { pool, storage, log };
 +let push: PushSender | undefined = undefined;
-+if (config.apns !== undefined) {
-+  push = new ApnsSender(config.apns);
++if (config.firebaseServiceAccountBase64 !== undefined) {
++  push = new FcmSender(config.firebaseServiceAccountBase64);
 +}
 +const deps: WorkerDeps = { pool, storage, push, log };
  
@@ -660,7 +629,7 @@ npm run migrate && npm run worker:dev
 
 <b>Try</b>
 
-- Register a made-up token (`POST /devices` with 64 `a`s, `sandbox`), finish a session's uploads: the worker logs `outcome: "unregistered"` and the row is gone.
+- Register a made-up token (`POST /devices` with `{"token": "fake:` + 40 `a`s + `", "platform": "android"}`), finish a session's uploads: the worker logs `outcome: "unregistered"` and the row is gone.
 
 </dd></dl>
 </details>
@@ -717,7 +686,7 @@ describe('devices', () => {
     await resetDatabase(context.pool);
   });
 
-  const token = 'ab'.repeat(32);
+  const token = 'fX3k:APA91b' + 'a'.repeat(140);
 
   it('moves a token to whoever registered it last', async () => {
     for (const uid of ['alice', 'bob']) {
@@ -725,7 +694,7 @@ describe('devices', () => {
         method: 'POST',
         url: '/devices',
         headers: auth(uid),
-        payload: { token, environment: 'sandbox' },
+        payload: { token, platform: 'ios' },
       });
       expect(response.statusCode).toBe(200);
     }
@@ -738,7 +707,7 @@ describe('devices', () => {
       method: 'POST',
       url: '/devices',
       headers: auth('alice'),
-      payload: { token, environment: 'production' },
+      payload: { token, platform: 'android' },
     });
     await context.app.inject({
       method: 'DELETE',
@@ -765,11 +734,12 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createLogger } from '../src/logger.js';
 import {
-  pushPayload,
+  pushMessage,
+  type DevicePlatform,
   type PushMessage,
   type PushOutcome,
   type PushSender,
-} from '../src/push/apns.js';
+} from '../src/push/fcm.js';
 import { verifyNextUpload, type WorkerDeps } from '../src/workers/verify.js';
 import { contentHash, insertCompletedUpload, objectBody } from './fixtures.js';
 import {
@@ -780,11 +750,11 @@ import {
   type TestContext,
 } from './helpers.js';
 
-// Records what would go to Apple, and answers with a chosen outcome.
+// Records what would go to FCM, and answers with a chosen outcome.
 class FakePush implements PushSender {
   sent: PushMessage[] = [];
   outcome: PushOutcome = 'sent';
-  async send(_token: string, _environment: 'sandbox' | 'production', message: PushMessage) {
+  async send(_token: string, _platform: DevicePlatform, message: PushMessage) {
     this.sent.push(message);
     return this.outcome;
   }
@@ -807,8 +777,8 @@ describe('push when a session is verified', () => {
     push = new FakePush();
     deps = { pool: context.pool, storage: context.storage, push, log: createLogger('silent') };
     await context.pool.query(
-      `insert into devices (token, uid, environment) values ($1, 'alice', 'sandbox')`,
-      ['ab'.repeat(32)],
+      `insert into devices (token, uid, platform) values ($1, 'alice', 'ios')`,
+      ['fX3k:APA91b' + 'a'.repeat(140)],
     );
   });
 
@@ -822,7 +792,7 @@ describe('push when a session is verified', () => {
     expect(push.sent[0]!.deepLink).toBe(`sitelog://session/${ids.session}`);
   });
 
-  it('forgets a device Apple no longer knows', async () => {
+  it('forgets a device FCM no longer knows', async () => {
     push.outcome = 'unregistered';
     await insertCompletedUpload(context.pool, { sha256: contentHash });
     await verifyNextUpload(deps);
@@ -830,14 +800,19 @@ describe('push when a session is verified', () => {
     expect(devices.rows).toHaveLength(0);
   });
 
-  it('sends only a destination and a hashed account', () => {
-    const payload = pushPayload({
+  it('sends only a destination and a hashed account, shaped per platform', () => {
+    const message: PushMessage = {
       title: 't',
       body: 'b',
       deepLink: 'sitelog://session/1',
       uid: 'alice',
-    });
-    expect(JSON.stringify(payload)).not.toContain('alice');
+    };
+    const ios = pushMessage('token', 'ios', message);
+    const android = pushMessage('token', 'android', message);
+    expect(JSON.stringify(ios)).not.toContain('alice');
+    expect(JSON.stringify(android)).not.toContain('alice');
+    expect('notification' in ios).toBe(true);
+    expect('notification' in android).toBe(false);
   });
 });
 ```
@@ -857,8 +832,8 @@ npm test
 
 <dl><dd>
 
-- [ ] A real iPhone (Debug) gets "Uploads verified" and opens the session
-- [ ] A token Apple rejects is deleted
-- [ ] `npm test` green (74 tests); APNs parameters in SSM for staging
+- [ ] An iPhone (Debug) and an Android phone get "Uploads verified" and open the session
+- [ ] A token FCM rejects is deleted
+- [ ] `npm test` green (74 tests); the APNs key is uploaded in the `sitelog-dev` Firebase project
 
 </dd></dl>

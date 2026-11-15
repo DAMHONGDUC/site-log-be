@@ -2,7 +2,7 @@
 
 <dl><dd>
 
-- The server behind the [SiteLog iOS app](https://github.com/DAMHONGDUC/site_log_swift_ui): sign-in check, delta sync, presigned S3 uploads, verification codes, realtime upload state, push.
+- The server behind the SiteLog [iOS](https://github.com/DAMHONGDUC/site_log_swift_ui) and [Android](https://github.com/DAMHONGDUC/site-log-android) apps: sign-in check, delta sync, presigned S3 uploads, verification codes, realtime upload state, push.
 - Node 24 · TypeScript · Fastify · PostgreSQL 16 · AWS (EC2 + Docker Compose, RDS, S3), infrastructure in AWS CDK.
 - Built step by step from the guides in [docs/feature-guide](docs/feature-guide/README.md), sprint by sprint, next to the iOS app.
 
@@ -72,6 +72,8 @@ curl localhost:3000/health
 ## Repository layout
 
 <dl><dd>
+
+- Target layout once the guides are built; today only `docs/` and `Tools/` exist.
 
 ```text
 site-log-be/

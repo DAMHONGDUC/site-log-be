@@ -350,7 +350,7 @@ FIREBASE_WEB_API_KEY=
 PORT=3000
 LOG_LEVEL=info
 
-# Defaults are fine; they must match the iOS app's UploadConstants.
+# Defaults are fine; they must match UploadConstants in the iOS and Android apps.
 # PRESIGN_TTL_SECONDS=3600
 # SINGLE_PUT_THRESHOLD_BYTES=5242880
 # PART_SIZE_BYTES=8388608

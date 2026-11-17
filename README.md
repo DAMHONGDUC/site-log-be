@@ -67,6 +67,7 @@ curl localhost:3000/health
 | [05-team-and-roles](docs/feature-docs/05-team-and-roles.md) | One company, four roles, project members, invitations, shared sync |
 | [Feature guides](docs/feature-guide/README.md) | Step-by-step build, one folder per sprint |
 | [Local testing with iOS](docs/feature-guide/local-testing-with-ios.md) | Run the backend on your Mac and point the simulator or an iPhone at it |
+| [App design](https://github.com/DAMHONGDUC/site_log_swift_ui/blob/main/docs/design/00-design-plan.md) | No UI here; the app screens the API serves (Team and roles: T1–T8) are in the iOS repo's design pages and the [Figma file](https://www.figma.com/design/uJZcCP6lzw8QTSkcu8uqvV/Site-Log-iOS-Design) |
 
 </dd></dl>
 

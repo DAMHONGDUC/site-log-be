@@ -64,6 +64,7 @@ curl localhost:3000/health
 | [02-database](docs/feature-docs/02-database.md) | Tables, sync columns, keys, migrations |
 | [03-sync-uploads-realtime](docs/feature-docs/03-sync-uploads-realtime.md) | How sync, uploads, verification and the WebSocket channel work inside |
 | [04-aws-operations](docs/feature-docs/04-aws-operations.md) | AWS resources, configuration, secrets, deploy, logs, alarms, backups |
+| [05-team-and-roles](docs/feature-docs/05-team-and-roles.md) | One company, four roles, project members, invitations, shared sync |
 | [Feature guides](docs/feature-guide/README.md) | Step-by-step build, one folder per sprint |
 | [Local testing with iOS](docs/feature-guide/local-testing-with-ios.md) | Run the backend on your Mac and point the simulator or an iPhone at it |
 

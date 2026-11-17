@@ -33,7 +33,8 @@
 | Signs S3 upload and download URLs, confirms uploads, issues verification codes | Receive or send file bytes (the app talks to S3 directly) |
 | Re-reads stored files and proves their SHA-256 | Render reports |
 | Pushes upload state over a WebSocket and Firebase Cloud Messaging | Hold state in memory that matters (any process can die) |
-| Deletes an account and everything it owns | |
+| Checks every request against the member's role and projects ([05](05-team-and-roles.md)) | |
+| Invites members, removes them, deletes an account; company records stay | |
 
 </dd></dl>
 
@@ -197,6 +198,22 @@ flowchart LR
 |---|---|
 | Direct APNs (HTTP/2 + `jose`) for iOS, FCM for Android | Two senders, two token formats, `.p8` key in SSM |
 | Amazon SNS mobile push | A second vendor next to Firebase; still needs the FCM and APNs credentials |
+
+</dd></dl>
+
+### B10 — One company, four roles, shared projects
+
+<dl><dd>
+
+- **Context:** SiteLog is an internal tool of one company. Several supervisors walk the same projects; clients and subcontractor leads read the results. Data was owned per user.
+- **Decision:** one implicit company; members with one role each (Admin, Manager, Inspector, Viewer); rows belong to a project and keep `created_by`; one company rev counter; access decided by one `reachable(uid)` function. Details: [05-team-and-roles](05-team-and-roles.md).
+- **Why:** shared projects without a second tenant layer; evidence stays with the company when a person leaves.
+
+| Rejected | Why |
+|---|---|
+| Keep data per user, share by copying | Two copies of evidence, no single truth for a dispute |
+| Companies as tenants (SaaS) | One company only; a tenant layer adds a key to every row for nothing |
+| Firebase custom claims for roles | Role changes need a token refresh; the database is already the source of truth |
 
 </dd></dl>
 

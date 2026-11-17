@@ -90,6 +90,8 @@ flowchart TB
 | `VERIFY_MIN_DELAY_MS` · `VERIFY_RATE_LIMIT_PER_MINUTE` | `300` · `30` | — | `/verify` timing and limit |
 | `UPLOAD_RATE_LIMIT_PER_MINUTE` | `600` | — | Begins per user |
 | `MAX_SOCKETS_PER_USER` | `5` | — | WebSocket cap |
+| `INVITE_FROM_EMAIL` · `INVITE_BASE_URL` | — | `instance.env` | Sender (an Amazon SES verified identity) and link base for member invitations ([05 §5](05-team-and-roles.md#5-invitations-and-sign-in)) |
+| `INVITE_TTL_DAYS` | `7` | — | Invitation lifetime |
 | `ENV_NAME`, `API_DOMAIN`, `ECR_REPOSITORY`, `DB_SECRET_ARN` | — | `instance.env` | Used by `deploy.sh` and Caddy |
 
 - `src/config.ts` reads every variable once at start and fails fast on a missing one.

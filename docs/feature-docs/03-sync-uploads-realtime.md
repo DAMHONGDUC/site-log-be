@@ -27,8 +27,8 @@
 
 <dl><dd>
 
-- Each user has one counter, `sync_state.last_rev`. Every row a push writes gets the next number in `rev`.
-- A push first locks the user's `sync_state` row (`select … for update`). A second push of the same user waits, so revs are committed in order.
+- The company has one counter, `sync_state.last_rev` ([05 §6](05-team-and-roles.md#6-sync-with-shared-projects)). Every row a push writes gets the next number in `rev`.
+- A push first locks the `sync_state` row (`select … for update`). A second push waits, so revs are committed in order.
 
 | Why not a timestamp or a sequence | What goes wrong |
 |---|---|
@@ -50,7 +50,9 @@ flowchart LR
     Merge --> Out["changes, nextRev, hasMore"]
 ```
 
-- Revs are unique per user, so `limit + 1` rows from each table are enough to find the first `limit` overall.
+- Each table is read with `project_id in reachable(me)` (personal `phrases`: `uid = me`).
+- Revs are unique in the company, so `limit + 1` rows from each table are enough to find the first `limit` overall.
+- A member whose access changed (`members.resync_required`) gets `resyncRequired` and pulls again from `0`.
 
 </dd></dl>
 
@@ -186,10 +188,10 @@ flowchart LR
 | Rule | Where |
 |---|---|
 | Token checked on every request, with `checkRevoked` | `src/auth.ts` |
-| Auth failures are `401`, never `403` | `src/auth.ts` |
-| Every user query filters `uid = $n` | All routes, `src/sync/` |
-| Keys must match a full pattern starting with the caller's uid | `src/keys.ts` |
-| Foreign keys include `uid` | Migrations |
+| Auth failures are `401`; `403` means a member's role or project access says no | `src/auth.ts`, `src/team/` |
+| Every query is limited to `reachable(uid)`; every write is checked against the role table | `src/team/access.ts`, all routes, `src/sync/` |
+| Keys must match a full pattern under a project the caller may write | `src/keys.ts` |
+| Foreign keys include `project_id` | Migrations |
 | `/verify` returns facts only, constant delay, rate limited | `src/routes/verify.ts` |
 | Token only in the first WebSocket message, never the URL | `src/realtime/ws.ts` |
 | Logs never contain tokens, URLs or keys' signatures | `src/logger.ts` redaction, route log fields |

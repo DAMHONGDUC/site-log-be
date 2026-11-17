@@ -36,6 +36,7 @@
 | `0009_checklists.sql` | F12 | four checklist tables; foreign key `issues.source_checklist_result_id` |
 | `0010_verify_worker.sql` | F15 | `uploads.verify_claimed_at` |
 | `0011_devices.sql` | F16 | `devices` |
+| `0012_team.sql` | F19 | `member_role` enum, `members`, `invitations`, `project_members`, `member_events`; `uid` → `created_by` and `project_id` on every synced table; one-row `sync_state` |
 
 - `schema_migrations (name, run_at)` records what ran. A file that ran is never edited: fix it with a new file.
 
@@ -45,17 +46,18 @@
 
 <dl><dd>
 
-- Every synced table starts with the same five columns:
+- Every synced table starts with the same six columns ([05-team-and-roles](05-team-and-roles.md)):
 
 | Column | Type | Set by | Why |
 |---|---|---|---|
 | `id` | `uuid` primary key | App | Rows are created offline, so the app makes the id |
-| `uid` | `text` | Server, from the token | Owner; every query filters it |
-| `rev` | `bigint` | Server | Position in the user's change history; pull reads `rev > since` |
+| `project_id` | `uuid` | App (or the server, from the parent row) | The project the row belongs to; access is decided on it |
+| `created_by` | `text` | Server, from the token | The member who made the row; the row belongs to the company |
+| `rev` | `bigint` | Server | Position in the company's change history; pull reads `rev > since` |
 | `client_updated_at` | `timestamptz` | App | Last write wins |
 | `deleted_at` | `timestamptz` | App (delete) | Tombstone, purged after 90 days |
 
-- Index `(uid, rev)` on every synced table makes pull fast.
+- Index `(project_id, rev)` on every synced table makes pull fast. `phrases` keep a `uid` column instead of `project_id`: they are personal.
 - Business columns: [01-api §6.3](01-api.md#63-synced-tables); exact SQL: the migration files.
 
 </dd></dl>
@@ -66,9 +68,13 @@
 
 | Table | Key | Holds |
 |---|---|---|
-| `sync_state` | `uid` | `last_rev` (per-user counter), `purged_through_rev` (resync watermark) |
+| `sync_state` | one row | `last_rev` (company counter), `purged_through_rev` (resync watermark) |
+| `members` | `uid` | Email, name, `role` (`admin` · `manager` · `inspector` · `viewer`), `resync_required`, `removed_at` |
+| `invitations` | `id` | Email, role, project ids, SHA-256 of the token, `invited_by`, `expires_at`, `accepted_at` |
+| `project_members` | `(project_id, uid)` | Inspectors and Viewers who work on a project, `added_by`, `added_at` |
+| `member_events` | `id` | Append-only audit of invites, accepts, role changes, project adds / removes, removals |
 | `uploads` | `id` (server uuid) | One row per upload job: key, size, hash, mode, S3 upload id, state, verification code, verify state |
-| `devices` | `token` | FCM token, owner, `ios` or `android` |
+| `devices` | `token` | FCM token, member uid, `ios` or `android` |
 | `schema_migrations` | `name` | Migrations that ran |
 
 | `uploads.state` | Meaning |
@@ -116,7 +122,7 @@ erDiagram
 
 | Rule | How |
 |---|---|
-| A row points only at rows of the same user | Foreign keys include `uid`: `foreign key (uid, project_id) references projects (uid, id)` |
+| A row points only at rows of the same project | Foreign keys include `project_id`: `foreign key (project_id, session_id) references sessions (project_id, id)` |
 | A push may insert a child before its parent | Every foreign key is `deferrable initially deferred`: checked at commit |
 | A tombstone does not block reuse | Unique indexes are partial: `… where deleted_at is null` |
 | No free-text states | `check (kind in (…))` or an enum |

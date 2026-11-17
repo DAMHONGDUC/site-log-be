@@ -35,6 +35,7 @@ flowchart LR
     S6 --> S7["S7<br/>checklists<br/>TestFlight #2"]
     S7 --> S8["S8<br/>realtime, push"]
     S8 --> S9["S9<br/>production<br/>App Store"]
+    S9 --> S10["S10<br/>team and roles"]
 
     classDef ship fill:#EEEDFE,stroke:#534AB7,color:#3C3489
     class S4,S7,S9 ship
@@ -52,6 +53,7 @@ flowchart LR
 | [S7](S7-checklists/README.md) | [F12 Checklists](S7-checklists/F12-checklists.md) | 2 | Checklist answers sync |
 | [S8](S8-realtime-push/README.md) | [F15 Realtime](S8-realtime-push/F15-realtime.md) · [F16 Push](S8-realtime-push/F16-push.md) | 11 | Uploads turn "verified" live; a push arrives |
 | [S9](S9-release/README.md) | [F18 Production](S9-release/F18-production.md) | 6 | Production live, alarms, backups tested |
+| [S10](S10-team-roles/README.md) | [F19 Team and roles](S10-team-roles/F19-team-roles.md) | 16 | Shared projects, roles, invites |
 
 - Hours come from the sprint plan. A first AWS setup (F00c) often takes longer: budget a spare evening.
 - Features without backend work: F01 Access, F13 DeviceLink, F14 Diagnostics, F17 Accessibility.

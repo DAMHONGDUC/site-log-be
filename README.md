@@ -15,8 +15,9 @@
 1. [Status](#status)
 2. [Quick start](#quick-start)
 3. [Docs](#docs)
-4. [Repository layout](#repository-layout)
-5. [Commands](#commands)
+4. [API endpoints](#api-endpoints)
+5. [Repository layout](#repository-layout)
+6. [Commands](#commands)
 
 </dd></dl>
 
@@ -68,6 +69,39 @@ curl localhost:3000/health
 | [Feature guides](docs/feature-guide/README.md) | Step-by-step build, one folder per sprint |
 | [Local testing with iOS](docs/feature-guide/local-testing-with-ios.md) | Run the backend on your Mac and point the simulator or an iPhone at it |
 | [App design](https://github.com/DAMHONGDUC/site_log_swift_ui/blob/main/docs/design/00-design-plan.md) | No UI here; the app screens the API serves (Team and roles: T1–T8) are in the iOS repo's design pages and the [Figma file](https://www.figma.com/design/uJZcCP6lzw8QTSkcu8uqvV/Site-Log-iOS-Design) |
+
+</dd></dl>
+
+## API endpoints
+
+<dl><dd>
+
+- Every call the apps make: 21 method + path pairs (01-api §3 lists them in 20 rows; `PATCH` and `DELETE /members/:uid` share one). The contract (bodies, errors) is [01-api](docs/feature-docs/01-api.md); this list mirrors its [§3](docs/feature-docs/01-api.md#3-endpoints) — change both together.
+- Base URL `https://api.<domain>`; `Bearer` = Firebase ID token in `Authorization`; errors follow [§2](docs/feature-docs/01-api.md#2-error-contract). The file bytes go straight to S3 with the presigned `PUT` URLs, not through this server.
+
+| # | Group | Method | Path | Auth | Does | Spec | Feature |
+|---|---|---|---|---|---|---|---|
+| 1 | Health | `GET` | `/health` | none | Liveness: `200 ok` or `503 database_unreachable` | [§](docs/feature-docs/01-api.md#4-health) | F00 |
+| 2 | Account | `DELETE` | `/account` | Bearer | Leave the company: Firebase user, devices, phrases go; company records stay | [§](docs/feature-docs/01-api.md#5-account) | F02 · F19 |
+| 3 | Sync | `POST` | `/sync/pull` | Bearer | Changes since a cursor, reachable projects only | [§](docs/feature-docs/01-api.md#61-pull) | F04 |
+| 4 | Sync | `POST` | `/sync/push` | Bearer | Apply a batch of mutations; refused ones come back `rejected` | [§](docs/feature-docs/01-api.md#62-push) | F04 |
+| 5 | Uploads and media | `POST` | `/uploads` | Bearer | Begin: one presigned PUT or a multipart plan | [§](docs/feature-docs/01-api.md#72-begin) | F06 · F07 |
+| 6 | Uploads and media | `POST` | `/uploads/:id/parts/refresh` | Bearer | New URLs for expired parts | [§](docs/feature-docs/01-api.md#73-refresh-part-urls-f07) | F07 |
+| 7 | Uploads and media | `POST` | `/uploads/:id/complete` | Bearer | Confirm, record, issue a verification code (idempotent) | [§](docs/feature-docs/01-api.md#74-complete) | F06 |
+| 8 | Uploads and media | `DELETE` | `/uploads/:id` | Bearer | Abort (idempotent) | [§](docs/feature-docs/01-api.md#75-abort) | F06 |
+| 9 | Uploads and media | `POST` | `/media/urls` | Bearer | GET URLs for stored files | [§](docs/feature-docs/01-api.md#8-media-urls) | F06 |
+| 10 | Verify | `GET` | `/verify/:code` | none | Facts about a code printed in a report | [§](docs/feature-docs/01-api.md#9-verify) | F10 |
+| 11 | Realtime and push | `WS` | `/ws` | first message | Live upload state for open sessions | [§](docs/feature-docs/01-api.md#11-websocket) | F15 |
+| 12 | Realtime and push | `POST` | `/devices` | Bearer | Register an FCM token | [§](docs/feature-docs/01-api.md#10-devices) | F16 |
+| 13 | Realtime and push | `DELETE` | `/devices/:token` | Bearer | Remove it on sign-out | [§](docs/feature-docs/01-api.md#10-devices) | F16 |
+| 14 | Team | `GET` | `/me` | Bearer | The caller: role, reachable projects | [§](docs/feature-docs/01-api.md#13-team) | F19 |
+| 15 | Team | `GET` | `/members` | Bearer · Admin, Manager | Members with roles and projects, pending invitations | [§](docs/feature-docs/01-api.md#13-team) | F19 |
+| 16 | Team | `POST` | `/invitations` | Bearer · Admin | Invite an email with a role and projects | [§](docs/feature-docs/01-api.md#13-team) | F19 |
+| 17 | Team | `POST` | `/invitations/accept` | Bearer | Join with an invite token | [§](docs/feature-docs/01-api.md#13-team) | F19 |
+| 18 | Team | `DELETE` | `/invitations/:id` | Bearer · Admin | Cancel an invite | [§](docs/feature-docs/01-api.md#13-team) | F19 |
+| 19 | Team | `PATCH` | `/members/:uid` | Bearer · Admin | Change a role | [§](docs/feature-docs/01-api.md#13-team) | F19 |
+| 20 | Team | `DELETE` | `/members/:uid` | Bearer · Admin | Remove a member | [§](docs/feature-docs/01-api.md#13-team) | F19 |
+| 21 | Team | `PUT` | `/projects/:id/members` | Bearer · Admin, Manager | Set who works on a project | [§](docs/feature-docs/01-api.md#13-team) | F19 |
 
 </dd></dl>
 

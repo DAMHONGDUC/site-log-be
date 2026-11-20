@@ -66,6 +66,7 @@ flowchart LR
 | New | `member_role` enum; `members`, `invitations`, `project_members`, `member_events` |
 | Every synced table | Add `project_id` (fill child tables from their parent: captures → session, annotations → capture, issue_captures → issue, checklist rows → run / session); rename `uid` → `created_by`; index `(project_id, rev)` |
 | `issues` | Add `assignee_uid text null` (a member); keep `assignee_name` for subcontractors without the app |
+| `devices` | Add `kinds text[]` (null = every kind), set by `POST /devices` |
 | `phrases` | Keep `uid`: personal |
 | `report_branding` | Keep one row, the company's |
 | `sync_state` | One row: `last_rev` = max of the old per-user counters; every member gets `resync_required = true` |
@@ -130,13 +131,16 @@ flowchart LR
 
 <dl><dd>
 
-- **Goal:** the seven calls of [01-api §13](../../feature-docs/01-api.md#13-team) and the invite email.
+- **Goal:** the ten calls of [01-api §13](../../feature-docs/01-api.md#13-team) and the invite email.
 
 | Part | Rule |
 |---|---|
 | Invite | Random 32-byte token, store its SHA-256, 7 days; email from `INVITE_FROM_EMAIL` through Amazon SES with `INVITE_BASE_URL/invite/<token>` |
+| Preview | `GET /invitations/:token` without auth: look up by SHA-256 of the token; inviter name, role, project names, masked email; rate limit per IP; nothing written |
 | Accept | Token valid, unused, email equals the signed-in email → member row, project rows, `member_events` |
-| Role change, project change, removal | Admin only (projects: Admin, Manager); write `member_events`; set `resync_required`; removal revokes Firebase tokens and deletes devices |
+| Resend | New token, old hash replaced, new 7 days, email again; `member_events` `invite_resent` |
+| Role change, project change, removal | `PATCH /members/:uid` (role and / or `projectIds`) and removal: Admin; `PUT /projects/:id/members`: Admin, Manager; write `member_events`; set `resync_required`; removal revokes Firebase tokens and deletes devices |
+| Activity | `GET /member-events`: Admin, newest first, cursor `before`, `limit` ≤ 100, names joined from `members` |
 | Last Admin | `409 last_admin` |
 | `DELETE /account` | Identity, phrases and devices only; company rows stay |
 
@@ -151,7 +155,15 @@ flowchart LR
 
 - **Goal:** live events and pushes reach the project's members, nobody else.
 - WebSocket `subscribe`: the session's project must be reachable, else close `4003`.
-- Push "uploads verified": every member who reaches the project and has a device.
+- Push "uploads verified": every member who reaches the project and has a device; every push now carries `kind`, skips devices whose `kinds` leave it out, and uses the titles of [01-api §10](../../feature-docs/01-api.md#10-devices) (F16 sent "Uploads verified").
+- New push kinds ([01-api §10](../../feature-docs/01-api.md#10-devices)), each sent only to devices whose `kinds` include it, never to the member who caused it:
+
+| Kind | Sent from |
+|---|---|
+| `issueAssigned` | `src/sync/push.ts` after commit, when an issue row's `assignee_uid` changed |
+| `issueRechecked` | `src/sync/push.ts` after commit, when a re-check row is inserted |
+| `dueSoon` | `src/workers/due-soon.ts`: worker job at 8:00 site time, one push per assignee per project |
+| `access` | `src/routes/team.ts` after a project or role change |
 
 </dd></dl>
 
@@ -163,7 +175,7 @@ flowchart LR
 |---|---|
 | `access.test.ts` | `reachable` and `can` match the permission table, row by row |
 | `sync-scope.test.ts` | Pull isolation between projects; push `forbidden:<action>`; `resyncRequired` after a role change |
-| `team.test.ts` | Invite, accept (expired, used, wrong email), role change, removal, last Admin |
+| `team.test.ts` | Invite, preview (masked email, expired, used, unknown), resend voids the old link, accept (expired, used, wrong email), role and project change, removal, last Admin, activity paging |
 
 </dd></dl>
 

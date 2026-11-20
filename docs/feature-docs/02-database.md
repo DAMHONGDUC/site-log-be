@@ -72,9 +72,9 @@
 | `members` | `uid` | Email, name, `role` (`admin` · `manager` · `inspector` · `viewer`), `resync_required`, `removed_at` |
 | `invitations` | `id` | Email, role, project ids, SHA-256 of the token, `invited_by`, `expires_at`, `accepted_at` |
 | `project_members` | `(project_id, uid)` | Inspectors and Viewers who work on a project, `added_by`, `added_at` |
-| `member_events` | `id` | Append-only audit of invites, accepts, role changes, project adds / removes, removals |
+| `member_events` | `id` | Append-only audit: `actor_uid`, `type`, `subject_uid` or `invitation_id`, `detail` jsonb, `at`; index `(at desc)` for `GET /member-events` |
 | `uploads` | `id` (server uuid) | One row per upload job: key, size, hash, mode, S3 upload id, state, verification code, verify state |
-| `devices` | `token` | FCM token, member uid, `ios` or `android` |
+| `devices` | `token` | FCM token, member uid, `ios` or `android`; F19: `kinds text[]` (null = every kind) |
 | `schema_migrations` | `name` | Migrations that ran |
 
 | `uploads.state` | Meaning |

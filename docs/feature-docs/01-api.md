@@ -97,9 +97,12 @@
 | 15 | `GET` | `/members` | Bearer · Admin, Manager | Every member with role and projects | F19 |
 | 16 | `POST` | `/invitations` | Bearer · Admin | Invite an email with a role and projects | F19 |
 | 17 | `POST` | `/invitations/accept` | Bearer | Join with an invite token | F19 |
-| 18 | `DELETE` | `/invitations/:id` | Bearer · Admin | Cancel an invite | F19 |
-| 19 | `PATCH` · `DELETE` | `/members/:uid` | Bearer · Admin | Change a role · remove a member | F19 |
-| 20 | `PUT` | `/projects/:id/members` | Bearer · Admin, Manager | Set who works on a project | F19 |
+| 18 | `GET` | `/invitations/:token` | none | Preview an invite before sign-in: who invited, role, projects | F19 |
+| 19 | `POST` | `/invitations/:id/resend` | Bearer · Admin | New token and email; the old link stops working | F19 |
+| 20 | `DELETE` | `/invitations/:id` | Bearer · Admin | Cancel an invite | F19 |
+| 21 | `PATCH` · `DELETE` | `/members/:uid` | Bearer · Admin | Change a role and / or projects · remove a member | F19 |
+| 22 | `PUT` | `/projects/:id/members` | Bearer · Admin, Manager | Set who works on a project | F19 |
+| 23 | `GET` | `/member-events` | Bearer · Admin | Team activity log, newest first, paged | F19 |
 
 </dd></dl>
 
@@ -381,7 +384,7 @@ GET /verify/K7M2QX9HTP
 
 ```json
 POST /devices
-{ "token": "<FCM registration token>", "platform": "ios" }
+{ "token": "<FCM registration token>", "platform": "ios", "kinds": ["uploadsVerified", "issueAssigned", "issueRechecked", "access"] }
 → { "registered": true }
 ```
 
@@ -389,14 +392,26 @@ POST /devices
 |---|---|
 | `token` | FCM registration token from the Firebase Messaging SDK (iOS too, never the raw APNs token); `[A-Za-z0-9_:-]`, 20–4096 chars |
 | `platform` | `ios` or `android`; picks the message shape |
+| `kinds` | F19, optional; the push kinds this device wants (table below); missing = all. The app posts again whenever the member changes a switch in You → Notifications, so choices live per device |
 
 - `DELETE /devices/:token` → `{ "removed": true }` on sign-out.
 - Register after sign-in and on every token refresh; a token FCM rejects is deleted by the server.
 
 | Platform | Push the app receives |
 |---|---|
-| `ios` | System alert (`notification` title, body) + data `deepLink` (`sitelog://session/<id>`), `account` |
-| `android` | Data only: `deepLink`, `account`, `title`, `body`; the app builds the notification |
+| `ios` | System alert (`notification` title, body) + data `kind`, `deepLink`, `account` |
+| `android` | Data only: `kind`, `deepLink`, `account`, `title`, `body`; the app builds the notification on the channel of that kind |
+
+| Kind | When | Who gets it (never the member who caused it) | Example (title · body) | `deepLink` | Since |
+|---|---|---|---|---|---|
+| `uploadsVerified` | The last upload of a session is verified | F16: the member who started the session; F19: every member who reaches the project | Level 7 walkthrough is safe · All 112 photos are uploaded and verified. | `sitelog://session/<id>` | F16 |
+| `issueAssigned` | `assignee_uid` is set or changed to a member | The new assignee | Assigned to you · Major · Hairline crack by the skirting, 7A Living room. Due Fri. | `sitelog://issue/<id>` | F19 |
+| `issueRechecked` | A re-check is recorded: resolved, still open or worse | The issue's creator and assignee | Re-check: still open · Le Thu re-checked Exposed wiring at socket, 7A Kitchen. | `sitelog://issue/<id>` | F19 |
+| `dueSoon` | Every day at 8:00 site time, open issues due the next day | Each assignee, one summary per project | 2 issues due tomorrow · Riverside Tower B · Phuc Electric, Tuan's crew. | `sitelog://project/<id>` (the app opens its Issues, due tomorrow) | F19 |
+| `access` | Added to or removed from a project, or the role changes | That member | Added to Harbor View Villas · Hanh Nguyen added you as Inspector. | `sitelog://project/<id>`; none on removal | F19 |
+
+- Text never carries a photo or a file name; titles stay under 40 characters, bodies under two lines.
+- F16 ships the first kind only, without `kind` or `kinds`: title "Uploads verified", body "Every file in the session is stored and checked." F19 adds `kind` to every push, honours `kinds` and switches to the titles above.
 
 - `account` = first 16 hex of SHA-256 of the uid: ignore a push whose `account` is not the signed-in user.
 
@@ -471,21 +486,39 @@ GET /members
 POST /invitations { "email": "client@…", "role": "viewer", "projectIds": ["1111…"] }
 → { "invitationId": "…", "expiresAt": "…" }
 
+GET /invitations/:token          (no Authorization: the link itself is the key)
+→ { "invitedBy": "Hanh Nguyen", "role": "inspector", "projects": [ { "id": "1111…", "name": "Riverside Tower B" } ],
+    "email": "v••@eastline.vn", "expiresAt": "…" }
+
 POST /invitations/accept { "token": "…" }
 → { "uid": "…", "role": "viewer", "projectIds": ["1111…"] }
 
-PATCH /members/:uid { "role": "manager" }   → { "uid": "…", "role": "manager" }
+POST /invitations/:id/resend
+→ { "invitationId": "…", "expiresAt": "…" }
+
+PATCH /members/:uid { "role": "manager" }                → { "uid": "…", "role": "manager", "projectIds": "all" }
+PATCH /members/:uid { "projectIds": ["1111…", "2222…"] } → { "uid": "…", "role": "inspector", "projectIds": ["1111…", "2222…"] }
 DELETE /members/:uid                        → { "removed": true }
 PUT /projects/:id/members { "uids": ["…", "…"] }   → { "projectId": "…", "uids": ["…", "…"] }
+
+GET /member-events?before=<id>&limit=50
+→ { "events": [ { "id": "…", "at": "…", "actor": { "uid": "…", "name": "Hanh Nguyen" },
+                  "type": "role_changed", "subject": { "uid": "…", "name": "Le Thu" }, "detail": { "from": "viewer", "to": "inspector" } } ],
+    "next": "<id or null>" }
 ```
+
+- `GET /invitations/:token` never reveals the full email or marks the invite used; it is rate limited per IP (`429`). `PATCH /members/:uid` takes `role`, `projectIds` or both; `projectIds` is ignored for Admin and Manager (they reach every project).
+- `type` in `member_events`: `invited` · `invite_resent` · `invite_cancelled` · `joined` · `role_changed` · `projects_changed` · `removed` · `account_deleted`.
 
 | Error | When |
 |---|---|
 | `400 invalid_email` · `400 invalid_role` | Malformed body |
 | `403 forbidden` | The caller's role may not do this |
-| `404` | Unknown member, invitation or project |
+| `404` | Unknown member, invitation or project; an invite token that never existed |
+| `429` | Too many invite previews from one address |
 | `409 already_member` | Invite for an email that is already a member |
-| `409 invite_expired` · `409 invite_used` · `409 email_mismatch` | Accept with a bad token |
+| `409 invite_expired` · `409 invite_used` · `409 email_mismatch` | Accept with a bad token (preview: expired or used only) |
+| `409 invite_accepted` | Resend or cancel an invite that was already accepted |
 | `409 last_admin` | Removing, demoting or deleting the last Admin |
 
 </dd></dl>

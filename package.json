@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
     "worker:dev": "tsx watch --env-file-if-exists=.env src/worker.ts",
+    "dev:all": "bash scripts/dev-up.sh",
     "migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
     "s3:bucket": "tsx --env-file-if-exists=.env scripts/s3-bucket.ts",
     "token": "tsx --env-file-if-exists=.env scripts/dev-token.ts",

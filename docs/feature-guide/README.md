@@ -55,6 +55,7 @@ flowchart LR
 | [S9](S9-release/README.md) | [F18 Production](S9-release/F18-production.md) | 6 | Production live, alarms, backups tested |
 | [S10](S10-team-roles/README.md) | [F19 Team and roles](S10-team-roles/F19-team-roles.md) | 26 | Shared projects, roles, invites, activity, push kinds |
 
+- The repository now splits each guide's code into layers (routes → services → repositories, constants in `src/constants`): see [README → Code structure](../../README.md#code-structure). The guides keep the first, single-file form for learning.
 - Hours come from the sprint plan. A first AWS setup (F00c) often takes longer: budget a spare evening.
 - Features without backend work: F01 Access, F13 DeviceLink, F14 Diagnostics, F17 Accessibility.
 

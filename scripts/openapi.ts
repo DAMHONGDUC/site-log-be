@@ -8,16 +8,13 @@ import { loadConfig } from '../src/core/config.js';
 import { OPENAPI } from '../src/constants/http/openapi.js';
 import { RealtimeHub } from '../src/modules/realtime/hub.js';
 import { Storage, createS3Client } from '../src/integrations/storage.js';
+import { OPENAPI_SCRIPT, SCRIPT_TEXT } from '../src/constants/messages/script-text.js';
+import { ENCODING } from '../src/constants/platform/encoding.js';
 
 // Building the app needs no database, AWS or Firebase: nothing here is ever called.
-const config = loadConfig({
-  DATABASE_URL: 'postgres://openapi@localhost/openapi',
-  AWS_REGION: 'eu-west-1',
-  S3_BUCKET: 'openapi',
-  NODE_ENV: 'production',
-});
+const config = loadConfig({ ...OPENAPI_SCRIPT.env });
 const pool = new pg.Pool({ connectionString: config.databaseUrl });
-const notUsed = (): Promise<never> => Promise.reject(new Error('not used'));
+const notUsed = (): Promise<never> => Promise.reject(new Error(SCRIPT_TEXT.notUsed));
 const tokens: TokenVerifier = { verify: notUsed, deleteUser: notUsed, revoke: notUsed };
 const app = await buildApp({
   config,
@@ -35,14 +32,14 @@ const document = `${JSON.stringify(app.swagger(), null, 2)}\n`;
 await app.close();
 await pool.end();
 
-if (process.argv.includes('--check')) {
-  const committed = await readFile(OPENAPI.file, 'utf8').catch(() => '');
+if (process.argv.includes(OPENAPI_SCRIPT.checkFlag)) {
+  const committed = await readFile(OPENAPI.file, ENCODING.utf8).catch(() => '');
   if (committed !== document) {
-    process.stderr.write(`${OPENAPI.file} is out of date: run npm run openapi and commit it.\n`);
+    process.stderr.write(SCRIPT_TEXT.openapiStale(OPENAPI.file));
     process.exit(1);
   }
-  process.stdout.write(`${OPENAPI.file} is up to date.\n`);
+  process.stdout.write(SCRIPT_TEXT.openapiFresh(OPENAPI.file));
 } else {
   await writeFile(OPENAPI.file, document);
-  process.stdout.write(`Wrote ${OPENAPI.file}.\n`);
+  process.stdout.write(SCRIPT_TEXT.openapiWritten(OPENAPI.file));
 }

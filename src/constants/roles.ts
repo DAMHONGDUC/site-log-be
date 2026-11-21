@@ -1,7 +1,12 @@
+import { byName } from './by-name.js';
+
 // The four roles and the permission table of 05-team-and-roles §3, as data.
 
 export const ROLES = ['admin', 'manager', 'inspector', 'viewer'] as const;
 export type Role = (typeof ROLES)[number];
+
+// Each role by name, for code that means one role (`ROLE.admin`).
+export const ROLE = byName(ROLES);
 
 export const ROLE_LABEL: Record<Role, string> = {
   admin: 'Admin',

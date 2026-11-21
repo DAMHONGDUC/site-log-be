@@ -1,3 +1,4 @@
+import { ROLE } from '../../constants/roles.js';
 import { ErrorCode } from '../../constants/error-codes.js';
 import type { Database } from '../../data/database.js';
 import { conflict } from '../../core/errors.js';
@@ -17,8 +18,8 @@ export class AccountService {
 
   async leave(uid: string): Promise<{ abortedUploads: number; deletedRows: number }> {
     const lookup = await this.access.lookup(uid);
-    if (lookup.status === 'member' && lookup.member.role === 'admin') {
-      if ((await this.db.repos.members.countLiveWithRole('admin')) <= 1) {
+    if (lookup.status === 'member' && lookup.member.role === ROLE.admin) {
+      if ((await this.db.repos.members.countLiveWithRole(ROLE.admin)) <= 1) {
         throw conflict(
           ErrorCode.lastAdmin,
           'The last Admin cannot leave; make someone else Admin first',

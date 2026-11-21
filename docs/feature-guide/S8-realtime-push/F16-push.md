@@ -30,8 +30,8 @@
 | Step | Hours | Files |
 |---|---|---|
 | [1](#1-firebase-setup) | 0.5 | Firebase console: APNs key for iOS; no new backend secret |
-| [2](#2-devices) | 1 | `migrations/0011_devices.sql`, `src/routes/devices.ts`, `src/routes/account.ts`, `src/app.ts` |
-| [3](#3-sending) | 1 | `src/push/fcm.ts`, `src/workers/verify.ts`, `src/worker.ts` |
+| [2](#2-devices) | 1 | `migrations/0011_devices.sql`, `src/modules/devices/devices-routes.ts`, `src/modules/account/account-routes.ts`, `src/app.ts` |
+| [3](#3-sending) | 1 | `src/integrations/fcm.ts`, `src/workers/verify.ts`, `src/worker.ts` |
 | [Tests](#tests) | 0.5 | `test/worker.test.ts`, `test/devices.test.ts`, `test/push.test.ts` |
 
 ```mermaid
@@ -86,8 +86,8 @@ sequenceDiagram
 | Action | File | Holds |
 |---|---|---|
 | <b class="tag-new">New</b> | `migrations/0011_devices.sql` | `devices (token pk, uid, platform, created_at, updated_at)` |
-| <b class="tag-new">New</b> | `src/routes/devices.ts` | `POST /devices` (a token moves to the last user who registered it), `DELETE /devices/:token` |
-| <b class="tag-edit">Edit</b> | `src/routes/account.ts` | `devices` joins `serverTables` |
+| <b class="tag-new">New</b> | `src/modules/devices/devices-routes.ts` | `POST /devices` (a token moves to the last user who registered it), `DELETE /devices/:token` |
+| <b class="tag-edit">Edit</b> | `src/modules/account/account-routes.ts` | `devices` joins `serverTables` |
 | <b class="tag-edit">Edit</b> | `src/app.ts` | Registers the device routes |
 
 </dd></dl>
@@ -121,7 +121,7 @@ create index devices_uid on devices (uid);
 
 ---
 
-<b>File</b> · <b class="tag-new">New</b> · `src/routes/devices.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/devices/devices-routes.ts`
 
 <b>Think</b>
 
@@ -183,7 +183,7 @@ export function deviceRoutes(
 
 ---
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/routes/account.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/account/account-routes.ts`
 
 ```diff
 @@ -6,3 +6,3 @@
@@ -291,7 +291,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/push/fcm.ts` | `PushSender` interface, `FcmSender` (`firebase-admin/messaging`), `pushMessage`, `hashedAccount` |
+| <b class="tag-new">New</b> | `src/integrations/fcm.ts` | `PushSender` interface, `FcmSender` (`firebase-admin/messaging`), `pushMessage`, `hashedAccount` |
 | <b class="tag-edit">Edit</b> | `src/workers/verify.ts` | `push` in `WorkerDeps`; one push when a session has nothing left to verify |
 | <b class="tag-edit">Edit</b> | `src/worker.ts` | Builds `FcmSender` when the Firebase service account is set |
 
@@ -310,7 +310,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 <summary><strong>3.1 FCM</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/push/fcm.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/integrations/fcm.ts`
 
 <b>Explain</b> · `messaging.send(message)` delivers to one token; for an iOS token FCM calls APNs with the key from step 1. The message carries a destination only — no names, no coordinates.
 

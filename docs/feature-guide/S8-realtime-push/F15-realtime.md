@@ -30,8 +30,8 @@
 
 | Step | Hours | Files |
 |---|---|---|
-| [1](#1-hub) | 2 | `src/realtime/hub.ts` |
-| [2](#2-websocket-route) | 2 | `src/realtime/ws.ts`, `src/app.ts`, `src/main.ts` |
+| [1](#1-hub) | 2 | `src/modules/realtime/hub.ts` |
+| [2](#2-websocket-route) | 2 | `src/modules/realtime/websocket-routes.ts`, `src/app.ts`, `src/main.ts` |
 | [3](#3-worker) | 2.5 | `migrations/0010_verify_worker.sql`, `src/workers/verify.ts`, `src/workers/abandoned.ts`, `src/worker.ts` |
 | [4](#4-run-the-worker-on-the-server) | 0.5 | `deploy/compose.yml` |
 | [Tests](#tests) | 1 | `test/helpers.ts`, `test/fixtures.ts`, `test/ws.test.ts`, `test/worker.test.ts` |
@@ -72,7 +72,7 @@ npm install @fastify/websocket && npm install -D @types/ws
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/realtime/hub.ts` | `RealtimeHub`: sockets per uid, one `LISTEN upload_events` connection with reconnect, `uploadMessage(row)` |
+| <b class="tag-new">New</b> | `src/modules/realtime/hub.ts` | `RealtimeHub`: sockets per uid, one `LISTEN upload_events` connection with reconnect, `uploadMessage(row)` |
 
 </dd></dl>
 
@@ -84,7 +84,7 @@ npm install @fastify/websocket && npm install -D @types/ws
 <summary><strong>1.1 Hub</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/realtime/hub.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/realtime/hub.ts`
 
 <b>Explain</b> · `LISTEN` must stay on one connection, so the hub opens its own `pg.Client` outside the pool. A notification carries ids only; the hub re-reads the row and sends the message to the uid's sockets subscribed to that session.
 
@@ -300,7 +300,7 @@ export function uploadMessage(row: UploadRow): object | undefined {
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/realtime/ws.ts` | `/ws`: auth within 5 s, expiry close, subscribe with ownership check and snapshot, ping/pong, messages handled in order |
+| <b class="tag-new">New</b> | `src/modules/realtime/websocket-routes.ts` | `/ws`: auth within 5 s, expiry close, subscribe with ownership check and snapshot, ping/pong, messages handled in order |
 | <b class="tag-edit">Edit</b> | `src/app.ts` | `hub` in `AppDeps`, the websocket plugin (64 KiB limit), the route |
 | <b class="tag-edit">Edit</b> | `src/main.ts` | Creates and starts the hub, stops it on shutdown |
 
@@ -325,7 +325,7 @@ stateDiagram-v2
 <summary><strong>2.1 Route</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/realtime/ws.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/realtime/websocket-routes.ts`
 
 <b>Explain</b> · Token verification is asynchronous: without the `queue`, a `subscribe` sent right after `auth` could run before `auth` finished and be refused.
 

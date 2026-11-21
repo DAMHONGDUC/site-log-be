@@ -5,6 +5,8 @@ import { ApiRoutes } from '../../constants/http/api-routes.js';
 import { PATTERNS } from '../../constants/runtime/limits.js';
 import type { Guards } from '../../core/http/guards.js';
 import { Schemas } from '../../core/http/schemas.js';
+import { DEVICE_PLATFORMS } from '../../constants/data/enums.js';
+import { LOG } from '../../constants/messages/log.js';
 
 // The app registers its FCM token after sign-in (with the push kinds it wants) and removes it on
 // sign-out (01-api §10).
@@ -14,7 +16,7 @@ export function deviceRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
 
   const Body = Type.Object({
     token: Type.String({ pattern: PATTERNS.fcmToken }),
-    platform: Type.Union([Type.Literal('ios'), Type.Literal('android')]),
+    platform: Type.Union(DEVICE_PLATFORMS.map((platform) => Type.Literal(platform))),
     kinds: Type.Optional(Schemas.pushKinds()),
   });
   typed.post(
@@ -23,7 +25,7 @@ export function deviceRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
     async (request) => {
       const { token, platform, kinds } = request.body;
       await devices.register(token, request.uid, platform, kinds ?? null);
-      request.log.info({ uid: request.uid, platform }, 'device registered');
+      request.log.info({ uid: request.uid, platform }, LOG.devices.registered);
       return { registered: true };
     },
   );
@@ -34,7 +36,7 @@ export function deviceRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
     { preHandler: guards.requireUser, schema: { params: Params } },
     async (request) => {
       await devices.removeOwn(request.params.token, request.uid);
-      request.log.info({ uid: request.uid }, 'device removed');
+      request.log.info({ uid: request.uid }, LOG.devices.removed);
       return { removed: true };
     },
   );

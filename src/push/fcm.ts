@@ -1,21 +1,11 @@
 import { createHash } from 'node:crypto';
 import { cert, initializeApp } from 'firebase-admin/app';
 import { getMessaging, type Message, type Messaging } from 'firebase-admin/messaging';
+import type { PushKind } from '../constants/push.js';
+import type { DevicePlatform } from '../repositories/device-repository.js';
 
-export type DevicePlatform = 'ios' | 'android';
+export type { DevicePlatform } from '../repositories/device-repository.js';
 export type PushOutcome = 'sent' | 'unregistered';
-
-// The push kinds of 01-api §10. A device lists the kinds it wants (null = all).
-export type PushKind =
-  'uploadsVerified' | 'issueAssigned' | 'issueRechecked' | 'dueSoon' | 'access';
-
-export const PUSH_KINDS: PushKind[] = [
-  'uploadsVerified',
-  'issueAssigned',
-  'issueRechecked',
-  'dueSoon',
-  'access',
-];
 
 export interface PushMessage {
   kind: PushKind;
@@ -30,9 +20,12 @@ export interface PushSender {
   send(token: string, platform: DevicePlatform, message: PushMessage): Promise<PushOutcome>;
 }
 
+// Hex characters of the account hash in every push.
+const ACCOUNT_HASH_LENGTH = 16;
+
 // The app ignores a push meant for another account signed in earlier on the same phone.
 export function hashedAccount(uid: string): string {
-  return createHash('sha256').update(uid).digest('hex').slice(0, 16);
+  return createHash('sha256').update(uid).digest('hex').slice(0, ACCOUNT_HASH_LENGTH);
 }
 
 // Only a destination: no names, no coordinates.

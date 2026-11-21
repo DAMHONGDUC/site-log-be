@@ -120,25 +120,26 @@ site-log-be/
 ├── src/
 │   ├── main.ts · worker.ts # entry points: HTTP + WebSocket server · background jobs
 │   ├── app.ts              # composition root: builds Database, services, guards, registers routes
+│   ├── services.ts         # builds every service once (API and worker)
 │   ├── constants/          # every fixed value: ApiRoutes, ErrorCode, roles + permissions, push kinds,
-│   │                       # limits, patterns, durations, HTTP status, WebSocket close codes, units
-│   ├── domain/             # pure rules: Member and reach, can(), invitation tokens
-│   ├── http/               # guards (requireUser, requireAction) and shared request schemas
-│   ├── routes/             # thin: schema → guard → one service call → response
-│   ├── services/           # business rules: access, team, invitations, account, uploads,
-│   │                       # file access, notifications, issue notifier, due-soon, key migration
-│   ├── repositories/       # the only place that runs SQL, one class per table group
-│   ├── data/               # Database (repositories on the pool or one transaction), table lists
-│   ├── sync/               # sync engine: table registry, pull, push/ (sql · placement · authorization · apply)
-│   ├── realtime/           # WebSocket channel and pg_notify fan-out
-│   ├── push/               # FCM sender and one template per push kind
-│   ├── mail/               # Mailer (SES or log) and the invite template
+│   │                       # limits, patterns, durations, HTTP status, WebSocket close codes, OpenAPI
+│   ├── core/               # config, logger, errors, auth, log; http/ (guards, schemas, openapi)
+│   ├── data/               # pool, Database (repositories on the pool or one transaction), table lists
+│   ├── integrations/       # S3 storage, SES mailer, FCM sender
+│   ├── modules/            # one folder per feature: *-routes · *-service · *-repository · rules
+│   │   ├── account/  devices/  health/  notifications/
+│   │   ├── realtime/       # WebSocket channel and pg_notify fan-out
+│   │   ├── sync/           # table registry, pull, push/ (sql · placement · authorization · apply)
+│   │   ├── team/           # members, invitations, access, permissions
+│   │   └── uploads/        # uploads, media URLs, /verify, object keys, key migration
 │   └── workers/            # worker jobs
 ├── migrations/             # numbered .sql files, run once each, forward only
-├── test/                   # vitest against a real Postgres; paths from ApiRoutes
-├── scripts/                # dev token, seed the first Admin, move pre-F19 keys
+├── test/                   # vitest against a real Postgres: core/, modules/<feature>/, helpers/
+├── scripts/                # dev token, seed the first Admin, move pre-F19 keys, OpenAPI
+├── docs/                   # feature docs, guides, openapi.json (generated)
 ├── deploy/ · infra/        # what runs on EC2 · AWS CDK app
-└── .github/                # CI and deploy workflows
+├── tools/docs/             # Markdown indenter
+└── .github/                # CI, deploy, Dependabot, CODEOWNERS, PR and issue templates
 ```
 
 </dd></dl>
@@ -149,16 +150,18 @@ site-log-be/
 
 | Rule | How it is kept |
 |---|---|
+| One folder per feature | `src/modules/<feature>/` holds that feature's routes, services and repositories; shared code lives in `core/`, `data/`, `integrations/`, `constants/` |
 | Routes are thin | A route only declares its schema and guard, calls one service, returns the result |
-| SQL only in repositories | ESLint fails on `.query(` inside `src/routes`, `src/services`, `src/http` |
+| SQL only in repositories | ESLint fails on `.query(` anywhere in `src/modules` and `src/core` except `*-repository.ts` and the sync and realtime engines |
 | Every path from `ApiRoutes` | `src/constants/api-routes.ts` holds every endpoint (`ApiRoutes.UPLOAD_COMPLETE`, `ApiRoutes.uploadComplete(id)`); ESLint fails on a literal path in a route; tests build paths with it |
 | No magic numbers | ESLint `no-magic-numbers` on `src/` (constants and Config excepted) |
 | Small files | ESLint `max-lines` 300 per file |
 | Depend on interfaces | Services take `TokenVerifier`, `PushSender`, `Mailer`, `Storage`, `Database` through the constructor; tests pass fakes |
 | Open for extension | A new role or action: `ROLE_PERMISSIONS`; a new push kind: `PUSH_KINDS` + one template in `PUSH_TEMPLATES`; a new synced table: one entry in `syncTables`; a new endpoint: `ApiRoutes` + a route + a service method |
 | One transaction, many repositories | `db.transaction((repos) => …)` gives every repository the same client |
+| API contract | `docs/openapi.json` is generated from the route schemas (`npm run openapi`); CI fails when it is stale; `/docs` serves the explorer outside production |
 
-- The S0–S9 guides show the first form of each file (all in the route); the repository has since been split into these layers with the same behaviour and tests.
+- The S0–S9 guides show the first form of each file (all in the route, under the old flat folders); the repository has since been split into these layers and feature folders with the same behaviour and tests.
 
 </dd></dl>
 
@@ -175,6 +178,7 @@ site-log-be/
 | `npm run lint` · `npm run typecheck` · `npm run format` | Code checks |
 | `npm run token -- <email> <password>` | A Firebase ID token for curl |
 | `npm run seed:admin -- <email> <firebase-uid>` | Creates the first Admin, once (F19) |
+| `npm run openapi` · `npm run openapi:check` | Writes `docs/openapi.json` · fails when it is out of date |
 | `npm run move-keys` | Moves pre-F19 file keys to `projects/…` and `company/…`, once after migration `0012` |
 | `cd infra && npx cdk deploy SiteLog-Staging` | Creates or updates the staging AWS resources |
 | `python3 tools/docs/indent-md.py` | Re-indents every `.md` after an edit |

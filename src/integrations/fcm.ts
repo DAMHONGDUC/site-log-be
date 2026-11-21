@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto';
 import { cert, initializeApp } from 'firebase-admin/app';
 import { getMessaging, type Message, type Messaging } from 'firebase-admin/messaging';
 import type { PushKind } from '../constants/push.js';
-import type { DevicePlatform } from '../modules/devices/device-repository.js';
+import type { DevicePlatform } from '../constants/enums.js';
 
-export type { DevicePlatform } from '../modules/devices/device-repository.js';
+export type { DevicePlatform } from '../constants/enums.js';
 export type PushOutcome = 'sent' | 'unregistered';
 
 export interface PushMessage {

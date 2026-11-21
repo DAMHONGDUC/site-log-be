@@ -127,7 +127,7 @@ sequenceDiagram
 | Who may sign in | Only members and people holding a valid invite; anyone else gets `403 not_invited` |
 | First Admin | Created once at setup: `npm run seed:admin -- <email>` on the server, never through the app |
 | Invite link | Single use, 7 days, token stored only as a SHA-256 hash; the email must match the signed-in account's email |
-| Preview | `GET /invitations/:token` shows who invited, the role and the projects before sign-in (T5); masked email, rate limited, never consumes the invite |
+| Preview | `GET /invitations/preview/:token` shows who invited, the role and the projects before sign-in (T5); masked email, rate limited, never consumes the invite |
 | Resend, cancel | Admin: `POST /invitations/:id/resend` makes a new token and voids the old one; `DELETE /invitations/:id` cancels |
 | Change a member | Admin: `PATCH /members/:uid` with a role and / or project ids (T3); Admins and Managers also set a project's people with `PUT /projects/:id/members` (T4) |
 

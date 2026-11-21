@@ -97,7 +97,7 @@
 | 15 | `GET` | `/members` | Bearer · Admin, Manager | Every member with role and projects | F19 |
 | 16 | `POST` | `/invitations` | Bearer · Admin | Invite an email with a role and projects | F19 |
 | 17 | `POST` | `/invitations/accept` | Bearer | Join with an invite token | F19 |
-| 18 | `GET` | `/invitations/:token` | none | Preview an invite before sign-in: who invited, role, projects | F19 |
+| 18 | `GET` | `/invitations/preview/:token` | none | Preview an invite before sign-in: who invited, role, projects | F19 |
 | 19 | `POST` | `/invitations/:id/resend` | Bearer · Admin | New token and email; the old link stops working | F19 |
 | 20 | `DELETE` | `/invitations/:id` | Bearer · Admin | Cancel an invite | F19 |
 | 21 | `PATCH` · `DELETE` | `/members/:uid` | Bearer · Admin | Change a role and / or projects · remove a member | F19 |
@@ -486,7 +486,7 @@ GET /members
 POST /invitations { "email": "client@…", "role": "viewer", "projectIds": ["1111…"] }
 → { "invitationId": "…", "expiresAt": "…" }
 
-GET /invitations/:token          (no Authorization: the link itself is the key)
+GET /invitations/preview/:token  (no Authorization: the link itself is the key)
 → { "invitedBy": "Hanh Nguyen", "role": "inspector", "projects": [ { "id": "1111…", "name": "Riverside Tower B" } ],
     "email": "v••@eastline.vn", "expiresAt": "…" }
 
@@ -507,7 +507,7 @@ GET /member-events?before=<id>&limit=50
     "next": "<id or null>" }
 ```
 
-- `GET /invitations/:token` never reveals the full email or marks the invite used; it is rate limited per IP (`429`). `PATCH /members/:uid` takes `role`, `projectIds` or both; `projectIds` is ignored for Admin and Manager (they reach every project).
+- `GET /invitations/preview/:token` never reveals the full email or marks the invite used; it is rate limited per IP (`429`). `PATCH /members/:uid` takes `role`, `projectIds` or both; `projectIds` is ignored for Admin and Manager (they reach every project).
 - `type` in `member_events`: `invited` · `invite_resent` · `invite_cancelled` · `joined` · `role_changed` · `projects_changed` · `removed` · `account_deleted`.
 
 | Error | When |

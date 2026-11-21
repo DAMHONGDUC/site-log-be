@@ -101,7 +101,7 @@ curl localhost:3000/health
 | 15 | Team | `GET` | `/members` | Bearer · Admin, Manager | Members with roles and projects, pending invitations | [§](docs/feature-docs/01-api.md#13-team) | F19 |
 | 16 | Team | `POST` | `/invitations` | Bearer · Admin | Invite an email with a role and projects | [§](docs/feature-docs/01-api.md#13-team) | F19 |
 | 17 | Team | `POST` | `/invitations/accept` | Bearer | Join with an invite token | [§](docs/feature-docs/01-api.md#13-team) | F19 |
-| 18 | Team | `GET` | `/invitations/:token` | none | Preview an invite before sign-in (T5): inviter, role, projects, masked email | [§](docs/feature-docs/01-api.md#13-team) | F19 |
+| 18 | Team | `GET` | `/invitations/preview/:token` | none | Preview an invite before sign-in (T5): inviter, role, projects, masked email | [§](docs/feature-docs/01-api.md#13-team) | F19 |
 | 19 | Team | `POST` | `/invitations/:id/resend` | Bearer · Admin | New token and email; the old link stops working | [§](docs/feature-docs/01-api.md#13-team) | F19 |
 | 20 | Team | `DELETE` | `/invitations/:id` | Bearer · Admin | Cancel an invite | [§](docs/feature-docs/01-api.md#13-team) | F19 |
 | 21 | Team | `PATCH` | `/members/:uid` | Bearer · Admin | Change a role and / or projects (T3) | [§](docs/feature-docs/01-api.md#13-team) | F19 |

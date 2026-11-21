@@ -137,7 +137,7 @@ flowchart LR
 | Part | Rule |
 |---|---|
 | Invite | Random 32-byte token, store its SHA-256, 7 days; email from `INVITE_FROM_EMAIL` through Amazon SES with `INVITE_BASE_URL/invite/<token>` |
-| Preview | `GET /invitations/:token` without auth: look up by SHA-256 of the token; inviter name, role, project names, masked email; rate limit per IP; nothing written |
+| Preview | `GET /invitations/preview/:token` without auth: look up by SHA-256 of the token; inviter name, role, project names, masked email; rate limit per IP; nothing written |
 | Accept | Token valid, unused, email equals the signed-in email → member row, project rows, `member_events` |
 | Resend | New token, old hash replaced, new 7 days, email again; `member_events` `invite_resent` |
 | Role change, project change, removal | `PATCH /members/:uid` (role and / or `projectIds`) and removal: Admin; `PUT /projects/:id/members`: Admin, Manager; write `member_events`; set `resync_required`; removal revokes Firebase tokens and deletes devices |

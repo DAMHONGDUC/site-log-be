@@ -1,6 +1,6 @@
 import rateLimitPlugin from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyPluginAsync } from 'fastify';
 import type pg from 'pg';
 import { makeRequireSignedIn, makeRequireUser, type TokenVerifier } from './core/auth.js';
 import type { Config } from './core/config.js';
@@ -25,10 +25,24 @@ import { uploadRoutes } from './modules/uploads/transfer/uploads-routes.js';
 import { verifyRoutes } from './modules/uploads/verify/verify-routes.js';
 import { createServices, type Services } from './services.js';
 import type { Storage } from './integrations/storage.js';
-import { REQUEST_UID } from './constants/http/openapi.js';
+import { APP_DECORATION, REQUEST_UID } from './constants/http/fastify.js';
 
 // FCM tokens (~160 chars) travel in the path of DELETE /devices/:token; Fastify's default is 100.
 const MAX_PARAM_LENGTH = 4096;
+
+// Every feature's routes, in registration order.
+const FEATURE_PLUGINS: FastifyPluginAsync[] = [
+  healthRoutes,
+  accountRoutes,
+  memberRoutes,
+  invitationRoutes,
+  syncRoutes,
+  uploadRoutes,
+  mediaRoutes,
+  verifyRoutes,
+  deviceRoutes,
+  websocketRoutes,
+];
 
 // What the entry point (or a test) provides.
 export interface AppInput {
@@ -48,6 +62,14 @@ export interface AppDeps extends AppInput {
   mailer: Mailer;
   db: Database;
   services: Services;
+}
+
+// Each feature is a plugin; it reads its dependencies from the instance it is registered on.
+declare module 'fastify' {
+  interface FastifyInstance {
+    deps: AppDeps;
+    guards: Guards;
+  }
 }
 
 export async function buildApp(input: AppInput): Promise<FastifyInstance> {
@@ -86,16 +108,13 @@ export async function buildApp(input: AppInput): Promise<FastifyInstance> {
     requireSignedIn: makeRequireSignedIn(input.tokens),
   };
 
-  healthRoutes(app, deps);
-  accountRoutes(app, deps, guards);
-  memberRoutes(app, deps, guards);
-  invitationRoutes(app, deps, guards);
-  syncRoutes(app, deps, guards);
-  uploadRoutes(app, deps, guards);
-  mediaRoutes(app, deps, guards);
-  verifyRoutes(app, deps);
-  deviceRoutes(app, deps, guards);
-  websocketRoutes(app, deps);
+  app.decorate(APP_DECORATION.deps, deps);
+  app.decorate(APP_DECORATION.guards, guards);
+
+  // One encapsulated plugin per feature: what one registers stays inside it.
+  for (const feature of FEATURE_PLUGINS) {
+    await app.register(feature);
+  }
 
   return app;
 }

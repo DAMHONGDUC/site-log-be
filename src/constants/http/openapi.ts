@@ -18,8 +18,5 @@ export const OPENAPI = {
   auth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
 } as const;
 
-// The request field the auth guard fills; Fastify needs its name and empty value up front.
-export const REQUEST_UID = { field: 'uid', empty: '' } as const;
-
 // JSON Schema string formats used by the route schemas.
 export const JSON_FORMAT = { uuid: 'uuid', dateTime: 'date-time' } as const;

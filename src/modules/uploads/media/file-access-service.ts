@@ -1,10 +1,8 @@
 import { ErrorCode } from '../../../constants/http/error-codes.js';
 import { ACTION, type Action } from '../../../constants/domain/roles.js';
-import { reaches, type Member } from '../../team/members/member.js';
-import { can } from '../../team/access/permissions.js';
+import { reaches, type Member, can, type AccessService } from '../../team/index.js';
 import { badRequest, forbidden } from '../../../core/errors.js';
 import { parseKey, type ParsedKey } from '../keys/object-keys.js';
-import type { AccessService } from '../../team/access/access-service.js';
 import { FILE_ACCESS, type FileAccess } from '../../../constants/domain/team.js';
 import { ERROR_TEXT } from '../../../constants/messages/error-text.js';
 

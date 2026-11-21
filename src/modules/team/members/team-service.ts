@@ -7,7 +7,7 @@ import type { Repositories } from '../../../data/repositories.js';
 import type { MemberEventRow } from './member-event-repository.js';
 import type { TokenVerifier } from '../../../core/auth.js';
 import type { AccessService } from '../access/access-service.js';
-import type { NotificationService } from '../../notifications/notification-service.js';
+import type { NotificationService } from '../../notifications/index.js';
 import { REACH_ALL, ACCESS_CHANGE } from '../../../constants/domain/team.js';
 import { MEMBER_EVENT_TYPE } from '../../../constants/data/enums.js';
 import { PUSH_KIND } from '../../../constants/domain/push.js';

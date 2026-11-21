@@ -260,3 +260,81 @@ export function uploadRoutes(
             throw badRequest('size_mismatch', `Stored ${size} bytes, expected ${upload.byte_size}`);
           }
 
+          const code = await uniqueCode(client);
+          const updated = await client.query<UploadRow>(
+            `update uploads
+                set state = 'completed', completed_at = now(),
+                    verification_code = $2, verify_state = 'registered'
+              where id = $1
+          returning *`,
+            [upload.id, code],
+          );
+          const row = updated.rows[0]!;
+          await notifyUploadEvent(client, {
+            uid,
+            sessionId: row.session_id,
+            uploadId: row.id,
+            type: 'completed',
+          });
+          request.log.info(
+            { uid, uploadId: row.id, key: row.object_key, byteSize: row.byte_size },
+            'upload completed',
+          );
+          return completedBody(row);
+        });
+      } catch (error) {
+        if ((error as { code?: string }).code === '23505') {
+          // Another upload of the same key completed first.
+          const existing = await pool.query<UploadRow>(
+            `select u.* from uploads u
+               join uploads mine on mine.object_key = u.object_key
+              where mine.id = $1 and mine.uid = $2 and u.state = 'completed'`,
+            [request.params.id, uid],
+          );
+          if (existing.rows[0] !== undefined) {
+            throw conflict(
+              'already_completed',
+              'This key was already uploaded',
+              completedBody(existing.rows[0]),
+            );
+          }
+        }
+        throw error;
+      }
+    },
+  );
+
+  // 4. Abort: the user cancelled, or the app gave up. Idempotent.
+  typed.delete(
+    '/uploads/:id',
+    { preHandler: requireUser, schema: { params: IdParams } },
+    async (request) => {
+      const uid = request.uid;
+      return withTransaction(pool, async (client) => {
+        const upload = await lockUpload(client, request.params.id, uid);
+        if (upload === undefined) {
+          throw notFound('upload_not_found', 'No such upload');
+        }
+        if (upload.state === 'completed') {
+          throw conflict('already_completed', 'A completed upload cannot be aborted');
+        }
+        if (upload.state === 'created') {
+          if (upload.mode === 'multipart') {
+            await storage.abortMultipart(upload.object_key, upload.s3_upload_id!);
+          } else {
+            await storage.deleteObject(upload.object_key);
+          }
+          await client.query(`update uploads set state = 'aborted' where id = $1`, [upload.id]);
+          await notifyUploadEvent(client, {
+            uid,
+            sessionId: upload.session_id,
+            uploadId: upload.id,
+            type: 'aborted',
+          });
+          request.log.info({ uid, uploadId: upload.id }, 'upload aborted');
+        }
+        return { uploadId: upload.id, aborted: true };
+      });
+    },
+  );
+}

@@ -132,7 +132,8 @@ site-log-be/
 │   ├── data/               # pool, Database (repositories on the pool or one transaction), Drizzle client,
 │   │                       # schema/ (every table, for typed queries)
 │   ├── integrations/       # S3 storage, SES mailer, FCM sender
-│   ├── modules/            # one folder per feature: *-routes · *-service · *-repository · rules
+│   ├── modules/            # one folder per feature, one Fastify plugin each; index.ts is its public API:
+│   │                       # *-routes (plugin) · *-service · *-repository · rules
 │   │   ├── account/  devices/  health/  notifications/
 │   │   ├── realtime/       # WebSocket channel and pg_notify fan-out
 │   │   ├── sync/           # table registry, pull, push/ (sql · placement · authorization · apply),
@@ -160,6 +161,8 @@ site-log-be/
 | Rule | How it is kept |
 |---|---|
 | One folder per feature | `src/modules/<feature>/` holds that feature's routes, services and repositories; shared code lives in `core/`, `data/`, `integrations/`, `constants/` |
+| Features are Fastify plugins | Each feature's routes are an encapsulated plugin registered from `FEATURE_PLUGINS` in `app.ts`; it reads `app.deps` (config, db, services, storage, hub) and `app.guards`, decorated once on the root instance |
+| Features meet through `index.ts` | Code outside `modules/<feature>/` imports it only from `modules/<feature>/index.ts`; `constants/` imports only constants. Two local ESLint rules (`tools/eslint/boundaries.js`) fail otherwise |
 | Routes are thin | A route only declares its schema and guard, calls one service, returns the result |
 | SQL only in repositories | Repositories query through Drizzle (`src/data/schema/`); ESLint fails on `.query(` or a `drizzle-orm` import anywhere in `src/modules` and `src/core` except `*-repository.ts` and the sync and realtime engines. The sync push and pull keep raw SQL: they build it from `syncTables` metadata (`jsonb_populate_record`, savepoints) |
 | Migrations own the schema | `migrations/*.sql` create the tables; `src/data/schema/` only describes them for Drizzle. `test/data/schema.test.ts` fails when a column or its nullability differs, or a synced table is missing |
@@ -171,6 +174,7 @@ site-log-be/
 | Depend on interfaces | Services take `TokenVerifier`, `PushSender`, `Mailer`, `Storage`, `Database` through the constructor; tests pass fakes |
 | Open for extension | A new role or action: `ROLE_PERMISSIONS`; a new push kind: `PUSH_KINDS` + one template in `PUSH_TEMPLATES`; a new synced table: one entry in `syncTables`; a new endpoint: `ApiRoutes` + a route + a service method |
 | One transaction, many repositories | `db.transaction((repos) => …)` gives every repository the same client |
+| Clean shutdown | `app.close()` finishes open requests; an `onClose` hook in `main.ts` then stops the realtime listener and ends the pool |
 | API contract | `docs/openapi.json` is generated from the route schemas (`npm run openapi`); CI fails when it is stale; `/docs` serves the explorer outside production |
 
 - The S0–S9 guides show the first form of each file (all in the route, under the old flat folders); the repository has since been split into these layers and feature folders with the same behaviour and tests.

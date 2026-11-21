@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import { ListMultipartUploadsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { closeTestContext, createTestContext, resetDatabase, type TestContext } from './helpers.js';
@@ -16,7 +17,7 @@ describe('requireUser', () => {
 
   // Any member route works; GET /me is the simplest (F19).
   async function call(headers: Record<string, string>) {
-    return context.app.inject({ method: 'GET', url: '/me', headers });
+    return context.app.inject({ method: 'GET', url: ApiRoutes.ME, headers });
   }
 
   it('rejects a missing token with 401', async () => {

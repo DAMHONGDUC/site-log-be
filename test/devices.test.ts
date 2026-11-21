@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   auth,
@@ -25,7 +26,7 @@ describe('devices', () => {
     for (const uid of ['alice', 'bob']) {
       const response = await context.app.inject({
         method: 'POST',
-        url: '/devices',
+        url: ApiRoutes.DEVICES,
         headers: auth(uid),
         payload: { token, platform: 'ios' },
       });
@@ -38,13 +39,13 @@ describe('devices', () => {
   it('removes a token on sign-out', async () => {
     await context.app.inject({
       method: 'POST',
-      url: '/devices',
+      url: ApiRoutes.DEVICES,
       headers: auth('alice'),
       payload: { token, platform: 'android' },
     });
     await context.app.inject({
       method: 'DELETE',
-      url: `/devices/${token}`,
+      url: ApiRoutes.device(token),
       headers: auth('alice'),
     });
     const rows = await context.pool.query('select * from devices');

@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import { AbortMultipartUploadCommand } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -25,7 +26,7 @@ describe('DELETE /account', () => {
   });
 
   async function leave(uid: string) {
-    return context.app.inject({ method: 'DELETE', url: '/account', headers: auth(uid) });
+    return context.app.inject({ method: 'DELETE', url: ApiRoutes.ACCOUNT, headers: auth(uid) });
   }
 
   it('aborts unfinished uploads, deletes phrases and devices, then the Firebase user', async () => {

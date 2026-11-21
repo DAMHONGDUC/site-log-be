@@ -8,7 +8,11 @@ import { loadConfig, type Config } from '../src/config.js';
 import { LogMailer } from '../src/mail/mailer.js';
 import type { DevicePlatform, PushMessage, PushSender } from '../src/push/fcm.js';
 import { RealtimeHub } from '../src/realtime/hub.js';
-import { serverTables } from '../src/routes/account.js';
+import { Database } from '../src/data/database.js';
+import { SERVER_TABLES } from '../src/data/schema.js';
+import { createLogger } from '../src/logger.js';
+import { createCoreServices } from '../src/services/index.js';
+import type { WorkerDeps } from '../src/workers/verify.js';
 import { Storage } from '../src/storage.js';
 import { syncTables } from '../src/sync/tables.js';
 import { testDatabaseUrl } from './global-setup.js';
@@ -107,7 +111,7 @@ export async function closeTestContext(context: TestContext): Promise<void> {
 // Empties every table the app writes, so each test starts clean, then adds the test team:
 // alice is the Admin; bob and carol are Inspectors on no project yet.
 export async function resetDatabase(pool: pg.Pool): Promise<void> {
-  const tables = [...syncTables.map((table) => table.name), ...serverTables];
+  const tables = [...syncTables.map((table) => table.name), ...SERVER_TABLES];
   await pool.query(`truncate ${tables.join(', ')} restart identity`);
   await pool.query('update sync_counter set last_rev = 0, purged_through_rev = 0');
   await addMember(pool, 'alice', 'admin');
@@ -146,3 +150,17 @@ export const ids = {
 };
 
 export const sha = 'a'.repeat(64);
+
+// What the worker jobs get, with a push sender of the test's choice.
+export function workerDeps(context: TestContext, push: PushSender | undefined): WorkerDeps {
+  const db = new Database(context.pool);
+  const log = createLogger('silent');
+  const services = createCoreServices({
+    db,
+    config: context.config,
+    storage: context.storage,
+    push,
+    log,
+  });
+  return { pool: context.pool, db, storage: context.storage, services, log };
+}

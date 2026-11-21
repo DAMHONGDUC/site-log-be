@@ -5,6 +5,10 @@ import type { Log } from '../core/log.js';
 import { notifyUploadEvent } from '../modules/realtime/events.js';
 import type { CoreServices } from '../services.js';
 import type { Storage } from '../integrations/storage.js';
+import { HASH, ENCODING } from '../constants/platform/encoding.js';
+import { VERIFY_STATE } from '../constants/data/enums.js';
+import { LOG } from '../constants/messages/log.js';
+import { PUSH_KIND } from '../constants/domain/push.js';
 
 export interface WorkerDeps {
   pool: pg.Pool;
@@ -22,12 +26,13 @@ export async function verifyNextUpload(deps: WorkerDeps): Promise<boolean> {
     return false;
   }
 
-  const hash = createHash('sha256');
+  const hash = createHash(HASH.sha256);
   const stream = await deps.storage.readStream(upload.objectKey);
   for await (const chunk of stream) {
     hash.update(chunk as Buffer);
   }
-  const state = hash.digest('hex') === upload.sha256 ? 'verified' : 'mismatch';
+  const state =
+    hash.digest(ENCODING.hex) === upload.sha256 ? VERIFY_STATE.verified : VERIFY_STATE.mismatch;
   await deps.db.repos.uploads.setVerifyState(upload.id, state);
   await notifyUploadEvent(deps.pool, {
     uid: upload.uid,
@@ -37,10 +42,10 @@ export async function verifyNextUpload(deps: WorkerDeps): Promise<boolean> {
   });
   deps.log.info(
     { uid: upload.uid, uploadId: upload.id, key: upload.objectKey, state },
-    'upload verified',
+    LOG.uploads.verified,
   );
 
-  if (state === 'verified' && upload.sessionId !== null) {
+  if (state === VERIFY_STATE.verified && upload.sessionId !== null) {
     await pushWhenSessionVerified(deps, upload.uid, upload.sessionId);
   }
   return true;
@@ -62,10 +67,10 @@ async function pushWhenSessionVerified(
     ? await deps.services.access.membersReaching(summary.projectId)
     : [uid];
   await deps.services.notifications.send({
-    kind: 'uploadsVerified',
+    kind: PUSH_KIND.uploadsVerified,
     recipients,
     actorUid: null,
     data: { sessionId, files: summary?.files ?? null, projectName: summary?.projectName ?? null },
   });
-  deps.log.info({ uid, sessionId }, 'session verified: push sent');
+  deps.log.info({ uid, sessionId }, LOG.push.sessionVerified);
 }

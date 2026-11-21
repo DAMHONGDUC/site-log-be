@@ -3,6 +3,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import type { MemberEventType } from '../../../constants/data/enums.js';
 import type { SqlDb } from '../../../data/drizzle.js';
 import { memberEvents, members } from '../../../data/schema/index.js';
+import { TABLE_ALIAS } from '../../../constants/data/db.js';
 
 export interface MemberEvent {
   actorUid: string | null;
@@ -24,10 +25,8 @@ export interface MemberEventRow {
   detail: Record<string, unknown>;
 }
 
-// The members table joined twice: once for who acted, once for whom it was about.
-const MEMBER_ALIAS = { actor: 'actor', subject: 'subject' } as const;
-const actor = alias(members, MEMBER_ALIAS.actor);
-const subject = alias(members, MEMBER_ALIAS.subject);
+const actor = alias(members, TABLE_ALIAS.actor);
+const subject = alias(members, TABLE_ALIAS.subject);
 
 // Append-only audit (05 §9): who did what to whom, when. Never updated, never deleted.
 export class MemberEventRepository {

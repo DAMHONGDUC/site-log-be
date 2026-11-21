@@ -8,6 +8,10 @@ import type { MemberEventRow } from './member-event-repository.js';
 import type { TokenVerifier } from '../../../core/auth.js';
 import type { AccessService } from '../access/access-service.js';
 import type { NotificationService } from '../../notifications/notification-service.js';
+import { REACH_ALL, ACCESS_CHANGE } from '../../../constants/domain/team.js';
+import { MEMBER_EVENT_TYPE } from '../../../constants/data/enums.js';
+import { PUSH_KIND } from '../../../constants/domain/push.js';
+import { ERROR_TEXT } from '../../../constants/messages/error-text.js';
 
 export interface MemberView {
   uid: string;
@@ -24,7 +28,7 @@ export interface ProjectDiff {
 }
 
 function reachOf(role: Role, projectIds: string[]): Reach {
-  return ROLES_REACHING_ALL.includes(role) ? 'all' : projectIds;
+  return ROLES_REACHING_ALL.includes(role) ? REACH_ALL : projectIds;
 }
 
 // Members, roles and project access (05-team-and-roles §2–4, §8). Permission checks are the
@@ -76,7 +80,7 @@ export class TeamService {
         await repos.members.setRole(uid, role);
         await repos.memberEvents.record({
           actorUid: actor.uid,
-          type: 'role_changed',
+          type: MEMBER_EVENT_TYPE.role_changed,
           subjectUid: uid,
           detail: { from: current.role, to: role },
         });
@@ -88,7 +92,7 @@ export class TeamService {
         if (diff.added.length + diff.removed.length > 0) {
           await repos.memberEvents.record({
             actorUid: actor.uid,
-            type: 'projects_changed',
+            type: MEMBER_EVENT_TYPE.projects_changed,
             subjectUid: uid,
             detail: { ...diff },
           });
@@ -101,10 +105,10 @@ export class TeamService {
     });
     if (result.roleChanged) {
       await this.notifications.send({
-        kind: 'access',
+        kind: PUSH_KIND.access,
         recipients: [uid],
         actorUid: actor.uid,
-        data: { change: 'role', role: result.role, actorName: actor.name },
+        data: { change: ACCESS_CHANGE.role, role: result.role, actorName: actor.name },
       });
     }
     await this.notifyProjects(actor, uid, result.diff);
@@ -124,7 +128,11 @@ export class TeamService {
       await repos.members.markRemoved(uid);
       await repos.projectMembers.removeAllFor(uid);
       await repos.devices.removeAllFor(uid);
-      await repos.memberEvents.record({ actorUid: actor.uid, type: 'removed', subjectUid: uid });
+      await repos.memberEvents.record({
+        actorUid: actor.uid,
+        type: MEMBER_EVENT_TYPE.removed,
+        subjectUid: uid,
+      });
     });
     await this.tokens.revoke(uid);
   }
@@ -136,7 +144,7 @@ export class TeamService {
       await this.ensureProjectsExist(repos, [projectId]);
       const known = await repos.members.liveUidsAmong(wanted);
       if (known.length !== wanted.length) {
-        throw notFound(ErrorCode.memberNotFound, 'One of the members does not exist');
+        throw notFound(ErrorCode.memberNotFound, ERROR_TEXT.memberMissing);
       }
       const current = await repos.projectMembers.membersOf(projectId);
       const added = wanted.filter((uid) => !current.includes(uid));
@@ -151,7 +159,7 @@ export class TeamService {
         await repos.members.requireResync(uid);
         await repos.memberEvents.record({
           actorUid: actor.uid,
-          type: 'projects_changed',
+          type: MEMBER_EVENT_TYPE.projects_changed,
           subjectUid: uid,
           detail: added.includes(uid) ? { added: [projectId] } : { removed: [projectId] },
         });
@@ -211,14 +219,14 @@ export class TeamService {
     }
     const found = await repos.projects.liveIdsAmong(ids);
     if (found.length !== new Set(ids).size) {
-      throw notFound(ErrorCode.projectNotFound, 'One of the projects does not exist');
+      throw notFound(ErrorCode.projectNotFound, ERROR_TEXT.projectMissing);
     }
   }
 
   private async liveMember(repos: Repositories, uid: string): Promise<{ role: Role }> {
     const current = await repos.members.findLiveForUpdate(uid);
     if (current === undefined) {
-      throw notFound(ErrorCode.memberNotFound, 'No such member');
+      throw notFound(ErrorCode.memberNotFound, ERROR_TEXT.memberNotFound);
     }
     return current;
   }
@@ -226,7 +234,7 @@ export class TeamService {
   // There must always be one Admin (05 §2, §8).
   private async ensureAnotherAdmin(repos: Repositories): Promise<void> {
     if ((await repos.members.countLiveWithRole(ROLE.admin)) <= 1) {
-      throw conflict(ErrorCode.lastAdmin, 'There must always be one Admin');
+      throw conflict(ErrorCode.lastAdmin, ERROR_TEXT.lastAdmin);
     }
   }
 
@@ -238,11 +246,11 @@ export class TeamService {
     const names = await this.db.repos.projects.namesByIds(ids);
     for (const projectId of diff.added) {
       await this.notifications.send({
-        kind: 'access',
+        kind: PUSH_KIND.access,
         recipients: [uid],
         actorUid: actor.uid,
         data: {
-          change: 'added',
+          change: ACCESS_CHANGE.added,
           projectId,
           projectName: names.get(projectId) ?? '',
           actorName: actor.name,
@@ -251,10 +259,14 @@ export class TeamService {
     }
     for (const projectId of diff.removed) {
       await this.notifications.send({
-        kind: 'access',
+        kind: PUSH_KIND.access,
         recipients: [uid],
         actorUid: actor.uid,
-        data: { change: 'removed', projectName: names.get(projectId) ?? '', actorName: actor.name },
+        data: {
+          change: ACCESS_CHANGE.removed,
+          projectName: names.get(projectId) ?? '',
+          actorName: actor.name,
+        },
       });
     }
   }

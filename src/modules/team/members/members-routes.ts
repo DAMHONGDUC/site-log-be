@@ -5,6 +5,8 @@ import { ApiRoutes } from '../../../constants/http/api-routes.js';
 import { LIMITS, PATTERNS } from '../../../constants/runtime/limits.js';
 import { memberMay, type Guards } from '../../../core/http/guards.js';
 import { Schemas } from '../../../core/http/schemas.js';
+import { ACTION } from '../../../constants/domain/roles.js';
+import { LOG } from '../../../constants/messages/log.js';
 
 // F19 member calls (01-api §13): who am I, the team, roles, projects, activity.
 export function memberRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards): void {
@@ -15,7 +17,7 @@ export function memberRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
     team.me(request.member),
   );
 
-  typed.get(ApiRoutes.MEMBERS, { preHandler: memberMay(guards, 'members.read') }, async () => ({
+  typed.get(ApiRoutes.MEMBERS, { preHandler: memberMay(guards, ACTION.membersRead) }, async () => ({
     members: await team.listMembers(),
     invitations: await invitations.listOpen(),
   }));
@@ -28,14 +30,14 @@ export function memberRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
   typed.patch(
     ApiRoutes.MEMBER,
     {
-      preHandler: memberMay(guards, 'team.manage'),
+      preHandler: memberMay(guards, ACTION.teamManage),
       schema: { params: UidParams, body: PatchBody },
     },
     async (request) => {
       const result = await team.changeMember(request.member, request.params.uid, request.body);
       request.log.info(
         { uid: request.uid, member: request.params.uid, role: result.role },
-        'member changed',
+        LOG.team.memberChanged,
       );
       return result;
     },
@@ -43,10 +45,10 @@ export function memberRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
 
   typed.delete(
     ApiRoutes.MEMBER,
-    { preHandler: memberMay(guards, 'team.manage'), schema: { params: UidParams } },
+    { preHandler: memberMay(guards, ACTION.teamManage), schema: { params: UidParams } },
     async (request) => {
       await team.removeMember(request.member, request.params.uid);
-      request.log.info({ uid: request.uid, member: request.params.uid }, 'member removed');
+      request.log.info({ uid: request.uid, member: request.params.uid }, LOG.team.memberRemoved);
       return { removed: true };
     },
   );
@@ -57,13 +59,16 @@ export function memberRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
   typed.put(
     ApiRoutes.PROJECT_MEMBERS,
     {
-      preHandler: memberMay(guards, 'project.members'),
+      preHandler: memberMay(guards, ACTION.projectMembers),
       schema: { params: Schemas.idParams(), body: ProjectBody },
     },
     async (request) => {
       const projectId = request.params.id.toLowerCase();
       const uids = await team.setProjectMembers(request.member, projectId, request.body.uids);
-      request.log.info({ uid: request.uid, projectId, count: uids.length }, 'project members set');
+      request.log.info(
+        { uid: request.uid, projectId, count: uids.length },
+        LOG.team.projectMembersSet,
+      );
       return { projectId, uids };
     },
   );
@@ -74,7 +79,7 @@ export function memberRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
   });
   typed.get(
     ApiRoutes.MEMBER_EVENTS,
-    { preHandler: memberMay(guards, 'team.manage'), schema: { querystring: EventsQuery } },
+    { preHandler: memberMay(guards, ACTION.teamManage), schema: { querystring: EventsQuery } },
     async (request) =>
       team.activity(
         request.query.before ?? null,

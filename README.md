@@ -156,6 +156,8 @@ site-log-be/
 | Routes are thin | A route only declares its schema and guard, calls one service, returns the result |
 | SQL only in repositories | Repositories query through Drizzle (`src/data/schema/`); ESLint fails on `.query(` or a `drizzle-orm` import anywhere in `src/modules` and `src/core` except `*-repository.ts` and the sync and realtime engines. The sync push and pull keep raw SQL: they build it from `syncTables` metadata (`jsonb_populate_record`, savepoints) |
 | Migrations own the schema | `migrations/*.sql` create the tables; `src/data/schema/` only describes them for Drizzle. `test/data/schema.test.ts` fails when a column or its nullability differs, or a synced table is missing |
+| No hard-coded strings | Every string value is a named constant: table and enum names in `constants/db.ts`, enum values in `constants/enums.ts` (`UPLOAD_STATE.completed`, `ROLE.admin`), the rest in its `constants/` file |
+| Features grouped by folder | A folder holds a handful of files; when it grows, it splits into one sub-folder per sub-feature |
 | Every path from `ApiRoutes` | `src/constants/api-routes.ts` holds every endpoint (`ApiRoutes.UPLOAD_COMPLETE`, `ApiRoutes.uploadComplete(id)`); ESLint fails on a literal path in a route; tests build paths with it |
 | No magic numbers | ESLint `no-magic-numbers` on `src/` (constants and Config excepted) |
 | Small files | ESLint `max-lines` 300 per file |

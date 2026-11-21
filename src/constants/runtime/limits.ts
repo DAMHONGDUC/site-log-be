@@ -21,6 +21,9 @@ export const LIMITS = {
   dueSoonTitlesInBody: 2,
 } as const;
 
+// Characters of a verification code: no 0/O, 1/I/L, so a code printed in a PDF is easy to type.
+export const VERIFICATION_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+
 // Shapes checked on the way in.
 export const PATTERNS = {
   firebaseUid: '^[A-Za-z0-9]{1,128}$',

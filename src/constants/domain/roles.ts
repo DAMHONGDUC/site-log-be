@@ -40,6 +40,28 @@ export const ACTIONS = [
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
+// Each action by name (`ACTION.teamManage` reads as 'team.manage').
+export const ACTION = {
+  projectCreate: 'project.create',
+  projectEdit: 'project.edit',
+  projectDelete: 'project.delete',
+  projectMembers: 'project.members',
+  locationEdit: 'location.edit',
+  planEdit: 'plan.edit',
+  sessionWrite: 'session.write',
+  captureWrite: 'capture.write',
+  captureDelete: 'capture.delete',
+  issueWrite: 'issue.write',
+  issueDelete: 'issue.delete',
+  markupWrite: 'markup.write',
+  checklistRun: 'checklist.run',
+  templateEdit: 'template.edit',
+  brandingEdit: 'branding.edit',
+  phraseWrite: 'phrase.write',
+  membersRead: 'members.read',
+  teamManage: 'team.manage',
+} as const satisfies Record<string, Action>;
+
 const FIELD_WORK: readonly Action[] = [
   'session.write',
   'capture.write',

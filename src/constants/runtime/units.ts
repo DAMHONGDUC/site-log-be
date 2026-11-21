@@ -10,3 +10,17 @@ export const TEXT_CUT = {
 
 // Postgres type ids whose parsing the server overrides (pg.types).
 export const PG_TYPE_ID = { int8: 20, date: 1082 } as const;
+
+// How the site clock is read (Intl): en-CA writes dates as YYYY-MM-DD.
+export const SITE_CLOCK = {
+  locale: 'en-CA',
+  options: {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  },
+  part: { year: 'year', month: 'month', day: 'day', hour: 'hour' },
+  dateSeparator: '-',
+} as const;

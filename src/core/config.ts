@@ -1,3 +1,5 @@
+import { NODE_ENVS } from '../constants/environments.js';
+
 // Reads every setting from environment variables once, at startup.
 
 export interface Config {
@@ -9,6 +11,8 @@ export interface Config {
   pgPoolMax: number;
   awsRegion: string;
   s3Bucket: string;
+  // A local S3-compatible server (development only); unset means AWS S3.
+  s3Endpoint: string | undefined;
   firebaseServiceAccountBase64: string | undefined;
   presignTtlSeconds: number;
   singlePutThresholdBytes: number;
@@ -61,8 +65,8 @@ function integer(env: Env, name: string, fallback: number): number {
 }
 
 export function loadConfig(env: Env = process.env): Config {
-  return {
-    nodeEnv: optional(env, 'NODE_ENV') ?? 'development',
+  const config: Config = {
+    nodeEnv: optional(env, 'NODE_ENV') ?? NODE_ENVS.development,
     port: integer(env, 'PORT', 3000),
     logLevel: optional(env, 'LOG_LEVEL') ?? 'info',
     databaseUrl: required(env, 'DATABASE_URL'),
@@ -70,6 +74,7 @@ export function loadConfig(env: Env = process.env): Config {
     pgPoolMax: integer(env, 'PG_POOL_MAX', 10),
     awsRegion: required(env, 'AWS_REGION'),
     s3Bucket: required(env, 'S3_BUCKET'),
+    s3Endpoint: optional(env, 'S3_ENDPOINT'),
     firebaseServiceAccountBase64: optional(env, 'FIREBASE_SERVICE_ACCOUNT_BASE64'),
     presignTtlSeconds: integer(env, 'PRESIGN_TTL_SECONDS', 3600),
     singlePutThresholdBytes: integer(env, 'SINGLE_PUT_THRESHOLD_BYTES', 5 * 1024 * 1024),
@@ -89,4 +94,8 @@ export function loadConfig(env: Env = process.env): Config {
     siteTimeZone: optional(env, 'SITE_TIME_ZONE') ?? 'Asia/Ho_Chi_Minh',
     invitePreviewRateLimitPerMinute: integer(env, 'INVITE_PREVIEW_RATE_LIMIT_PER_MINUTE', 30),
   };
+  if (config.nodeEnv === NODE_ENVS.production && config.s3Endpoint !== undefined) {
+    throw new Error('S3_ENDPOINT is for local development only; unset it in production');
+  }
+  return config;
 }

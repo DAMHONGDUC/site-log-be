@@ -3,6 +3,7 @@ import swaggerUi from '@fastify/swagger-ui';
 import type { FastifyInstance } from 'fastify';
 import type { Config } from '../config.js';
 import { ApiRoutes } from '../../constants/api-routes.js';
+import { NODE_ENVS } from '../../constants/environments.js';
 import { OPENAPI } from '../../constants/openapi.js';
 
 const PUBLIC = new Set<string>(OPENAPI.publicRoutes);
@@ -29,7 +30,7 @@ export async function registerOpenApi(app: FastifyInstance, config: Config): Pro
       return { schema: PUBLIC.has(url) ? { ...base, security: [] } : base, url };
     },
   });
-  if (config.nodeEnv !== 'production') {
+  if (config.nodeEnv !== NODE_ENVS.production) {
     await app.register(swaggerUi, { routePrefix: ApiRoutes.DOCS });
   }
 }

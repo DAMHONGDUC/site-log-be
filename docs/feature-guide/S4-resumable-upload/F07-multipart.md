@@ -29,8 +29,8 @@
 
 | Step | Hours | Files |
 |---|---|---|
-| [1](#1-multipart-calls) | 1.5 | `src/storage.ts` |
-| [2](#2-routes) | 3 | `src/routes/uploads.ts` |
+| [1](#1-multipart-calls) | 1.5 | `src/integrations/storage.ts` |
+| [2](#2-routes) | 3 | `src/modules/uploads/uploads-routes.ts` |
 | [3](#3-try-it-with-a-big-file) | 0.5 | — |
 | [Tests](#tests) | 1 | `test/multipart.test.ts` |
 
@@ -54,7 +54,7 @@ flowchart LR
 <summary><strong>1.1 Storage</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/storage.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/integrations/storage.ts`
 
 <b>Explain</b> · S3 keeps uploaded parts out of sight until `CompleteMultipartUpload` joins them; the parts must be listed in order with their ETags.
 
@@ -348,7 +348,7 @@ export class Storage {
 
 | Action | File | Changes |
 |---|---|---|
-| <b class="tag-edit">Edit</b> | `src/routes/uploads.ts` | Begin picks the mode by size; `POST /uploads/:id/parts/refresh`; `complete` checks and completes the parts; abort calls `AbortMultipartUpload` |
+| <b class="tag-edit">Edit</b> | `src/modules/uploads/uploads-routes.ts` | Begin picks the mode by size; `POST /uploads/:id/parts/refresh`; `complete` checks and completes the parts; abort calls `AbortMultipartUpload` |
 
 </dd></dl>
 
@@ -360,7 +360,7 @@ export class Storage {
 <summary><strong>2.1 Upload routes</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/routes/uploads.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/uploads/uploads-routes.ts`
 
 <b>Explain</b> · S3 allows 10,000 parts: at 8 MiB that is 78 GiB, above the 20 GiB limit. If `CompleteMultipartUpload` fails because it already succeeded on an earlier try (whose database write failed), `head` finds the object and the route carries on.
 

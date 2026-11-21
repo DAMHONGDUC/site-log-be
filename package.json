@@ -36,6 +36,8 @@
     "@aws-sdk/client-sesv2": "^3.1173.0",
     "@aws-sdk/s3-request-presigner": "^3.1173.0",
     "@fastify/rate-limit": "^11.2.2",
+    "@fastify/swagger": "^9.9.5",
+    "@fastify/swagger-ui": "^6.1.5",
     "@fastify/type-provider-typebox": "^6.3.0",
     "@fastify/websocket": "^11.3.7",
     "fastify": "^5.12.8",

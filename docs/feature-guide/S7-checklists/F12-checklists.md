@@ -28,7 +28,7 @@
 | Action | File | Holds |
 |---|---|---|
 | <b class="tag-new">New</b> | `migrations/0009_checklists.sql` | Four tables; `alter table issues add foreign key (uid, source_checklist_result_id)` |
-| <b class="tag-edit">Edit</b> | `src/sync/tables.ts` | Four entries; results have the natural key `run_id + template_item_id` |
+| <b class="tag-edit">Edit</b> | `src/modules/sync/tables.ts` | Four entries; results have the natural key `run_id + template_item_id` |
 | <b class="tag-new">New</b> | `test/checklists.test.ts` | One answer per item, last write wins on the same row |
 
 ```mermaid
@@ -150,7 +150,7 @@ alter table issues
 <summary><strong>1.2 Registry</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/sync/tables.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/sync/tables.ts`
 
 ```diff
 @@ -129,2 +129,26 @@

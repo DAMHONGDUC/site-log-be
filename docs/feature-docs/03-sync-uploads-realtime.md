@@ -27,8 +27,8 @@
 
 <dl><dd>
 
-- The company has one counter, `sync_state.last_rev` ([05 §6](05-team-and-roles.md#6-sync-with-shared-projects)). Every row a push writes gets the next number in `rev`.
-- A push first locks the `sync_state` row (`select … for update`). A second push waits, so revs are committed in order.
+- The company has one counter, `sync_counter.last_rev` ([05 §6](05-team-and-roles.md#6-sync-with-shared-projects)). Every row a push writes gets the next number in `rev`.
+- A push first locks the `sync_counter` row (`select … for update`). A second push waits, so revs are committed in order.
 
 | Why not a timestamp or a sequence | What goes wrong |
 |---|---|
@@ -66,7 +66,7 @@ sequenceDiagram
     participant API as /sync/push
     participant PG as Postgres
     App->>API: up to 200 mutations
-    API->>PG: begin, lock sync_state row
+    API->>PG: begin, lock sync_counter row
     loop each mutation
         API->>PG: savepoint, last_rev + 1
         API->>PG: insert … on conflict (id) do update … where newer

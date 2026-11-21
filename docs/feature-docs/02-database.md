@@ -26,7 +26,7 @@
 | File | Feature | Creates |
 |---|---|---|
 | `0001_projects.sql` | F03 | `session_state` enum, `projects`, `locations`, `sessions` |
-| `0002_sync_state.sql` | F04 | `sync_state` |
+| `0002_sync_state.sql` | F04 | `sync_state` (one row per user; replaced by `sync_counter` in F19) |
 | `0003_captures.sql` | F05 | `captures` |
 | `0004_uploads.sql` | F06 | `upload_mode`, `upload_state`, `verify_state` enums, `uploads` |
 | `0005_issues.sql` | F08 | `issues`, `issue_captures`, `phrases` |
@@ -36,7 +36,7 @@
 | `0009_checklists.sql` | F12 | four checklist tables; foreign key `issues.source_checklist_result_id` |
 | `0010_verify_worker.sql` | F15 | `uploads.verify_claimed_at` |
 | `0011_devices.sql` | F16 | `devices` |
-| `0012_team.sql` | F19 | `member_role` enum, `members`, `invitations`, `project_members`, `member_events`; `uid` → `created_by` and `project_id` on every synced table; one-row `sync_state` |
+| `0012_team.sql` | F19 | `member_role` enum, `members`, `invitations`, `project_members`, `member_events`, `sync_counter` (drops `sync_state`), `devices.kinds`, `issues.assignee_uid`; `uid` → `created_by` and `project_id` on every synced table; one-row `sync_state` |
 
 - `schema_migrations (name, run_at)` records what ran. A file that ran is never edited: fix it with a new file.
 
@@ -68,7 +68,7 @@
 
 | Table | Key | Holds |
 |---|---|---|
-| `sync_state` | one row | `last_rev` (company counter), `purged_through_rev` (resync watermark) |
+| `sync_counter` | one row (F19) | `last_rev` (company counter), `purged_through_rev` (resync watermark) |
 | `members` | `uid` | Email, name, `role` (`admin` · `manager` · `inspector` · `viewer`), `resync_required`, `removed_at` |
 | `invitations` | `id` | Email, role, project ids, SHA-256 of the token, `invited_by`, `expires_at`, `accepted_at` |
 | `project_members` | `(project_id, uid)` | Inspectors and Viewers who work on a project, `added_by`, `added_at` |

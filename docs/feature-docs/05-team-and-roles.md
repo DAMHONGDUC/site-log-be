@@ -139,7 +139,7 @@ sequenceDiagram
 
 | Before (one user) | Now (one company) |
 |---|---|
-| A rev counter per user | One company counter (`sync_state` has one row); every write still takes the next rev under a row lock |
+| A rev counter per user | One company counter (`sync_counter`, one row); every write still takes the next rev under a row lock |
 | Pull: rows with `uid = me` | Pull: rows with `project_id in reachable(me)` and `rev > since` |
 | Rows point only at the same user's rows | Rows point only at rows of the same project |
 | Push: any row of mine | Push: each mutation is checked against §3; a refused one is `rejected` with reason `forbidden:<action>` |

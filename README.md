@@ -36,7 +36,7 @@
 
 <dl><dd>
 
-- After S0 the backend runs on your Mac like this (full steps: [F00a](docs/feature-guide/S0-foundation/F00a-setup.md), [local testing with the app](docs/feature-guide/local-testing-with-ios.md)):
+- The backend runs on your Mac with Postgres and S3 (RustFS) in Docker; full steps, app wiring and memory tips: [local development](docs/feature-guide/local-development.md).
 
 ```bash
 docker compose up -d
@@ -47,7 +47,7 @@ cp .env.example .env
 ```
 
 ```bash
-npm ci && npm run migrate && npm run dev
+npm ci && npm run migrate && npm run s3:bucket && npm run dev
 ```
 
 ```bash
@@ -70,6 +70,7 @@ curl localhost:3000/health
 | [05-team-and-roles](docs/feature-docs/05-team-and-roles.md) | One company, four roles, project members, invitations, shared sync |
 | [ROADMAP](docs/ROADMAP.md) | Plan to finish the backend: phases, steps with hours and ticks, done-when, risks |
 | [Feature guides](docs/feature-guide/README.md) | Step-by-step build, one folder per sprint |
+| [Local development](docs/feature-guide/local-development.md) | Postgres and S3 (RustFS) in Docker, the API on your Mac, the iOS and Android apps pointed at it |
 | [Local testing with iOS](docs/feature-guide/local-testing-with-ios.md) | Run the backend on your Mac and point the simulator or an iPhone at it |
 | [App design](https://github.com/DAMHONGDUC/site_log_swift_ui/blob/main/docs/design/00-design-plan.md) | No UI here; the app screens the API serves (Team and roles: T1–T8) are in the iOS repo's design pages and the [Figma file](https://www.figma.com/design/uJZcCP6lzw8QTSkcu8uqvV/Site-Log-iOS-Design) |
 
@@ -185,6 +186,7 @@ site-log-be/
 | `npm run dev` | API with reload, reads `.env` |
 | `npm run worker:dev` | Worker with reload |
 | `npm run migrate` | Runs new migrations |
+| `npm run s3:bucket` | Creates the bucket on the local S3 server, once |
 | `npm test` | All tests against `sitelog_test` |
 | `npm run lint` · `npm run typecheck` · `npm run format` | Code checks |
 | `npm run token -- <email> <password>` | A Firebase ID token for curl |

@@ -2,7 +2,7 @@
 
 <dl><dd>
 
-- Sprint [S10](README.md) · 16h · skeleton guide — parts, files, order, tests. Code is added when the feature starts.
+- Sprint [S10](README.md) · 26h · built: the code is in the repository (files below), checked by `test/team.test.ts` and the updated S1–S8 tests. This guide lists the parts, files and order; read the files for the code.
 - Rules: [05-team-and-roles](../../feature-docs/05-team-and-roles.md) · contract: [01-api §13](../../feature-docs/01-api.md#13-team) · tables: [02-database](../../feature-docs/02-database.md) · why: [B10](../../feature-docs/00-overview.md#b10--one-company-four-roles-shared-projects).
 - App side: [iOS F19](https://github.com/DAMHONGDUC/site_log_swift_ui/blob/main/docs/feature-guide/S10-team-roles/F19-team-roles.md) · [Android F19](https://github.com/DAMHONGDUC/site-log-android/blob/main/docs/feature-guide/S10-team-roles/F19-team-roles.md).
 
@@ -29,17 +29,17 @@
 <dl><dd>
 
 - **Goal:** one company, four roles, shared projects. Every route, the sync pull and push, the upload signer, the WebSocket and push ask one function who can reach what.
-- **Demo:** the Admin invites an Inspector to Riverside Tower B; the Inspector signs in from the email, sees only that project, logs an issue the Admin then sees; a Viewer's push of an issue is `rejected` with `forbidden:issue.create`.
+- **Demo:** the Admin invites an Inspector to Riverside Tower B; the Inspector signs in from the email, sees only that project, logs an issue the Admin then sees; a Viewer's push of an issue is `rejected` with `forbidden:issue.write`.
 
 | Step | Hours | Files |
 |---|---|---|
 | [1](#1-migration) | 3 | `migrations/0012_team.sql` |
 | [2](#2-access) | 2 | `src/team/access.ts`, `src/team/permissions.ts`, `src/auth.ts`, `scripts/seed-admin.ts` |
-| [3](#3-sync-scope) | 3 | `src/sync/pull.ts`, `src/sync/push.ts`, `src/sync/tables.ts` |
-| [4](#4-files) | 2 | `src/keys.ts`, `src/routes/uploads.ts`, `src/routes/media.ts`, `scripts/move-keys.ts` |
-| [5](#5-team-api-and-invites) | 3 | `src/routes/team.ts`, `src/team/invitations.ts`, `src/mail/ses.ts`, `src/routes/account.ts` |
-| [6](#6-realtime-and-push) | 1 | `src/realtime/ws.ts`, `src/workers/verify.ts` |
-| [Tests](#tests) | 2 | `test/team.test.ts`, `test/access.test.ts`, `test/sync-scope.test.ts` |
+| [3](#3-sync-scope) | 3 | `src/sync/pull.ts`, `src/sync/push.ts`, `src/sync/tables.ts`, `src/sync/case.ts` |
+| [4](#4-files) | 2 | `src/keys.ts`, `src/team/files.ts`, `src/routes/uploads.ts`, `src/routes/media.ts`, `src/team/move-keys.ts`, `scripts/move-keys.ts` |
+| [5](#5-team-api-and-invites) | 5 | `src/routes/team.ts`, `src/team/invitations.ts`, `src/team/events.ts`, `src/mail/mailer.ts`, `src/routes/account.ts` |
+| [6](#6-realtime-and-push) | 5 | `src/realtime/ws.ts`, `src/realtime/hub.ts`, `src/push/notify.ts`, `src/push/issues.ts`, `src/workers/verify.ts`, `src/workers/due-soon.ts`, `src/routes/devices.ts` |
+| [Tests](#tests) | 6 | `test/team.test.ts`; S1–S8 tests updated to the project keys and roles |
 
 ```mermaid
 flowchart LR
@@ -69,7 +69,7 @@ flowchart LR
 | `devices` | Add `kinds text[]` (null = every kind), set by `POST /devices` |
 | `phrases` | Keep `uid`: personal |
 | `report_branding` | Keep one row, the company's |
-| `sync_state` | One row: `last_rev` = max of the old per-user counters; every member gets `resync_required = true` |
+| `sync_state` → `sync_counter` | One row; every old row gets a new, company-unique rev (old per-user revs overlapped); every member starts with `resync_required = true` |
 | Foreign keys | `(project_id, …)` instead of `(uid, …)` |
 
 - **Check:** the migration runs on a copy of staging; row counts per table are unchanged; every row has a `project_id`.
@@ -104,7 +104,7 @@ flowchart LR
 | Pull | Every table query adds `project_id = any($reachable)`; `phrases` keep `uid = $me` |
 | Push | Before applying a mutation: `can(role, action, existing row)`; refused → `rejected` with `forbidden:<action>` (e.g. `forbidden:plan_sheet.upsert`) |
 | Resync | `members.resync_required` → pull answers `resyncRequired`, then clears the flag |
-| Rev | Lock the single `sync_state` row instead of the user's |
+| Rev | Lock the single `sync_counter` row instead of the user's |
 
 - **Check:** two Inspectors on different projects never see each other's rows; a Viewer's push is rejected row by row, the rest of the batch applies.
 
@@ -173,9 +173,13 @@ flowchart LR
 
 | Test | Proves |
 |---|---|
-| `access.test.ts` | `reachable` and `can` match the permission table, row by row |
-| `sync-scope.test.ts` | Pull isolation between projects; push `forbidden:<action>`; `resyncRequired` after a role change |
-| `team.test.ts` | Invite, preview (masked email, expired, used, unknown), resend voids the old link, accept (expired, used, wrong email), role and project change, removal, last Admin, activity paging |
+| `team.test.ts` | Permission table; `/me`; invite → preview (masked email) → accept (email must match); Admin-only invites; resend voids the old link, cancel; PATCH role + projects asks for a resync and pushes `access`; last Admin; removal revokes tokens; project members keep Inspectors apart; Inspector vs Viewer writes; "own, same day" deletes; `issueAssigned`, `issueRechecked`, per-device `kinds`, `dueSoon`; activity paging; move-keys mapping |
+| `auth.test.ts` | `403 not_invited` for a stranger, `401 member_removed` for a removed member |
+| `sync.test.ts`, `projects.test.ts` | A role that may not edit gets `forbidden:<action>`; rows stay when their maker leaves |
+| `uploads.test.ts`, `plans.test.ts`, `ws.test.ts` | Project keys; `403 forbidden` outside the reach or the role; WebSocket `4003` on an unreachable session |
+| `account.test.ts` | Leaving keeps company rows, aborts open uploads, deletes phrases and devices; `409 last_admin` |
+
+- Test team (`test/helpers.ts`): alice is Admin; bob and carol are Inspectors on no project until a test adds them.
 
 </dd></dl>
 

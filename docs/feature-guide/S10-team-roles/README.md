@@ -2,7 +2,7 @@
 
 <dl><dd>
 
-- Sprint 10 · 2 weeks · 16h · [all sprints](../README.md) · app side: [S10 iOS](https://github.com/DAMHONGDUC/site_log_swift_ui/blob/main/docs/feature-guide/S10-team-roles/README.md) · [S10 Android](https://github.com/DAMHONGDUC/site-log-android/blob/main/docs/feature-guide/S10-team-roles/README.md)
+- Sprint 10 · 2 weeks · 26h · [all sprints](../README.md) · app side: [S10 iOS](https://github.com/DAMHONGDUC/site_log_swift_ui/blob/main/docs/feature-guide/S10-team-roles/README.md) · [S10 Android](https://github.com/DAMHONGDUC/site-log-android/blob/main/docs/feature-guide/S10-team-roles/README.md)
 
 </dd></dl>
 
@@ -26,7 +26,7 @@
 
 | F | Feature | Guide | Hours |
 |---|---|---|---|
-| F19 | Team and roles | [F19-team-roles.md](F19-team-roles.md) | 16 |
+| F19 | Team and roles | [F19-team-roles.md](F19-team-roles.md) | 26 |
 
 ```mermaid
 flowchart LR

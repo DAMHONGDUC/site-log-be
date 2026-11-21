@@ -15,6 +15,8 @@ export class ApiRoutes {
 
   static readonly VERIFY = '/verify/:code';
   static readonly WEBSOCKET = '/ws';
+  // OpenAPI explorer, outside production only.
+  static readonly DOCS = '/docs';
 
   static readonly DEVICES = '/devices';
   static readonly DEVICE = '/devices/:token';

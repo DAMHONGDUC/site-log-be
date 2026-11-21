@@ -1,46 +1,23 @@
 import { createHash } from 'node:crypto';
 import type pg from 'pg';
-import type { Logger } from 'pino';
-import type { PushSender } from '../push/fcm.js';
-import { notify } from '../push/notify.js';
-import { membersReaching } from '../team/access.js';
+import type { Database } from '../data/database.js';
+import type { Log } from '../domain/log.js';
 import { notifyUploadEvent } from '../realtime/events.js';
+import type { CoreServices } from '../services/index.js';
 import type { Storage } from '../storage.js';
 
 export interface WorkerDeps {
   pool: pg.Pool;
+  db: Database;
   storage: Storage;
-  push: PushSender | undefined;
-  log: Logger;
+  services: CoreServices;
+  log: Log;
 }
-
-interface ClaimedUpload {
-  id: string;
-  uid: string;
-  object_key: string;
-  sha256: string;
-  session_id: string | null;
-}
-
-// A claim older than this belongs to a worker that crashed; another one may take it.
-const CLAIM_TIMEOUT = '30 minutes';
 
 // Takes the oldest unverified upload, streams it back from S3 and recomputes SHA-256.
 // Returns false when there was nothing to do.
 export async function verifyNextUpload(deps: WorkerDeps): Promise<boolean> {
-  const claimed = await deps.pool.query<ClaimedUpload>(
-    `update uploads set verify_claimed_at = now()
-      where id = (
-        select id from uploads
-         where state = 'completed' and verify_state = 'registered'
-           and (verify_claimed_at is null or verify_claimed_at < now() - interval '${CLAIM_TIMEOUT}')
-         order by completed_at
-         limit 1
-         for update skip locked
-      )
-  returning id, uid, object_key, sha256, session_id`,
-  );
-  const upload = claimed.rows[0];
+  const upload = await deps.db.repos.uploads.claimNextToVerify();
   if (upload === undefined) {
     return false;
   }
@@ -50,16 +27,8 @@ export async function verifyNextUpload(deps: WorkerDeps): Promise<boolean> {
   for await (const chunk of stream) {
     hash.update(chunk as Buffer);
   }
-  const actual = hash.digest('hex');
-
-  let state: 'verified' | 'mismatch' = 'verified';
-  if (actual !== upload.sha256) {
-    state = 'mismatch';
-  }
-  await deps.pool.query(`update uploads set verify_state = $2, verified_at = now() where id = $1`, [
-    upload.id,
-    state,
-  ]);
+  const state = hash.digest('hex') === upload.sha256 ? 'verified' : 'mismatch';
+  await deps.db.repos.uploads.setVerifyState(upload.id, state);
   await notifyUploadEvent(deps.pool, {
     uid: upload.uid,
     sessionId: upload.session_id,
@@ -84,42 +53,19 @@ async function pushWhenSessionVerified(
   uid: string,
   sessionId: string,
 ): Promise<void> {
-  if (deps.push === undefined) {
+  const { uploads } = deps.db.repos;
+  if (await uploads.sessionHasPending(sessionId)) {
     return;
   }
-  const pending = await deps.pool.query(
-    `select 1 from uploads
-      where session_id = $1
-        and (state = 'created' or verify_state = 'registered')
-      limit 1`,
-    [sessionId],
-  );
-  if (pending.rows.length > 0) {
-    return;
-  }
-  const facts = await deps.pool.query<{
-    project_id: string | null;
-    files: string;
-    name: string | null;
-  }>(
-    `select u.project_id, count(*)::text as files, p.name
-       from uploads u left join projects p on p.id = u.project_id
-      where u.session_id = $1 and u.state = 'completed'
-      group by u.project_id, p.name`,
-    [sessionId],
-  );
-  const fact = facts.rows[0];
-  let recipients = [uid];
-  if (fact?.project_id) {
-    recipients = await membersReaching(deps.pool, fact.project_id);
-  }
-  await notify(deps.pool, deps.push, deps.log, {
+  const summary = await uploads.sessionSummary(sessionId);
+  const recipients = summary?.projectId
+    ? await deps.services.access.membersReaching(summary.projectId)
+    : [uid];
+  await deps.services.notifications.send({
     kind: 'uploadsVerified',
     recipients,
     actorUid: null,
-    title: 'Walkthrough is safe',
-    body: `All ${fact?.files ?? 'the'} files${fact?.name ? ` of ${fact.name}` : ''} are uploaded and verified.`,
-    deepLink: `sitelog://session/${sessionId}`,
+    data: { sessionId, files: summary?.files ?? null, projectName: summary?.projectName ?? null },
   });
   deps.log.info({ uid, sessionId }, 'session verified: push sent');
 }

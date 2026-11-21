@@ -188,8 +188,8 @@ flowchart LR
 | Rule | Where |
 |---|---|
 | Token checked on every request, with `checkRevoked` | `src/auth.ts` |
-| Auth failures are `401`; `403` means a member's role or project access says no | `src/auth.ts`, `src/team/` |
-| Every query is limited to `reachable(uid)`; every write is checked against the role table | `src/team/access.ts`, all routes, `src/sync/` |
+| Auth failures are `401`; `403` means a member's role or project access says no | `src/auth.ts`, `src/http/guards.ts`, `src/domain/permissions.ts` |
+| Every query is limited to `reachable(uid)`; every write is checked against the role table | `src/services/access-service.ts`, all routes, `src/sync/push/authorization.ts` |
 | Keys must match a full pattern under a project the caller may write | `src/keys.ts` |
 | Foreign keys include `project_id` | Migrations |
 | `/verify` returns facts only, constant delay, rate limited | `src/routes/verify.ts` |

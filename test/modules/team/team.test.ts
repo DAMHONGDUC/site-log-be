@@ -354,7 +354,8 @@ describe('team and roles', () => {
 
 describe('move-keys (F19)', () => {
   it('maps old uid keys to project and company keys', async () => {
-    const { newKeyFor } = await import('../../../src/modules/uploads/key-migration-service.js');
+    const { newKeyFor } =
+      await import('../../../src/modules/uploads/keys/key-migration-service.js');
     expect(newKeyFor(`alice/${ids.project}/${ids.session}/${ids.capture}.jpg`)).toBe(
       `projects/${ids.project}/${ids.session}/${ids.capture}.jpg`,
     );

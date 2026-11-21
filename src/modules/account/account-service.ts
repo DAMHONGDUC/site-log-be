@@ -3,7 +3,7 @@ import { ErrorCode } from '../../constants/http/error-codes.js';
 import type { Database } from '../../data/database.js';
 import { conflict } from '../../core/errors.js';
 import type { TokenVerifier } from '../../core/auth.js';
-import type { UploadService } from '../uploads/upload-service.js';
+import type { UploadService } from '../uploads/transfer/upload-service.js';
 import type { AccessService } from '../team/access/access-service.js';
 
 // Leaving the company (05 §8): the caller's unfinished uploads, phrases, devices and Firebase

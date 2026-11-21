@@ -9,7 +9,7 @@ import { PhraseRepository } from '../modules/sync/phrase-repository.js';
 import { ProjectMemberRepository } from '../modules/team/access/project-member-repository.js';
 import { ProjectRepository } from '../modules/sync/project-repository.js';
 import { SyncStateRepository } from '../modules/sync/sync-state-repository.js';
-import { UploadRepository } from '../modules/uploads/upload-repository.js';
+import { UploadRepository } from '../modules/uploads/transfer/upload-repository.js';
 
 // Every repository, bound to one connection (the pool or a transaction).
 export interface Repositories {

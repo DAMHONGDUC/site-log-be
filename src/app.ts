@@ -18,11 +18,11 @@ import { accountRoutes } from './modules/account/account-routes.js';
 import { deviceRoutes } from './modules/devices/devices-routes.js';
 import { healthRoutes } from './modules/health/health-routes.js';
 import { invitationRoutes } from './modules/team/invitations/invitations-routes.js';
-import { mediaRoutes } from './modules/uploads/media-routes.js';
+import { mediaRoutes } from './modules/uploads/media/media-routes.js';
 import { memberRoutes } from './modules/team/members/members-routes.js';
 import { syncRoutes } from './modules/sync/sync-routes.js';
-import { uploadRoutes } from './modules/uploads/uploads-routes.js';
-import { verifyRoutes } from './modules/uploads/verify-routes.js';
+import { uploadRoutes } from './modules/uploads/transfer/uploads-routes.js';
+import { verifyRoutes } from './modules/uploads/verify/verify-routes.js';
 import { createServices, type Services } from './services.js';
 import type { Storage } from './integrations/storage.js';
 

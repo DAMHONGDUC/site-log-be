@@ -1,6 +1,6 @@
-import type { Database } from '../../data/database.js';
-import type { Log } from '../../core/log.js';
-import type { Storage } from '../../integrations/storage.js';
+import type { Database } from '../../../data/database.js';
+import type { Log } from '../../../core/log.js';
+import type { Storage } from '../../../integrations/storage.js';
 
 const LEGACY_KEY = /^([A-Za-z0-9]{1,128})\/(.+)$/;
 const BRANDING_PREFIX = 'branding/';

@@ -8,13 +8,13 @@ import type { Storage } from './integrations/storage.js';
 import { AccessService } from './modules/team/access/access-service.js';
 import { AccountService } from './modules/account/account-service.js';
 import { DueSoonService } from './modules/notifications/due-soon-service.js';
-import { FileAccessService } from './modules/uploads/file-access-service.js';
+import { FileAccessService } from './modules/uploads/media/file-access-service.js';
 import { InvitationService } from './modules/team/invitations/invitation-service.js';
 import { IssueNotifier } from './modules/notifications/issue-notifier.js';
-import { KeyMigrationService } from './modules/uploads/key-migration-service.js';
+import { KeyMigrationService } from './modules/uploads/keys/key-migration-service.js';
 import { NotificationService } from './modules/notifications/notification-service.js';
 import { TeamService } from './modules/team/members/team-service.js';
-import { UploadService } from './modules/uploads/upload-service.js';
+import { UploadService } from './modules/uploads/transfer/upload-service.js';
 
 export interface CoreDeps {
   db: Database;

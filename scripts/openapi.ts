@@ -6,7 +6,7 @@ import { buildApp } from '../src/app.js';
 import type { TokenVerifier } from '../src/core/auth.js';
 import { loadConfig } from '../src/core/config.js';
 import { OPENAPI } from '../src/constants/http/openapi.js';
-import { RealtimeHub } from '../src/modules/realtime/hub.js';
+import { RealtimeHub } from '../src/modules/realtime/index.js';
 import { Storage, createS3Client } from '../src/integrations/storage.js';
 import { OPENAPI_SCRIPT, SCRIPT_TEXT } from '../src/constants/messages/script-text.js';
 import { ENCODING } from '../src/constants/platform/encoding.js';

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import type { Database } from '../data/database.js';
 import type { Log } from '../core/log.js';
-import { notifyUploadEvent } from '../modules/realtime/events.js';
+import { notifyUploadEvent } from '../modules/realtime/index.js';
 import type { CoreServices } from '../services.js';
 import type { Storage } from '../integrations/storage.js';
 import { HASH, ENCODING } from '../constants/platform/encoding.js';

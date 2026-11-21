@@ -3,7 +3,7 @@ import { loadConfig } from '../src/core/config.js';
 import { Database } from '../src/data/database.js';
 import { createPool } from '../src/data/pool.js';
 import { createLogger } from '../src/core/logger.js';
-import { KeyMigrationService } from '../src/modules/uploads/keys/key-migration-service.js';
+import { KeyMigrationService } from '../src/modules/uploads/index.js';
 import { Storage, createS3Client } from '../src/integrations/storage.js';
 
 const config = loadConfig();

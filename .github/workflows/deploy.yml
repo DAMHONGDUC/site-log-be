@@ -27,7 +27,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
       # The server is ARM (t4g): build an arm64 image on the x86 runner.
       - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - uses: docker/build-push-action@v6
         with:
           context: .

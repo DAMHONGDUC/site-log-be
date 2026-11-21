@@ -1,4 +1,4 @@
-# Local Postgres for development and tests. Run: docker compose up -d
+# Local Postgres and S3 (RustFS) for development and tests. Run: docker compose up -d
 services:
   postgres:
     image: postgres:16
@@ -15,5 +15,23 @@ services:
       interval: 2s
       retries: 15
 
+  # S3-compatible storage for local uploads (S3_ENDPOINT=http://localhost:9000).
+  # Create the bucket once: npm run s3:bucket. Console: http://localhost:9001
+  s3:
+    image: rustfs/rustfs:1.0.6
+    environment:
+      RUSTFS_ACCESS_KEY: sitelog
+      RUSTFS_SECRET_KEY: sitelog-secret
+      RUSTFS_CONSOLE_ENABLE: 'true'
+      # Same region as AWS_REGION in .env: signatures carry it.
+      RUSTFS_REGION: ap-southeast-1
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - s3-data:/data
+    mem_limit: 512m
+
 volumes:
   postgres-data:
+  s3-data:

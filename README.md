@@ -25,8 +25,9 @@
 
 <dl><dd>
 
-- This repository holds the docs only. The code is written by following the guides, starting with [S0](docs/feature-guide/S0-foundation/README.md).
-- Every code block in the guides was compiled, linted and tested (Postgres 16, Node 24) before it was written down.
+- The code of S0–S10 is in the repository: every call of [01-api §3](docs/feature-docs/01-api.md#3-endpoints), the worker, migrations `0001`–`0012`, the AWS CDK app (`infra/`) and CI. `npm test`: 95+ tests green against Postgres 16; format, lint, typecheck, build and `cdk synth` pass.
+- Not running anywhere yet: AWS, Firebase and SES accounts, DNS and the first deploy are still to do ([ROADMAP](docs/ROADMAP.md) P0, S0.3, S9, S10.9, P4).
+- S0–S9 code comes from the guides as written; S10 (team and roles) was built from [05-team-and-roles](docs/feature-docs/05-team-and-roles.md) and is described in [F19](docs/feature-guide/S10-team-roles/F19-team-roles.md).
 
 </dd></dl>
 
@@ -66,6 +67,7 @@ curl localhost:3000/health
 | [03-sync-uploads-realtime](docs/feature-docs/03-sync-uploads-realtime.md) | How sync, uploads, verification and the WebSocket channel work inside |
 | [04-aws-operations](docs/feature-docs/04-aws-operations.md) | AWS resources, configuration, secrets, deploy, logs, alarms, backups |
 | [05-team-and-roles](docs/feature-docs/05-team-and-roles.md) | One company, four roles, project members, invitations, shared sync |
+| [ROADMAP](docs/ROADMAP.md) | Plan to finish the backend: phases, steps with hours and ticks, done-when, risks |
 | [Feature guides](docs/feature-guide/README.md) | Step-by-step build, one folder per sprint |
 | [Local testing with iOS](docs/feature-guide/local-testing-with-ios.md) | Run the backend on your Mac and point the simulator or an iPhone at it |
 | [App design](https://github.com/DAMHONGDUC/site_log_swift_ui/blob/main/docs/design/00-design-plan.md) | No UI here; the app screens the API serves (Team and roles: T1–T8) are in the iOS repo's design pages and the [Figma file](https://www.figma.com/design/uJZcCP6lzw8QTSkcu8uqvV/Site-Log-iOS-Design) |
@@ -112,7 +114,7 @@ curl localhost:3000/health
 
 <dl><dd>
 
-- Target layout once the guides are built; today only `docs/` and `Tools/` exist.
+- The layout of the repository (S0–S10 built); `src/team/` and `src/mail/` came with F19.
 
 ```text
 site-log-be/
@@ -124,7 +126,9 @@ site-log-be/
 │   ├── sync/               # pull, push, the table registry
 │   ├── realtime/           # WebSocket channel and pg_notify fan-out
 │   ├── workers/            # the worker's jobs
-│   └── push/               # Firebase Cloud Messaging sender
+│   ├── push/               # Firebase Cloud Messaging sender, push kinds
+│   ├── team/               # F19: members, reach, permissions, invitations, audit
+│   └── mail/               # invite email (Amazon SES)
 ├── migrations/             # numbered .sql files, run once each, forward only
 ├── test/                   # vitest against a real Postgres
 ├── deploy/                 # what runs on the EC2 server: compose.yml, Caddyfile, deploy.sh
@@ -150,6 +154,8 @@ site-log-be/
 | `npm test` | All tests against `sitelog_test` |
 | `npm run lint` · `npm run typecheck` · `npm run format` | Code checks |
 | `npm run token -- <email> <password>` | A Firebase ID token for curl |
+| `npm run seed:admin -- <email> <firebase-uid>` | Creates the first Admin, once (F19) |
+| `npm run move-keys` | Moves pre-F19 file keys to `projects/…` and `company/…`, once after migration `0012` |
 | `cd infra && npx cdk deploy SiteLog-Staging` | Creates or updates the staging AWS resources |
 | `python3 Tools/Docs/indent-md.py` | Re-indents every `.md` after an edit |
 

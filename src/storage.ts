@@ -15,6 +15,8 @@ import {
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { HTTP_STATUS } from './constants/http-status.js';
+import { MS_PER_SECOND } from './constants/units.js';
 import type { Readable } from 'node:stream';
 
 export function createS3Client(region: string): S3Client {
@@ -40,7 +42,7 @@ function isMissing(error: unknown): boolean {
   if (error.name === 'NotFound' || error.name === 'NoSuchKey' || error.name === 'NoSuchUpload') {
     return true;
   }
-  return error.$metadata.httpStatusCode === 404;
+  return error.$metadata.httpStatusCode === HTTP_STATUS.notFound;
 }
 
 // Every S3 call the backend makes. The backend never reads or writes file bytes itself,
@@ -57,7 +59,7 @@ export class Storage {
   }
 
   expiresAt(now: Date): Date {
-    return new Date(now.getTime() + this.ttlSeconds * 1000);
+    return new Date(now.getTime() + this.ttlSeconds * MS_PER_SECOND);
   }
 
   async presignPut(key: string, contentType: string): Promise<string> {

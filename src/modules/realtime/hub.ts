@@ -3,7 +3,7 @@ import pg from 'pg';
 import type { WebSocket } from 'ws';
 import type { Config } from '../../core/config.js';
 import { DURATIONS } from '../../constants/runtime/durations.js';
-import { UploadRepository, type UploadSnapshotRow } from '../uploads/transfer/upload-repository.js';
+import { UploadRepository, type UploadSnapshotRow } from '../uploads/index.js';
 import { toDrizzle } from '../../data/drizzle.js';
 import { connectionOptions } from '../../data/pool.js';
 import type { UploadEvent } from './events.js';

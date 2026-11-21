@@ -4,7 +4,7 @@ import { TokenRejectedError } from '../../core/auth.js';
 import { ApiRoutes } from '../../constants/http/api-routes.js';
 import { DURATIONS } from '../../constants/runtime/durations.js';
 import { WS_CLOSE } from '../../constants/runtime/websocket.js';
-import { reaches, type Member } from '../team/members/member.js';
+import { reaches, type Member } from '../team/index.js';
 import { type ClientSocket, send, uploadMessage } from './hub.js';
 import { WS_CLOSE_REASON, WS_MESSAGE, SOCKET_EVENT } from '../../constants/domain/realtime.js';
 import { MEMBER_LOOKUP } from '../../constants/domain/team.js';

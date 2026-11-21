@@ -1,4 +1,4 @@
-import type { Member } from '../team/members/member.js';
+import type { Member } from '../team/index.js';
 import type { NotificationService } from './notification-service.js';
 import { PUSH_KIND } from '../../constants/domain/push.js';
 

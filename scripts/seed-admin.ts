@@ -3,7 +3,7 @@
 import { loadConfig } from '../src/core/config.js';
 import { Database } from '../src/data/database.js';
 import { createPool } from '../src/data/pool.js';
-import { nameFromEmail } from '../src/modules/team/invitations/invitation-token.js';
+import { nameFromEmail } from '../src/modules/team/index.js';
 import { SCRIPT_TEXT } from '../src/constants/messages/script-text.js';
 import { ROLE } from '../src/constants/domain/roles.js';
 import { MEMBER_EVENT_TYPE } from '../src/constants/data/enums.js';

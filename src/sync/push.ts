@@ -238,3 +238,234 @@ async function ownSameDay(
   return result.rows[0]?.same === true;
 }
 
+// null = allowed; otherwise the rejection reason.
+async function permissionProblem(
+  client: pg.PoolClient,
+  batch: Batch,
+  table: SyncTable,
+  mutation: Mutation,
+  stored: Record<string, unknown> | undefined,
+  projectId: string | null,
+): Promise<string | null> {
+  const { member } = batch.context;
+  let action: Action;
+  if (mutation.op === 'delete') {
+    action = table.deleteAction;
+  } else if (table.scope === 'projects' && stored === undefined) {
+    action = 'project.create';
+  } else {
+    action = table.writeAction;
+  }
+  if (table.scope === 'personal') {
+    if (stored !== undefined && stored.uid !== member.uid) {
+      return 'forbidden';
+    }
+  } else if (
+    !(table.scope === 'projects' && stored === undefined) &&
+    !reaches(batch.reach, projectId)
+  ) {
+    return `forbidden:${action}`;
+  }
+  let own = false;
+  if (mutation.op === 'delete' && stored !== undefined) {
+    own = await ownSameDay(client, table, stored, batch.context);
+  }
+  if (!can(member.role, action, { ownSameDay: own })) {
+    return `forbidden:${action}`;
+  }
+  return null;
+}
+
+async function applyUpsert(
+  client: pg.PoolClient,
+  batch: Batch,
+  table: SyncTable,
+  mutation: Mutation,
+  rev: number,
+  stored: Record<string, unknown> | undefined,
+  projectId: string | null,
+): Promise<MutationResult> {
+  const uid = batch.context.member.uid;
+  const record: Record<string, unknown> = {};
+  for (const [field, value] of Object.entries(mutation.fields)) {
+    const column = camelToSnake(field);
+    if (!table.columns.includes(column)) {
+      return { id: mutation.id, status: 'rejected', reason: `unknown_field:${field}` };
+    }
+    record[column] = value;
+  }
+  record.id = mutation.id;
+  record[ownerColumn(table)] = uid;
+  record.rev = rev;
+  record.client_updated_at = mutation.clientUpdatedAt;
+  record.deleted_at = null;
+  if (table.parent !== null) {
+    record.project_id = projectId;
+  }
+
+  // A failed statement poisons the transaction, so the insert gets its own savepoint:
+  // after a unique violation we still need to read the row that won.
+  await client.query('savepoint upsert');
+  try {
+    const written = await client.query(upsertSql(table), [JSON.stringify(record)]);
+    await client.query('release savepoint upsert');
+    if (written.rows.length > 0) {
+      if (table.name === 'issues') {
+        batch.issueChanges.push({
+          issueId: mutation.id,
+          projectId: projectId!,
+          before: stored,
+          after: written.rows[0],
+        });
+      }
+      return { id: mutation.id, status: 'applied' };
+    }
+  } catch (error) {
+    await client.query('rollback to savepoint upsert');
+    if (pgCode(error) === '23505' && table.naturalKey !== null && !isPrimaryKeyViolation(error)) {
+      const owner = await rowWithSameNaturalKey(client, table, uid, record);
+      if (owner !== undefined) {
+        return { id: mutation.id, status: 'superseded', serverRow: rowToJson(owner) };
+      }
+    }
+    throw error;
+  }
+
+  // Nothing written: a newer write, or a tombstone.
+  const after = await storedRow(client, table, mutation.id);
+  if (after === undefined || (table.scope === 'personal' && after.uid !== uid)) {
+    return { id: mutation.id, status: 'rejected', reason: 'forbidden' };
+  }
+  return { id: mutation.id, status: 'superseded', serverRow: rowToJson(after) };
+}
+
+async function applyDelete(
+  client: pg.PoolClient,
+  batch: Batch,
+  table: SyncTable,
+  mutation: Mutation,
+  rev: number,
+): Promise<MutationResult> {
+  const uid = batch.context.member.uid;
+  const written = await client.query(deleteSql(table), [
+    mutation.id,
+    uid,
+    mutation.clientUpdatedAt,
+    rev,
+  ]);
+  if (written.rows.length > 0) {
+    return { id: mutation.id, status: 'applied' };
+  }
+  const stored = await storedRow(client, table, mutation.id);
+  if (stored === undefined || stored.deleted_at !== null) {
+    // Never reached the server, or already deleted: nothing left to do.
+    return { id: mutation.id, status: 'applied' };
+  }
+  return { id: mutation.id, status: 'superseded', serverRow: rowToJson(stored) };
+}
+
+// One mutation inside a savepoint: a bad or refused row is rejected without losing the batch.
+async function applyMutation(
+  client: pg.PoolClient,
+  batch: Batch,
+  mutation: Mutation,
+): Promise<MutationResult> {
+  const table = findSyncTable(mutation.table);
+  if (table === undefined) {
+    return { id: mutation.id, status: 'rejected', reason: 'unknown_table' };
+  }
+  await client.query('savepoint mutation');
+  try {
+    const stored = await storedRow(client, table, mutation.id);
+    const projectId = await projectOf(client, batch, table, mutation.id, mutation.fields, stored);
+    if (projectId === undefined) {
+      await client.query('release savepoint mutation');
+      return { id: mutation.id, status: 'rejected', reason: 'missing_parent' };
+    }
+    const problem = await permissionProblem(client, batch, table, mutation, stored, projectId);
+    if (problem !== null) {
+      await client.query('release savepoint mutation');
+      return { id: mutation.id, status: 'rejected', reason: problem };
+    }
+    const rev = await nextRev(client);
+    let result: MutationResult;
+    if (mutation.op === 'delete') {
+      result = await applyDelete(client, batch, table, mutation, rev);
+    } else {
+      result = await applyUpsert(client, batch, table, mutation, rev, stored, projectId);
+    }
+    await client.query('release savepoint mutation');
+    return result;
+  } catch (error) {
+    await client.query('rollback to savepoint mutation');
+    const code = pgCode(error);
+    if (code.startsWith('22') || code.startsWith('23')) {
+      return { id: mutation.id, status: 'rejected', reason: `invalid_row:${code}` };
+    }
+    throw error;
+  }
+}
+
+async function applyBatch(
+  client: pg.PoolClient,
+  context: PushContext,
+  mutations: Mutation[],
+): Promise<PushOutcome> {
+  // The row lock: every other push in the company waits here, so revs commit in order.
+  await client.query('select last_rev from sync_counter for update');
+  const reach = await reachable(client, context.member);
+  const batch = new Batch(context, reach, mutations);
+
+  const results: MutationResult[] = [];
+  for (const mutation of mutations) {
+    results.push(await applyMutation(client, batch, mutation));
+  }
+  const state = await client.query<{ last_rev: string }>('select last_rev from sync_counter');
+  return {
+    results,
+    serverRev: Number(state.rows[0]!.last_rev),
+    issueChanges: batch.issueChanges,
+  };
+}
+
+function isForeignKeyViolation(error: unknown): boolean {
+  return pgCode(error) === '23503';
+}
+
+// Fast path: the whole batch in one transaction. Foreign keys are checked at commit; if one
+// fails we cannot tell which row, so the slow path retries one mutation per transaction.
+export async function pushMutations(
+  pool: pg.Pool,
+  context: PushContext,
+  mutations: Mutation[],
+): Promise<PushOutcome> {
+  try {
+    return await withTransaction(pool, (client) => applyBatch(client, context, mutations));
+  } catch (error) {
+    if (!isForeignKeyViolation(error)) {
+      throw error;
+    }
+  }
+
+  const results: MutationResult[] = [];
+  const issueChanges: IssueChange[] = [];
+  let serverRev = 0;
+  for (const mutation of mutations) {
+    try {
+      const single = await withTransaction(pool, (client) =>
+        applyBatch(client, context, [mutation]),
+      );
+      results.push(single.results[0]!);
+      issueChanges.push(...single.issueChanges);
+      serverRev = single.serverRev;
+    } catch (error) {
+      if (!isForeignKeyViolation(error)) {
+        throw error;
+      }
+      results.push({ id: mutation.id, status: 'rejected', reason: 'missing_parent' });
+    }
+  }
+  const state = await pool.query<{ last_rev: string }>('select last_rev from sync_counter');
+  serverRev = Number(state.rows[0]?.last_rev ?? serverRev);
+  return { results, serverRev, issueChanges };
+}

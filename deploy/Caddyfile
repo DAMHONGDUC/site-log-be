@@ -1,0 +1,5 @@
+# HTTPS for the API domain; WebSocket upgrades pass through as they are.
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy api:3000
+}

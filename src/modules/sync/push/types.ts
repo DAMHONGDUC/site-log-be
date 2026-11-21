@@ -1,6 +1,5 @@
-import type { Member, Reach } from '../../team/members/member.js';
-import type { AccessService } from '../../team/access/access-service.js';
-import type { IssueChange } from '../../notifications/issue-notifier.js';
+import type { Member, Reach, AccessService } from '../../team/index.js';
+import type { IssueChange } from '../../notifications/index.js';
 import { MUTATION_STATUS, type MutationOp } from '../../../constants/data/sync.js';
 
 export interface Mutation {

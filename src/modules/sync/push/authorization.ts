@@ -1,8 +1,7 @@
 import type pg from 'pg';
 import { RejectReason } from '../../../constants/http/error-codes.js';
 import { type Action, ACTION } from '../../../constants/domain/roles.js';
-import { reaches } from '../../team/members/member.js';
-import { can } from '../../team/access/permissions.js';
+import { reaches, can } from '../../team/index.js';
 import type { SyncTable } from '../tables.js';
 import type { Batch, Mutation, PushContext } from './types.js';
 import { MUTATION_OP, SYNC_COLUMN, SYNC_SCOPE } from '../../../constants/data/sync.js';

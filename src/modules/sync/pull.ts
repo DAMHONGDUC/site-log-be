@@ -1,7 +1,6 @@
 import type pg from 'pg';
-import type { Member, Reach } from '../team/members/member.js';
+import type { Member, Reach, AccessService } from '../team/index.js';
 import type { Repositories } from '../../data/repositories.js';
-import type { AccessService } from '../team/access/access-service.js';
 import { rowToJson } from './case.js';
 import { syncTables, type SyncTable } from './tables.js';
 import { SYNC_SCOPE } from '../../constants/data/sync.js';

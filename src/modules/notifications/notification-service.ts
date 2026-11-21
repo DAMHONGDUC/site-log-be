@@ -1,8 +1,9 @@
-import type { PushKind } from '../../constants/domain/push.js';
+import { type PushKind, PUSH_OUTCOME } from '../../constants/domain/push.js';
 import type { Database } from '../../data/database.js';
 import type { Log } from '../../core/log.js';
 import type { PushSender } from '../../integrations/fcm.js';
 import { PUSH_TEMPLATES, type PushData } from './push-templates.js';
+import { LOG } from '../../constants/messages/log.js';
 
 export interface Delivery<K extends PushKind> {
   kind: K;
@@ -42,18 +43,18 @@ export class NotificationService {
             ...content,
             uid: device.uid,
           });
-          if (outcome === 'unregistered') {
+          if (outcome === PUSH_OUTCOME.unregistered) {
             await this.db.repos.devices.removeToken(device.token);
           } else {
             sent += 1;
           }
-          this.log.info({ uid: device.uid, kind: delivery.kind, outcome }, 'push sent');
+          this.log.info({ uid: device.uid, kind: delivery.kind, outcome }, LOG.push.sent);
         } catch (error) {
-          this.log.error({ err: error, uid: device.uid, kind: delivery.kind }, 'push failed');
+          this.log.error({ err: error, uid: device.uid, kind: delivery.kind }, LOG.push.failed);
         }
       }
     } catch (error) {
-      this.log.error({ err: error, kind: delivery.kind }, 'push: device lookup failed');
+      this.log.error({ err: error, kind: delivery.kind }, LOG.push.deviceLookupFailed);
     }
     return sent;
   }

@@ -3,6 +3,8 @@ import { ISSUE_STATUS_LABEL, SEVERITY_LABEL } from '../../constants/domain/issue
 import { LIMITS } from '../../constants/runtime/limits.js';
 import { ROLE_LABEL, type Role } from '../../constants/domain/roles.js';
 import { TEXT_CUT } from '../../constants/runtime/units.js';
+import { PUSH_TEXT } from '../../constants/messages/push-text.js';
+import { ACCESS_CHANGE } from '../../constants/domain/team.js';
 
 // What each push kind needs to be written.
 export interface PushData {
@@ -11,9 +13,14 @@ export interface PushData {
   issueRechecked: { issueId: string; title: string; status: string; actorName: string };
   dueSoon: { projectId: string; projectName: string; count: number; titles: string[] };
   access:
-    | { change: 'added'; projectId: string; projectName: string; actorName: string }
-    | { change: 'removed'; projectName: string; actorName: string }
-    | { change: 'role'; role: Role; actorName: string };
+    | {
+        change: typeof ACCESS_CHANGE.added;
+        projectId: string;
+        projectName: string;
+        actorName: string;
+      }
+    | { change: typeof ACCESS_CHANGE.removed; projectName: string; actorName: string }
+    | { change: typeof ACCESS_CHANGE.role; role: Role; actorName: string };
 }
 
 export interface PushContent {
@@ -27,44 +34,45 @@ type Templates = { [K in PushKind]: (data: PushData[K]) => PushContent };
 // One template per kind: a new kind is one entry here (and its PushData shape).
 export const PUSH_TEMPLATES: Templates = {
   uploadsVerified: ({ sessionId, files, projectName }) => ({
-    title: 'Walkthrough is safe',
-    body: `All ${files ?? 'the'} files${projectName ? ` of ${projectName}` : ''} are uploaded and verified.`,
+    title: PUSH_TEXT.uploadsVerified.title,
+    body: PUSH_TEXT.uploadsVerified.body(files, projectName),
     deepLink: DEEP_LINK.session(sessionId),
   }),
   issueAssigned: ({ issueId, title, severity, dueDate }) => ({
-    title: `Assigned to you · ${SEVERITY_LABEL[severity] ?? 'Issue'}`,
-    body: `${title}.${dueDate ? ` Due ${dueDate.slice(0, TEXT_CUT.isoDate)}.` : ''}`,
+    title: PUSH_TEXT.issueAssigned.title(SEVERITY_LABEL[severity]),
+    body: PUSH_TEXT.issueAssigned.body(title, dueDate?.slice(0, TEXT_CUT.isoDate) ?? null),
     deepLink: DEEP_LINK.issue(issueId),
   }),
   issueRechecked: ({ issueId, title, status, actorName }) => ({
-    title: `Re-check: ${ISSUE_STATUS_LABEL[status] ?? status}`,
-    body: `${actorName || FALLBACK_NAME.actor} re-checked ${title}.`,
+    title: PUSH_TEXT.issueRechecked.title(ISSUE_STATUS_LABEL[status] ?? status),
+    body: PUSH_TEXT.issueRechecked.body(actorName || FALLBACK_NAME.actor, title),
     deepLink: DEEP_LINK.issue(issueId),
   }),
   dueSoon: ({ projectId, projectName, count, titles }) => ({
-    title: count === 1 ? '1 issue due tomorrow' : `${count} issues due tomorrow`,
-    body: `${projectName} · ${titles.slice(0, LIMITS.dueSoonTitlesInBody).join(', ')}`,
+    title: PUSH_TEXT.dueSoon.title(count),
+    body: PUSH_TEXT.dueSoon.body(projectName, titles.slice(0, LIMITS.dueSoonTitlesInBody)),
     deepLink: DEEP_LINK.project(projectId),
   }),
   access: (data) => {
     const actor = data.actorName || FALLBACK_NAME.admin;
-    if (data.change === 'role') {
+    const text = PUSH_TEXT.access;
+    if (data.change === ACCESS_CHANGE.role) {
       return {
-        title: `Your role is now ${ROLE_LABEL[data.role]}`,
-        body: `${actor} changed your role.`,
+        title: text.roleTitle(ROLE_LABEL[data.role]),
+        body: text.roleBody(actor),
         deepLink: DEEP_LINK.none,
       };
     }
-    if (data.change === 'added') {
+    if (data.change === ACCESS_CHANGE.added) {
       return {
-        title: `Added to ${data.projectName || FALLBACK_NAME.project}`,
-        body: `${actor} added you to this project.`,
+        title: text.addedTitle(data.projectName || FALLBACK_NAME.project),
+        body: text.addedBody(actor),
         deepLink: DEEP_LINK.project(data.projectId),
       };
     }
     return {
-      title: `Removed from ${data.projectName || FALLBACK_NAME.project}`,
-      body: `${actor} removed you from this project.`,
+      title: text.removedTitle(data.projectName || FALLBACK_NAME.project),
+      body: text.removedBody(actor),
       deepLink: DEEP_LINK.none,
     };
   },

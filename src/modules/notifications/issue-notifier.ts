@@ -1,5 +1,6 @@
 import type { Member } from '../team/members/member.js';
 import type { NotificationService } from './notification-service.js';
+import { PUSH_KIND } from '../../constants/domain/push.js';
 
 // An issue row before and after one applied push (snake_case columns).
 export interface IssueChange {
@@ -24,7 +25,7 @@ export class IssueNotifier {
       const assignee = text(after.assignee_uid);
       if (assignee !== '' && assignee !== text(before?.assignee_uid)) {
         await this.notifications.send({
-          kind: 'issueAssigned',
+          kind: PUSH_KIND.issueAssigned,
           recipients: [assignee],
           actorUid: actor.uid,
           data: {
@@ -37,7 +38,7 @@ export class IssueNotifier {
       }
       if (before !== undefined && this.wasRechecked(before, after)) {
         await this.notifications.send({
-          kind: 'issueRechecked',
+          kind: PUSH_KIND.issueRechecked,
           recipients: [text(after.created_by), assignee],
           actorUid: actor.uid,
           data: {

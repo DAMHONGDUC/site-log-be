@@ -23,7 +23,11 @@ const app = await buildApp({
   config,
   pool,
   tokens,
-  storage: new Storage(createS3Client(config.awsRegion), config.s3Bucket, config.presignTtlSeconds),
+  storage: new Storage(
+    createS3Client({ region: config.awsRegion, endpoint: config.s3Endpoint }),
+    config.s3Bucket,
+    config.presignTtlSeconds,
+  ),
   hub: new RealtimeHub(config, pool),
 });
 await app.ready();

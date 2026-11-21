@@ -19,13 +19,21 @@ import { HTTP_STATUS } from '../constants/http-status.js';
 import { MS_PER_SECOND } from '../constants/units.js';
 import type { Readable } from 'node:stream';
 
-export function createS3Client(region: string): S3Client {
+export interface S3ClientOptions {
+  region: string;
+  // A local S3-compatible server (development); unset means AWS S3.
+  endpoint?: string | undefined;
+}
+
+export function createS3Client({ region, endpoint }: S3ClientOptions): S3Client {
   return new S3Client({
     region,
     // Without these, the SDK adds checksum parameters to presigned URLs that the iOS
     // upload does not send, and S3 rejects every PUT.
     requestChecksumCalculation: 'WHEN_REQUIRED',
     responseChecksumValidation: 'WHEN_REQUIRED',
+    // Local servers answer at one host, so the bucket goes in the path, not the host name.
+    ...(endpoint === undefined ? {} : { endpoint, forcePathStyle: true }),
   });
 }
 

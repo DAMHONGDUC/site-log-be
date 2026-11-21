@@ -10,7 +10,7 @@ const config = loadConfig();
 const log = createLogger(config.logLevel);
 const pool = createPool(config);
 const storage = new Storage(
-  createS3Client(config.awsRegion),
+  createS3Client({ region: config.awsRegion, endpoint: config.s3Endpoint }),
   config.s3Bucket,
   config.presignTtlSeconds,
 );

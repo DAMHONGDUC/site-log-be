@@ -16,7 +16,7 @@ if (config.firebaseServiceAccountBase64 === undefined) {
 const pool = createPool(config);
 const tokens = createFirebaseVerifier(config.firebaseServiceAccountBase64);
 const storage = new Storage(
-  createS3Client(config.awsRegion),
+  createS3Client({ region: config.awsRegion, endpoint: config.s3Endpoint }),
   config.s3Bucket,
   config.presignTtlSeconds,
 );

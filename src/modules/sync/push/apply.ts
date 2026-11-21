@@ -7,6 +7,7 @@ import { permissionProblem } from './authorization.js';
 import { projectOf } from './placement.js';
 import {
   PG,
+  savepointSql,
   deleteSql,
   isPrimaryKeyViolation,
   ownerColumn,
@@ -22,6 +23,13 @@ import {
   type PushContext,
   type PushOutcome,
 } from './types.js';
+import {
+  MUTATION_OP,
+  MUTATION_STATUS,
+  SAVEPOINT,
+  SYNC_SCOPE,
+} from '../../../constants/data/sync.js';
+import { TABLE } from '../../../constants/data/db.js';
 
 // The row an upsert writes, or the reason it cannot be written.
 function recordFor(
@@ -62,17 +70,17 @@ async function applyUpsert(
   const uid = batch.context.member.uid;
   const record = recordFor(table, mutation, uid, rev, projectId);
   if (typeof record === 'string') {
-    return { id: mutation.id, status: 'rejected', reason: record };
+    return { id: mutation.id, status: MUTATION_STATUS.rejected, reason: record };
   }
 
   // A failed statement poisons the transaction, so the insert gets its own savepoint:
   // after a unique violation we still need to read the row that won.
-  await client.query('savepoint upsert');
+  await client.query(savepointSql.open(SAVEPOINT.upsert));
   try {
     const written = await client.query(upsertSql(table), [JSON.stringify(record)]);
-    await client.query('release savepoint upsert');
+    await client.query(savepointSql.release(SAVEPOINT.upsert));
     if (written.rows.length > 0) {
-      if (table.name === 'issues') {
+      if (table.name === TABLE.issues) {
         batch.issueChanges.push({
           issueId: mutation.id,
           projectId: projectId!,
@@ -80,10 +88,10 @@ async function applyUpsert(
           after: written.rows[0],
         });
       }
-      return { id: mutation.id, status: 'applied' };
+      return { id: mutation.id, status: MUTATION_STATUS.applied };
     }
   } catch (error) {
-    await client.query('rollback to savepoint upsert');
+    await client.query(savepointSql.rollback(SAVEPOINT.upsert));
     if (
       pgCode(error) === PG.uniqueViolation &&
       table.naturalKey !== null &&
@@ -91,7 +99,7 @@ async function applyUpsert(
     ) {
       const owner = await rowWithSameNaturalKey(client, table, uid, record);
       if (owner !== undefined) {
-        return { id: mutation.id, status: 'superseded', serverRow: rowToJson(owner) };
+        return { id: mutation.id, status: MUTATION_STATUS.superseded, serverRow: rowToJson(owner) };
       }
     }
     throw error;
@@ -99,10 +107,10 @@ async function applyUpsert(
 
   // Nothing written: a newer write, or a tombstone.
   const after = await storedRow(client, table, mutation.id);
-  if (after === undefined || (table.scope === 'personal' && after.uid !== uid)) {
-    return { id: mutation.id, status: 'rejected', reason: RejectReason.forbidden };
+  if (after === undefined || (table.scope === SYNC_SCOPE.personal && after.uid !== uid)) {
+    return { id: mutation.id, status: MUTATION_STATUS.rejected, reason: RejectReason.forbidden };
   }
-  return { id: mutation.id, status: 'superseded', serverRow: rowToJson(after) };
+  return { id: mutation.id, status: MUTATION_STATUS.superseded, serverRow: rowToJson(after) };
 }
 
 async function applyDelete(
@@ -119,14 +127,14 @@ async function applyDelete(
     rev,
   ]);
   if (written.rows.length > 0) {
-    return { id: mutation.id, status: 'applied' };
+    return { id: mutation.id, status: MUTATION_STATUS.applied };
   }
   const stored = await storedRow(client, table, mutation.id);
   if (stored === undefined || stored.deleted_at !== null) {
     // Never reached the server, or already deleted: nothing left to do.
-    return { id: mutation.id, status: 'applied' };
+    return { id: mutation.id, status: MUTATION_STATUS.applied };
   }
-  return { id: mutation.id, status: 'superseded', serverRow: rowToJson(stored) };
+  return { id: mutation.id, status: MUTATION_STATUS.superseded, serverRow: rowToJson(stored) };
 }
 
 // One mutation inside a savepoint: a bad or refused row is rejected without losing the batch.
@@ -138,34 +146,42 @@ async function applyMutation(
 ): Promise<MutationResult> {
   const table = findSyncTable(mutation.table);
   if (table === undefined) {
-    return { id: mutation.id, status: 'rejected', reason: RejectReason.unknownTable };
+    return { id: mutation.id, status: MUTATION_STATUS.rejected, reason: RejectReason.unknownTable };
   }
-  await client.query('savepoint mutation');
+  await client.query(savepointSql.open(SAVEPOINT.mutation));
   try {
     const stored = await storedRow(client, table, mutation.id);
     const projectId = await projectOf(client, batch, table, mutation.id, mutation.fields, stored);
     let result: MutationResult;
     if (projectId === undefined) {
-      result = { id: mutation.id, status: 'rejected', reason: RejectReason.missingParent };
+      result = {
+        id: mutation.id,
+        status: MUTATION_STATUS.rejected,
+        reason: RejectReason.missingParent,
+      };
     } else {
       const problem = await permissionProblem(client, batch, table, mutation, stored, projectId);
       if (problem !== null) {
-        result = { id: mutation.id, status: 'rejected', reason: problem };
+        result = { id: mutation.id, status: MUTATION_STATUS.rejected, reason: problem };
       } else {
         const rev = await repos.syncState.nextRev();
         result =
-          mutation.op === 'delete'
+          mutation.op === MUTATION_OP.delete
             ? await applyDelete(client, batch, table, mutation, rev)
             : await applyUpsert(client, batch, table, mutation, rev, stored, projectId);
       }
     }
-    await client.query('release savepoint mutation');
+    await client.query(savepointSql.release(SAVEPOINT.mutation));
     return result;
   } catch (error) {
-    await client.query('rollback to savepoint mutation');
+    await client.query(savepointSql.rollback(SAVEPOINT.mutation));
     const code = pgCode(error);
     if (code.startsWith(PG.badValueClass) || code.startsWith(PG.ruleClass)) {
-      return { id: mutation.id, status: 'rejected', reason: RejectReason.invalidRow(code) };
+      return {
+        id: mutation.id,
+        status: MUTATION_STATUS.rejected,
+        reason: RejectReason.invalidRow(code),
+      };
     }
     throw error;
   }

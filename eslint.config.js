@@ -1,5 +1,6 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
+import boundaries from './tools/eslint/boundaries.js';
 
 const HTTP_METHODS = '/^(get|post|put|patch|delete)$/';
 
@@ -93,6 +94,12 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    // Dependency direction: features meet only through their index.ts; constants are a leaf.
+    files: ['src/**/*.ts', 'scripts/**/*.ts'],
+    plugins: { boundaries },
+    rules: { 'boundaries/feature-index': 'error', 'boundaries/constants-leaf': 'error' },
   },
   {
     // The npm scripts follow the same string rule.

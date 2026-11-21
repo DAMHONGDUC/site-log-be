@@ -1,7 +1,7 @@
 import { and, count, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
-import { OPEN_ISSUE_STATUSES } from '../../constants/domain/issues.js';
-import type { SqlDb } from '../../data/drizzle.js';
-import { issues, projects } from '../../data/schema/index.js';
+import { OPEN_ISSUE_STATUSES } from '../../../constants/domain/issues.js';
+import type { SqlDb } from '../../../data/drizzle.js';
+import { issues, projects } from '../../../data/schema/index.js';
 
 export interface DueSoonGroup {
   assigneeUid: string;

@@ -1,4 +1,4 @@
-import { ApiRoutes } from '../../../src/constants/http/api-routes.js';
+import { ApiRoutes } from '../../../../src/constants/http/api-routes.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   auth,
@@ -7,14 +7,14 @@ import {
   ids,
   resetDatabase,
   type TestContext,
-} from '../../helpers/helpers.js';
+} from '../../../helpers/helpers.js';
 import {
   locationMutation,
   projectMutation,
   pullAs,
   pushAs,
   sessionMutation,
-} from '../../helpers/sync-helpers.js';
+} from '../../../helpers/sync-helpers.js';
 
 describe('sync', () => {
   let context: TestContext;

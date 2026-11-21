@@ -6,8 +6,8 @@ import {
   resetDatabase,
   sha,
   type TestContext,
-} from '../../helpers/helpers.js';
-import { captureMutation, pullAs, pushAs, seedProject } from '../../helpers/sync-helpers.js';
+} from '../../../helpers/helpers.js';
+import { captureMutation, pullAs, pushAs, seedProject } from '../../../helpers/sync-helpers.js';
 
 function annotationMutation(clientUpdatedAt: string, shapes: object[]) {
   // The annotation id is the capture id: one layer per photo.

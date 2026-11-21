@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
-import type { SqlDb } from '../../data/drizzle.js';
-import { phrases } from '../../data/schema/index.js';
+import type { SqlDb } from '../../../data/drizzle.js';
+import { phrases } from '../../../data/schema/index.js';
 
 // Phrases are the only personal synced rows (they keep uid).
 export class PhraseRepository {

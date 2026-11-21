@@ -6,8 +6,8 @@ import {
   resetDatabase,
   sha,
   type TestContext,
-} from '../../helpers/helpers.js';
-import { captureMutation, pullAs, pushAs, seedProject } from '../../helpers/sync-helpers.js';
+} from '../../../helpers/helpers.js';
+import { captureMutation, pullAs, pushAs, seedProject } from '../../../helpers/sync-helpers.js';
 
 describe('captures', () => {
   let context: TestContext;

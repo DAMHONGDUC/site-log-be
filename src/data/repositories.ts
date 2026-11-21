@@ -2,13 +2,13 @@ import type { Queryable } from './database.js';
 import { toDrizzle } from './drizzle.js';
 import { DeviceRepository } from '../modules/devices/device-repository.js';
 import { InvitationRepository } from '../modules/team/invitations/invitation-repository.js';
-import { IssueRepository } from '../modules/sync/issue-repository.js';
+import { IssueRepository } from '../modules/sync/repositories/issue-repository.js';
 import { MemberEventRepository } from '../modules/team/members/member-event-repository.js';
 import { MemberRepository } from '../modules/team/members/member-repository.js';
-import { PhraseRepository } from '../modules/sync/phrase-repository.js';
+import { PhraseRepository } from '../modules/sync/repositories/phrase-repository.js';
 import { ProjectMemberRepository } from '../modules/team/access/project-member-repository.js';
-import { ProjectRepository } from '../modules/sync/project-repository.js';
-import { SyncStateRepository } from '../modules/sync/sync-state-repository.js';
+import { ProjectRepository } from '../modules/sync/repositories/project-repository.js';
+import { SyncStateRepository } from '../modules/sync/repositories/sync-state-repository.js';
 import { UploadRepository } from '../modules/uploads/transfer/upload-repository.js';
 
 // Every repository, bound to one connection (the pool or a transaction).

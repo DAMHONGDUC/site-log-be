@@ -4,8 +4,8 @@ import {
   createTestContext,
   resetDatabase,
   type TestContext,
-} from '../../helpers/helpers.js';
-import { pushAs } from '../../helpers/sync-helpers.js';
+} from '../../../helpers/helpers.js';
+import { pushAs } from '../../../helpers/sync-helpers.js';
 
 function brandingMutation(id: string, companyName: string) {
   return {

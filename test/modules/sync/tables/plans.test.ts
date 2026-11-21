@@ -7,9 +7,9 @@ import {
   resetDatabase,
   sha,
   type TestContext,
-} from '../../helpers/helpers.js';
-import { pushAs, seedProject } from '../../helpers/sync-helpers.js';
-import { beginUpload } from '../../helpers/upload-helpers.js';
+} from '../../../helpers/helpers.js';
+import { pushAs, seedProject } from '../../../helpers/sync-helpers.js';
+import { beginUpload } from '../../../helpers/upload-helpers.js';
 
 const sheetId = '41414141-4141-4141-8141-414141414141';
 

@@ -1,14 +1,19 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createLogger } from '../../../src/core/logger.js';
-import { purgeTombstones } from '../../../src/workers/purge.js';
+import { createLogger } from '../../../../src/core/logger.js';
+import { purgeTombstones } from '../../../../src/workers/purge.js';
 import {
   closeTestContext,
   createTestContext,
   ids,
   resetDatabase,
   type TestContext,
-} from '../../helpers/helpers.js';
-import { locationMutation, projectMutation, pullAs, pushAs } from '../../helpers/sync-helpers.js';
+} from '../../../helpers/helpers.js';
+import {
+  locationMutation,
+  projectMutation,
+  pullAs,
+  pushAs,
+} from '../../../helpers/sync-helpers.js';
 
 describe('tombstone purge', () => {
   let context: TestContext;

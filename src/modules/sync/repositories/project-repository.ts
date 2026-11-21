@@ -1,6 +1,6 @@
 import { and, inArray, isNull } from 'drizzle-orm';
-import type { SqlDb } from '../../data/drizzle.js';
-import { projects } from '../../data/schema/index.js';
+import type { SqlDb } from '../../../data/drizzle.js';
+import { projects } from '../../../data/schema/index.js';
 
 export class ProjectRepository {
   constructor(private readonly db: SqlDb) {}

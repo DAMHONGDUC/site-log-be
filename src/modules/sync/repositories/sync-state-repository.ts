@@ -1,7 +1,7 @@
 import { and, isNotNull, lt, sql } from 'drizzle-orm';
-import type { SqlDb } from '../../data/drizzle.js';
-import { SYNCED_TABLES, syncCounter } from '../../data/schema/index.js';
-import { daysAgo } from '../../data/sql-time.js';
+import type { SqlDb } from '../../../data/drizzle.js';
+import { SYNCED_TABLES, syncCounter } from '../../../data/schema/index.js';
+import { daysAgo } from '../../../data/sql-time.js';
 
 export interface PurgeResult {
   purged: number;

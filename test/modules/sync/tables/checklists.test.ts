@@ -5,8 +5,8 @@ import {
   ids,
   resetDatabase,
   type TestContext,
-} from '../../helpers/helpers.js';
-import { pushAs, seedProject } from '../../helpers/sync-helpers.js';
+} from '../../../helpers/helpers.js';
+import { pushAs, seedProject } from '../../../helpers/sync-helpers.js';
 
 const templateId = '51515151-5151-4151-8151-515151515151';
 const itemId = '52525252-5252-4252-8252-525252525252';

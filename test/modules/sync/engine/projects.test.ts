@@ -1,4 +1,4 @@
-import { ApiRoutes } from '../../../src/constants/http/api-routes.js';
+import { ApiRoutes } from '../../../../src/constants/http/api-routes.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   auth,
@@ -7,7 +7,7 @@ import {
   ids,
   resetDatabase,
   type TestContext,
-} from '../../helpers/helpers.js';
+} from '../../../helpers/helpers.js';
 
 // F03 has no sync yet: rows are inserted with SQL, as the push will do in F04.
 describe('project tables', () => {

@@ -5,8 +5,8 @@ import {
   ids,
   resetDatabase,
   type TestContext,
-} from '../../helpers/helpers.js';
-import { pushAs, seedProject } from '../../helpers/sync-helpers.js';
+} from '../../../helpers/helpers.js';
+import { pushAs, seedProject } from '../../../helpers/sync-helpers.js';
 
 const issueId = '12121212-1212-4212-8212-121212121212';
 

@@ -1,6 +1,5 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import type { WebSocket } from 'ws';
-import type { AppDeps } from '../../app.js';
 import { TokenRejectedError } from '../../core/auth.js';
 import { ApiRoutes } from '../../constants/http/api-routes.js';
 import { DURATIONS } from '../../constants/runtime/durations.js';
@@ -20,7 +19,8 @@ interface IncomingMessage {
 }
 
 // /ws: an observation channel. The token comes in the first message, never in the URL.
-export function websocketRoutes(app: FastifyInstance, deps: AppDeps): void {
+export const websocketRoutes: FastifyPluginAsync = async (app) => {
+  const { deps } = app;
   app.get(ApiRoutes.WEBSOCKET, { websocket: true }, (socket: WebSocket, request) => {
     let client: ClientSocket | undefined = undefined;
     let member: Member | undefined = undefined;
@@ -141,4 +141,4 @@ export function websocketRoutes(app: FastifyInstance, deps: AppDeps): void {
       }
     });
   });
-}
+};

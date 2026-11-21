@@ -1,15 +1,14 @@
 import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyInstance } from 'fastify';
-import type { AppDeps } from '../../../app.js';
+import type { FastifyPluginAsync } from 'fastify';
 import { ApiRoutes } from '../../../constants/http/api-routes.js';
 import { LIMITS } from '../../../constants/runtime/limits.js';
-import type { Guards } from '../../../core/http/guards.js';
 import { Schemas } from '../../../core/http/schemas.js';
 import { FILE_ACCESS } from '../../../constants/domain/team.js';
 import { LOG } from '../../../constants/messages/log.js';
 
 // A device shows a photo it pulled: short-lived GET URLs for keys in projects it reaches.
-export function mediaRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards): void {
+export const mediaRoutes: FastifyPluginAsync = async (app) => {
+  const { deps, guards } = app;
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
   const Body = Type.Object({
     keys: Type.Array(Schemas.objectKey(), { minItems: 1, maxItems: LIMITS.mediaKeysPerRequest }),
@@ -28,4 +27,4 @@ export function mediaRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards)
       return { urls, expiresAt: deps.storage.expiresAt(new Date()) };
     },
   );
-}
+};

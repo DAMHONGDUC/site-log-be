@@ -1,7 +1,6 @@
 import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyPluginAsync } from 'fastify';
 import { setTimeout as sleep } from 'node:timers/promises';
-import type { AppDeps } from '../../../app.js';
 import { ApiRoutes } from '../../../constants/http/api-routes.js';
 import { ErrorCode } from '../../../constants/http/error-codes.js';
 import { LIMITS } from '../../../constants/runtime/limits.js';
@@ -15,7 +14,8 @@ import { VERIFY_STATE } from '../../../constants/data/enums.js';
 
 // Public: anyone holding a report can check a code printed under a photo.
 // It returns facts about the file only: never the image, a URL, the uid or the location.
-export function verifyRoutes(app: FastifyInstance, deps: AppDeps): void {
+export const verifyRoutes: FastifyPluginAsync = async (app) => {
+  const { deps } = app;
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
 
   const Params = Type.Object({
@@ -64,4 +64,4 @@ export function verifyRoutes(app: FastifyInstance, deps: AppDeps): void {
       };
     },
   );
-}
+};

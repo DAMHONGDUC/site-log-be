@@ -1,13 +1,12 @@
 import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyInstance } from 'fastify';
-import type { AppDeps } from '../../../app.js';
+import type { FastifyPluginAsync } from 'fastify';
 import { ApiRoutes } from '../../../constants/http/api-routes.js';
 import { LIMITS, PATTERNS } from '../../../constants/runtime/limits.js';
-import type { Guards } from '../../../core/http/guards.js';
 import { Schemas, rateLimit } from '../../../core/http/schemas.js';
 
 // Presigned uploads (01-api §7); the rules live in UploadService.
-export function uploadRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards): void {
+export const uploadRoutes: FastifyPluginAsync = async (app) => {
+  const { deps, guards } = app;
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
   const { uploads } = deps.services;
 
@@ -58,4 +57,4 @@ export function uploadRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
     { preHandler: guards.requireUser, schema: { params: Schemas.idParams() } },
     async (request) => uploads.abort(request.uid, request.params.id),
   );
-}
+};

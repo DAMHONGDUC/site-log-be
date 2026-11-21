@@ -92,151 +92,163 @@ export class UploadRepository {
   }
 
   async markCompleted(id: string, code: string): Promise<UploadRow> {
-    const result = await this.db.query<UploadRow>(
-      `update uploads
-          set state = 'completed', completed_at = now(),
-              verification_code = $2, verify_state = 'registered'
-        where id = $1
-      returning *`,
-      [id, code],
-    );
-    return result.rows[0]!;
+    const [row] = await this.db
+      .update(uploads)
+      .set({
+        state: UPLOAD_STATE.completed,
+        completedAt: sql`now()`,
+        verificationCode: code,
+        verifyState: VERIFY_STATE.registered,
+      })
+      .where(eq(uploads.id, id))
+      .returning();
+    return row!;
   }
 
   // true when it was still open.
   async markAborted(id: string): Promise<boolean> {
-    const result = await this.db.query(
-      `update uploads set state = 'aborted' where id = $1 and state = 'created'`,
-      [id],
-    );
+    const result = await this.db
+      .update(uploads)
+      .set({ state: UPLOAD_STATE.aborted })
+      .where(and(eq(uploads.id, id), isOpen));
     return (result.rowCount ?? 0) > 0;
   }
 
   // The completed upload that already holds the key of this (caller's) upload.
   async completedWithSameKey(id: string, uid: string): Promise<UploadRow | undefined> {
-    const result = await this.db.query<UploadRow>(
-      `select u.* from uploads u
-         join uploads mine on mine.object_key = u.object_key
-        where mine.id = $1 and mine.uid = $2 and u.state = 'completed'`,
-      [id, uid],
-    );
-    return result.rows[0];
+    const mine = alias(uploads, UPLOAD_ALIAS.mine);
+    const [row] = await this.db
+      .select({ upload: uploads })
+      .from(uploads)
+      .innerJoin(mine, eq(mine.objectKey, uploads.objectKey))
+      .where(and(eq(mine.id, id), eq(mine.uid, uid), isCompleted));
+    return row?.upload;
   }
 
   async findCompletedByCode(code: string): Promise<UploadRow | undefined> {
-    const result = await this.db.query<UploadRow>(
-      `select * from uploads where verification_code = $1 and state = 'completed'`,
-      [code],
-    );
-    return result.rows[0];
+    const [row] = await this.db
+      .select()
+      .from(uploads)
+      .where(and(eq(uploads.verificationCode, code), isCompleted));
+    return row;
   }
 
   async snapshot(id: string): Promise<UploadSnapshotRow | undefined> {
-    const result = await this.db.query<UploadSnapshotRow>(
-      'select id, object_key, sha256, state, verify_state from uploads where id = $1',
-      [id],
-    );
-    return result.rows[0];
+    const [row] = await this.db.select(SNAPSHOT).from(uploads).where(eq(uploads.id, id));
+    return row;
   }
 
   async finishedInSession(sessionId: string): Promise<UploadSnapshotRow[]> {
-    const result = await this.db.query<UploadSnapshotRow>(
-      `select id, object_key, sha256, state, verify_state from uploads
-        where session_id = $1 and state in ('completed', 'aborted')`,
-      [sessionId],
-    );
-    return result.rows;
+    return this.db
+      .select(SNAPSHOT)
+      .from(uploads)
+      .where(
+        and(
+          eq(uploads.sessionId, sessionId),
+          inArray(uploads.state, [UPLOAD_STATE.completed, UPLOAD_STATE.aborted]),
+        ),
+      );
   }
 
   // Claims the oldest completed, unverified upload (skipping rows other workers hold).
   async claimNextToVerify(): Promise<UploadRow | undefined> {
-    const result = await this.db.query<UploadRow>(
-      `update uploads set verify_claimed_at = now()
-        where id = (
-          select id from uploads
-           where state = 'completed' and verify_state = 'registered'
-             and (verify_claimed_at is null or verify_claimed_at < now() - $1::interval)
-           order by completed_at
-           limit 1
-           for update skip locked
-        )
-    returning *`,
-      [DURATIONS.verifyClaimTimeout],
-    );
-    return result.rows[0];
+    const next = this.db
+      .select({ id: uploads.id })
+      .from(uploads)
+      .where(
+        and(
+          isCompleted,
+          eq(uploads.verifyState, VERIFY_STATE.registered),
+          or(
+            isNull(uploads.verifyClaimedAt),
+            lt(uploads.verifyClaimedAt, intervalAgo(DURATIONS.verifyClaimTimeout)),
+          ),
+        ),
+      )
+      .orderBy(asc(uploads.completedAt))
+      .limit(1)
+      .for('update', { skipLocked: true });
+    const [row] = await this.db
+      .update(uploads)
+      .set({ verifyClaimedAt: sql`now()` })
+      .where(eq(uploads.id, sql`(${next})`))
+      .returning();
+    return row;
   }
 
   async setVerifyState(id: string, state: VerifyState): Promise<void> {
-    await this.db.query('update uploads set verify_state = $2, verified_at = now() where id = $1', [
-      id,
-      state,
-    ]);
+    await this.db
+      .update(uploads)
+      .set({ verifyState: state, verifiedAt: sql`now()` })
+      .where(eq(uploads.id, id));
   }
 
   async sessionHasPending(sessionId: string): Promise<boolean> {
-    const result = await this.db.query(
-      `select 1 from uploads
-        where session_id = $1 and (state = 'created' or verify_state = 'registered')
-        limit 1`,
-      [sessionId],
-    );
-    return result.rows.length > 0;
+    const rows = await this.db
+      .select({ id: uploads.id })
+      .from(uploads)
+      .where(
+        and(
+          eq(uploads.sessionId, sessionId),
+          or(isOpen, eq(uploads.verifyState, VERIFY_STATE.registered)),
+        ),
+      )
+      .limit(1);
+    return rows.length > 0;
   }
 
   async sessionSummary(
     sessionId: string,
   ): Promise<{ projectId: string | null; files: number; projectName: string | null } | undefined> {
-    const result = await this.db.query<{
-      project_id: string | null;
-      files: number;
-      name: string | null;
-    }>(
-      `select u.project_id, count(*)::int as files, p.name
-         from uploads u left join projects p on p.id = u.project_id
-        where u.session_id = $1 and u.state = 'completed'
-        group by u.project_id, p.name`,
-      [sessionId],
-    );
-    const row = result.rows[0];
-    return row === undefined
-      ? undefined
-      : { projectId: row.project_id, files: row.files, projectName: row.name };
+    const [row] = await this.db
+      .select({ projectId: uploads.projectId, files: count(), projectName: projects.name })
+      .from(uploads)
+      .leftJoin(projects, eq(projects.id, uploads.projectId))
+      .where(and(eq(uploads.sessionId, sessionId), isCompleted))
+      .groupBy(uploads.projectId, projects.name);
+    return row;
   }
 
   async projectsOfSession(sessionId: string): Promise<(string | null)[]> {
-    const result = await this.db.query<{ project_id: string | null }>(
-      `select project_id from sessions where id = $1
-       union select project_id from uploads where session_id = $1`,
-      [sessionId],
+    const rows = await union(
+      this.db
+        .select({ projectId: sql<string | null>`${sessions.projectId}` })
+        .from(sessions)
+        .where(eq(sessions.id, sessionId)),
+      this.db
+        .select({ projectId: uploads.projectId })
+        .from(uploads)
+        .where(eq(uploads.sessionId, sessionId)),
     );
-    return result.rows.map((row) => row.project_id);
+    return rows.map((row) => row.projectId);
   }
 
   // Pre-F19 keys still waiting for move-keys.
-  async completedWithLegacyKeys(): Promise<Pick<UploadRow, 'id' | 'object_key'>[]> {
-    const result = await this.db.query<Pick<UploadRow, 'id' | 'object_key'>>(
-      `select id, object_key from uploads
-        where state = 'completed' and object_key not like 'projects/%' and object_key not like 'company/%'
-        order by completed_at`,
-    );
-    return result.rows;
+  async completedWithLegacyKeys(): Promise<Pick<UploadRow, 'id' | 'objectKey'>[]> {
+    return this.db
+      .select({ id: uploads.id, objectKey: uploads.objectKey })
+      .from(uploads)
+      .where(
+        and(
+          isCompleted,
+          notLike(uploads.objectKey, KEY_ROOT.projects + SQL_LIKE_ANY),
+          notLike(uploads.objectKey, KEY_ROOT.company + SQL_LIKE_ANY),
+        ),
+      )
+      .orderBy(asc(uploads.completedAt));
   }
 
-  // Points the upload and every row that names the old key at the new one.
+  // Points the upload and every synced row that names the old key at the new one.
   async renameKey(id: string, oldKey: string, newKey: string): Promise<void> {
-    await this.db.query('update uploads set object_key = $2 where id = $1', [id, newKey]);
-    for (const [table, column] of KEY_COLUMNS) {
-      await this.db.query(`update ${table} set ${column} = $2 where ${column} = $1`, [
-        oldKey,
-        newKey,
-      ]);
-    }
+    await this.db.update(uploads).set({ objectKey: newKey }).where(eq(uploads.id, id));
+    await this.db.update(captures).set({ remoteKey: newKey }).where(eq(captures.remoteKey, oldKey));
+    await this.db
+      .update(planSheets)
+      .set({ remoteKey: newKey })
+      .where(eq(planSheets.remoteKey, oldKey));
+    await this.db
+      .update(reportBranding)
+      .set({ logoKey: newKey })
+      .where(eq(reportBranding.logoKey, oldKey));
   }
 }
-
-// Synced columns that hold an object key.
-const KEY_COLUMNS = [
-  ['captures', 'remote_key'],
-  ['plan_sheets', 'remote_key'],
-  ['report_branding', 'logo_key'],
-] as const;

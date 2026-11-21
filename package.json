@@ -15,7 +15,9 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "seed:admin": "tsx --env-file-if-exists=.env scripts/seed-admin.ts",
-    "move-keys": "tsx --env-file-if-exists=.env scripts/move-keys.ts"
+    "move-keys": "tsx --env-file-if-exists=.env scripts/move-keys.ts",
+    "openapi": "tsx scripts/openapi.ts",
+    "openapi:check": "tsx scripts/openapi.ts --check"
   },
   "repository": {
     "type": "git",

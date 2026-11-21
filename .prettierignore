@@ -6,3 +6,4 @@ infra/cdk.out
 *.md
 .vscode
 infra/node_modules
+docs/openapi.json

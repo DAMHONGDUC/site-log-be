@@ -1,4 +1,6 @@
 import { NODE_ENVS } from '../constants/runtime/environments.js';
+import { ENV, ENV_DEFAULT } from '../constants/runtime/env.js';
+import { FAULT_TEXT } from '../constants/messages/error-text.js';
 
 // Reads every setting from environment variables once, at startup.
 
@@ -39,7 +41,7 @@ type Env = Record<string, string | undefined>;
 function required(env: Env, name: string): string {
   const value = env[name];
   if (value === undefined || value === '') {
-    throw new Error(`Missing environment variable ${name}`);
+    throw new Error(FAULT_TEXT.missingEnv(name));
   }
   return value;
 }
@@ -59,43 +61,43 @@ function integer(env: Env, name: string, fallback: number): number {
   }
   const value = Number(text);
   if (!Number.isInteger(value)) {
-    throw new Error(`Environment variable ${name} must be a whole number, got "${text}"`);
+    throw new Error(FAULT_TEXT.notInteger(name, text));
   }
   return value;
 }
 
 export function loadConfig(env: Env = process.env): Config {
   const config: Config = {
-    nodeEnv: optional(env, 'NODE_ENV') ?? NODE_ENVS.development,
-    port: integer(env, 'PORT', 3000),
-    logLevel: optional(env, 'LOG_LEVEL') ?? 'info',
-    databaseUrl: required(env, 'DATABASE_URL'),
-    databaseSslCaPath: optional(env, 'DATABASE_SSL_CA_PATH'),
-    pgPoolMax: integer(env, 'PG_POOL_MAX', 10),
-    awsRegion: required(env, 'AWS_REGION'),
-    s3Bucket: required(env, 'S3_BUCKET'),
-    s3Endpoint: optional(env, 'S3_ENDPOINT'),
-    firebaseServiceAccountBase64: optional(env, 'FIREBASE_SERVICE_ACCOUNT_BASE64'),
-    presignTtlSeconds: integer(env, 'PRESIGN_TTL_SECONDS', 3600),
-    singlePutThresholdBytes: integer(env, 'SINGLE_PUT_THRESHOLD_BYTES', 5 * 1024 * 1024),
-    partSizeBytes: integer(env, 'PART_SIZE_BYTES', 8 * 1024 * 1024),
-    maxUploadBytes: integer(env, 'MAX_UPLOAD_BYTES', 20 * 1024 * 1024 * 1024),
-    maxRequestBytes: integer(env, 'MAX_REQUEST_BYTES', 1024 * 1024),
-    pullPageSizeMax: integer(env, 'PULL_PAGE_SIZE_MAX', 500),
-    pushBatchMax: integer(env, 'PUSH_BATCH_MAX', 200),
-    tombstoneRetentionDays: integer(env, 'TOMBSTONE_RETENTION_DAYS', 90),
-    verifyMinDelayMs: integer(env, 'VERIFY_MIN_DELAY_MS', 300),
-    verifyRateLimitPerMinute: integer(env, 'VERIFY_RATE_LIMIT_PER_MINUTE', 30),
-    uploadRateLimitPerMinute: integer(env, 'UPLOAD_RATE_LIMIT_PER_MINUTE', 600),
-    maxSocketsPerUser: integer(env, 'MAX_SOCKETS_PER_USER', 5),
-    inviteBaseUrl: optional(env, 'INVITE_BASE_URL') ?? 'https://app.sitelog.example',
-    inviteFromEmail: optional(env, 'INVITE_FROM_EMAIL'),
-    inviteTtlDays: integer(env, 'INVITE_TTL_DAYS', 7),
-    siteTimeZone: optional(env, 'SITE_TIME_ZONE') ?? 'Asia/Ho_Chi_Minh',
-    invitePreviewRateLimitPerMinute: integer(env, 'INVITE_PREVIEW_RATE_LIMIT_PER_MINUTE', 30),
+    nodeEnv: optional(env, ENV.nodeEnv) ?? NODE_ENVS.development,
+    port: integer(env, ENV.port, 3000),
+    logLevel: optional(env, ENV.logLevel) ?? ENV_DEFAULT.logLevel,
+    databaseUrl: required(env, ENV.databaseUrl),
+    databaseSslCaPath: optional(env, ENV.databaseSslCaPath),
+    pgPoolMax: integer(env, ENV.pgPoolMax, 10),
+    awsRegion: required(env, ENV.awsRegion),
+    s3Bucket: required(env, ENV.s3Bucket),
+    s3Endpoint: optional(env, ENV.s3Endpoint),
+    firebaseServiceAccountBase64: optional(env, ENV.firebaseServiceAccount),
+    presignTtlSeconds: integer(env, ENV.presignTtlSeconds, 3600),
+    singlePutThresholdBytes: integer(env, ENV.singlePutThresholdBytes, 5 * 1024 * 1024),
+    partSizeBytes: integer(env, ENV.partSizeBytes, 8 * 1024 * 1024),
+    maxUploadBytes: integer(env, ENV.maxUploadBytes, 20 * 1024 * 1024 * 1024),
+    maxRequestBytes: integer(env, ENV.maxRequestBytes, 1024 * 1024),
+    pullPageSizeMax: integer(env, ENV.pullPageSizeMax, 500),
+    pushBatchMax: integer(env, ENV.pushBatchMax, 200),
+    tombstoneRetentionDays: integer(env, ENV.tombstoneRetentionDays, 90),
+    verifyMinDelayMs: integer(env, ENV.verifyMinDelayMs, 300),
+    verifyRateLimitPerMinute: integer(env, ENV.verifyRateLimitPerMinute, 30),
+    uploadRateLimitPerMinute: integer(env, ENV.uploadRateLimitPerMinute, 600),
+    maxSocketsPerUser: integer(env, ENV.maxSocketsPerUser, 5),
+    inviteBaseUrl: optional(env, ENV.inviteBaseUrl) ?? ENV_DEFAULT.inviteBaseUrl,
+    inviteFromEmail: optional(env, ENV.inviteFromEmail),
+    inviteTtlDays: integer(env, ENV.inviteTtlDays, 7),
+    siteTimeZone: optional(env, ENV.siteTimeZone) ?? ENV_DEFAULT.siteTimeZone,
+    invitePreviewRateLimitPerMinute: integer(env, ENV.invitePreviewRateLimitPerMinute, 30),
   };
   if (config.nodeEnv === NODE_ENVS.production && config.s3Endpoint !== undefined) {
-    throw new Error('S3_ENDPOINT is for local development only; unset it in production');
+    throw new Error(FAULT_TEXT.s3EndpointInProduction);
   }
   return config;
 }

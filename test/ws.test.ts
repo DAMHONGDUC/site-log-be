@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import { HeadObjectCommand } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';
@@ -56,7 +57,7 @@ describe('/ws', () => {
 
   it('sends a snapshot first, then events from another server instance', async () => {
     const doneId = await insertCompletedUpload(a.pool);
-    const socket = await a.app.injectWS('/ws');
+    const socket = await a.app.injectWS(ApiRoutes.WEBSOCKET);
     const events = watch(socket);
     socket.send(JSON.stringify({ type: 'auth', token: 'uid:alice' }));
     socket.send(JSON.stringify({ type: 'subscribe', sessionID: ids.session }));
@@ -70,7 +71,7 @@ describe('/ws', () => {
     b.s3.on(HeadObjectCommand).resolves({ ContentLength: 1000 });
     const begun = await b.app.inject({
       method: 'POST',
-      url: '/uploads',
+      url: ApiRoutes.UPLOADS,
       headers: auth('alice'),
       payload: {
         key: `projects/${ids.project}/${ids.session}/${ids.capture}.jpg`,
@@ -81,7 +82,7 @@ describe('/ws', () => {
     });
     await b.app.inject({
       method: 'POST',
-      url: `/uploads/${begun.json().uploadId}/complete`,
+      url: ApiRoutes.uploadComplete(begun.json().uploadId),
       headers: auth('alice'),
       payload: {},
     });
@@ -91,7 +92,7 @@ describe('/ws', () => {
   });
 
   it('answers ping with pong', async () => {
-    const socket = await a.app.injectWS('/ws');
+    const socket = await a.app.injectWS(ApiRoutes.WEBSOCKET);
     const events = watch(socket);
     socket.send(JSON.stringify({ type: 'auth', token: 'uid:alice' }));
     socket.send(JSON.stringify({ type: 'ping', at: 123 }));
@@ -101,7 +102,7 @@ describe('/ws', () => {
 
   it('closes with 4003 on a session of a project the member does not reach (F19)', async () => {
     await insertCompletedUpload(a.pool, { uid: 'alice' });
-    const socket = await a.app.injectWS('/ws');
+    const socket = await a.app.injectWS(ApiRoutes.WEBSOCKET);
     const events = watch(socket);
     socket.send(JSON.stringify({ type: 'auth', token: 'uid:bob' }));
     socket.send(JSON.stringify({ type: 'subscribe', sessionID: ids.session }));
@@ -109,14 +110,14 @@ describe('/ws', () => {
   });
 
   it('closes with 4001 on a bad token', async () => {
-    const socket = await a.app.injectWS('/ws');
+    const socket = await a.app.injectWS(ApiRoutes.WEBSOCKET);
     const events = watch(socket);
     socket.send(JSON.stringify({ type: 'auth', token: 'revoked:alice' }));
     expect(await events.closed()).toBe(4001);
   });
 
   it('closes with 4000 when no auth arrives within 5 s', async () => {
-    const socket = await a.app.injectWS('/ws');
+    const socket = await a.app.injectWS(ApiRoutes.WEBSOCKET);
     const events = watch(socket);
     const code = await new Promise((resolve) => {
       const started = Date.now();

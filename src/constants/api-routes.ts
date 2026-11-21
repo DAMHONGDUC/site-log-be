@@ -26,7 +26,7 @@ export class ApiRoutes {
   static readonly MEMBER = '/members/:uid';
   static readonly INVITATIONS = '/invitations';
   static readonly INVITATION = '/invitations/:id';
-  static readonly INVITATION_PREVIEW = '/invitations/:token';
+  static readonly INVITATION_PREVIEW = '/invitations/preview/:token';
   static readonly INVITATION_ACCEPT = '/invitations/accept';
   static readonly INVITATION_RESEND = '/invitations/:id/resend';
   static readonly PROJECT_MEMBERS = '/projects/:id/members';

@@ -20,4 +20,19 @@ describe('openapi', () => {
     expect(document.paths['/devices'].post.security).toBeUndefined();
     expect(document.paths[ApiRoutes.WEBSOCKET]).toBeUndefined();
   });
+
+  it('has no two paths that differ only by a parameter name', async () => {
+    const response = await context.app.inject({ method: 'GET', url: `${ApiRoutes.DOCS}/json` });
+    const shapes = Object.keys(response.json().paths).map((path) =>
+      path.replace(/\{[^}]+\}/g, '{}'),
+    );
+    expect(new Set(shapes).size).toBe(shapes.length);
+  });
+
+  it('serves the invite preview under its own path', async () => {
+    const response = await context.app.inject({ method: 'GET', url: `${ApiRoutes.DOCS}/json` });
+    const paths = response.json().paths;
+    expect(paths['/invitations/preview/{token}'].get.security).toEqual([]);
+    expect(paths['/invitations/{id}'].get).toBeUndefined();
+  });
 });

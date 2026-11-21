@@ -254,7 +254,7 @@
         }
       }
     },
-    "/invitations/{token}": {
+    "/invitations/preview/{token}": {
       "get": {
         "parameters": [
           {

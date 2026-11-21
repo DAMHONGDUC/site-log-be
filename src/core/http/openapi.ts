@@ -13,11 +13,11 @@ const HIDDEN = new Set<string>(OPENAPI.hiddenRoutes);
 export async function registerOpenApi(app: FastifyInstance, config: Config): Promise<void> {
   await app.register(swagger, {
     openapi: {
-      openapi: '3.1.0',
+      openapi: OPENAPI.specVersion,
       info: { title: OPENAPI.title, version: OPENAPI.version, description: OPENAPI.description },
       components: {
         securitySchemes: {
-          [OPENAPI.securityScheme]: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+          [OPENAPI.securityScheme]: { ...OPENAPI.auth },
         },
       },
       security: [{ [OPENAPI.securityScheme]: [] }],

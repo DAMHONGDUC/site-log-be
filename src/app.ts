@@ -25,6 +25,7 @@ import { uploadRoutes } from './modules/uploads/transfer/uploads-routes.js';
 import { verifyRoutes } from './modules/uploads/verify/verify-routes.js';
 import { createServices, type Services } from './services.js';
 import type { Storage } from './integrations/storage.js';
+import { REQUEST_UID } from './constants/http/openapi.js';
 
 // FCM tokens (~160 chars) travel in the path of DELETE /devices/:token; Fastify's default is 100.
 const MAX_PARAM_LENGTH = 4096;
@@ -72,7 +73,7 @@ export async function buildApp(input: AppInput): Promise<FastifyInstance> {
   const deps: AppDeps = { ...input, mailer, db, services };
 
   registerErrorHandler(app);
-  app.decorateRequest('uid', '');
+  app.decorateRequest(REQUEST_UID.field, REQUEST_UID.empty);
 
   // Before any route, so every schema lands in the document.
   await registerOpenApi(app, input.config);

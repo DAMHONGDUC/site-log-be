@@ -3,7 +3,7 @@
 import { loadConfig } from '../src/core/config.js';
 import { Database } from '../src/data/database.js';
 import { createPool } from '../src/data/pool.js';
-import { nameFromEmail } from '../src/modules/team/invitation-token.js';
+import { nameFromEmail } from '../src/modules/team/invitations/invitation-token.js';
 
 const [email, uid] = process.argv.slice(2);
 if (email === undefined || uid === undefined) {

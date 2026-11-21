@@ -19,11 +19,11 @@ export class DueSoonService {
     for (const group of groups) {
       sent += await this.notifications.send({
         kind: 'dueSoon',
-        recipients: [group.assignee_uid],
+        recipients: [group.assigneeUid],
         actorUid: null,
         data: {
-          projectId: group.project_id,
-          projectName: group.project_name,
+          projectId: group.projectId,
+          projectName: group.projectName,
           count: group.count,
           titles: group.titles,
         },

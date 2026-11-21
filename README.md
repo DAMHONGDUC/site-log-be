@@ -124,8 +124,9 @@ site-log-be/
 │   ├── constants/          # every fixed value, by kind:
 │   │                       #   http/ (ApiRoutes, ErrorCode, HTTP status, OpenAPI) · data/ (table and
 │   │                       #   enum names, enum values) · domain/ (roles + permissions, push kinds,
-│   │                       #   issues, object key roots) · runtime/ (limits, patterns, durations, units,
-│   │                       #   environments, WebSocket close codes)
+│   │                       #   issues, object keys, team, realtime) · runtime/ (limits, patterns, durations,
+│   │                       #   units, env names, WebSocket close codes) · messages/ (log, error, push, mail
+│   │                       #   and script text) · platform/ (encodings, Firebase/FCM/S3/Postgres codes)
 │   ├── core/               # config, logger, errors, auth, log; http/ (guards, schemas, openapi)
 │   ├── data/               # pool, Database (repositories on the pool or one transaction), Drizzle client,
 │   │                       # schema/ (every table, for typed queries)
@@ -161,7 +162,7 @@ site-log-be/
 | Routes are thin | A route only declares its schema and guard, calls one service, returns the result |
 | SQL only in repositories | Repositories query through Drizzle (`src/data/schema/`); ESLint fails on `.query(` or a `drizzle-orm` import anywhere in `src/modules` and `src/core` except `*-repository.ts` and the sync and realtime engines. The sync push and pull keep raw SQL: they build it from `syncTables` metadata (`jsonb_populate_record`, savepoints) |
 | Migrations own the schema | `migrations/*.sql` create the tables; `src/data/schema/` only describes them for Drizzle. `test/data/schema.test.ts` fails when a column or its nullability differs, or a synced table is missing |
-| No hard-coded strings | Every string value is a named constant: table and enum names in `constants/data/db.ts`, enum values in `constants/data/enums.ts` (`UPLOAD_STATE.completed`, `ROLE.admin`), the rest in its `constants/` file |
+| No hard-coded strings | Every string value is a named constant in `src/constants/`: table and enum names in `data/db.ts`, enum values in `data/enums.ts` (`UPLOAD_STATE.completed`, `ROLE.admin`), sync values in `data/sync.ts`, every log, error, push and mail text in `messages/`, codes of outside services in `platform/`. ESLint fails on a string literal in `src/` and `scripts/` outside those files; it lets through `''`, `typeof` checks, SQL handed to `query()`, Drizzle `sql` templates, and the sync table registry and SQL builder (`sync/tables.ts`, `sync/pull.ts`, `sync/push/sql.ts`) |
 | Features grouped by folder | A folder holds at most 6 files; past that it splits into one sub-folder per sub-feature (`team/members/`, `team/invitations/`, `team/access/`) |
 | Every path from `ApiRoutes` | `src/constants/http/api-routes.ts` holds every endpoint (`ApiRoutes.UPLOAD_COMPLETE`, `ApiRoutes.uploadComplete(id)`); ESLint fails on a literal path in a route; tests build paths with it |
 | No magic numbers | ESLint `no-magic-numbers` on `src/` (constants and Config excepted) |

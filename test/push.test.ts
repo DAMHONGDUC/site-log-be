@@ -1,6 +1,5 @@
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createLogger } from '../src/logger.js';
 import {
   pushMessage,
   type DevicePlatform,
@@ -11,6 +10,7 @@ import {
 import { verifyNextUpload, type WorkerDeps } from '../src/workers/verify.js';
 import { contentHash, insertCompletedUpload, objectBody } from './fixtures.js';
 import {
+  workerDeps,
   closeTestContext,
   createTestContext,
   ids,
@@ -43,7 +43,7 @@ describe('push when a session is verified', () => {
     context.s3.reset();
     context.s3.on(GetObjectCommand).callsFake(() => ({ Body: objectBody('photo bytes') }) as never);
     push = new FakePush();
-    deps = { pool: context.pool, storage: context.storage, push, log: createLogger('silent') };
+    deps = workerDeps(context, push);
     await context.pool.query(
       `insert into devices (token, uid, platform) values ($1, 'alice', 'ios')`,
       ['fX3k:APA91b' + 'a'.repeat(140)],

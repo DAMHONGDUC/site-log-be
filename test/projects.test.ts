@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   auth,
@@ -61,7 +62,7 @@ describe('project tables', () => {
     await insertLocation('bob', ids.location, 'L1');
     const response = await context.app.inject({
       method: 'DELETE',
-      url: '/account',
+      url: ApiRoutes.ACCOUNT,
       headers: auth('bob'),
     });
     expect(response.statusCode).toBe(200);

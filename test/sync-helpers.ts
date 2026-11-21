@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import { expect } from 'vitest';
 import { auth, ids, type TestContext } from './helpers.js';
 
@@ -5,7 +6,7 @@ import { auth, ids, type TestContext } from './helpers.js';
 export async function pushAs(context: TestContext, uid: string, mutations: object[]) {
   const response = await context.app.inject({
     method: 'POST',
-    url: '/sync/push',
+    url: ApiRoutes.SYNC_PUSH,
     headers: auth(uid),
     payload: { mutations },
   });
@@ -16,7 +17,7 @@ export async function pushAs(context: TestContext, uid: string, mutations: objec
 export async function pullAs(context: TestContext, uid: string, since: number, limit = 500) {
   const response = await context.app.inject({
     method: 'POST',
-    url: '/sync/pull',
+    url: ApiRoutes.SYNC_PULL,
     headers: auth(uid),
     payload: { since, limit },
   });

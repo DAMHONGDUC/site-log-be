@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   auth,
@@ -203,7 +204,7 @@ describe('sync', () => {
     }
     const tooMany = await context.app.inject({
       method: 'POST',
-      url: '/sync/push',
+      url: ApiRoutes.SYNC_PUSH,
       headers: auth('alice'),
       payload: { mutations },
     });
@@ -211,7 +212,7 @@ describe('sync', () => {
 
     const broken = await context.app.inject({
       method: 'POST',
-      url: '/sync/pull',
+      url: ApiRoutes.SYNC_PULL,
       headers: { ...auth('alice'), 'content-type': 'application/json' },
       payload: '{not json',
     });

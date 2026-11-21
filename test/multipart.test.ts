@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,
@@ -63,7 +64,7 @@ describe('uploads: multipart', () => {
 
   it('refreshes exactly the requested parts, for the owner only', async () => {
     const begun = await beginUpload(context, 40 * MiB);
-    const url = `/uploads/${begun.json().uploadId}/parts/refresh`;
+    const url = ApiRoutes.uploadPartsRefresh(begun.json().uploadId);
     const response = await context.app.inject({
       method: 'POST',
       url,
@@ -97,7 +98,7 @@ describe('uploads: multipart', () => {
     const uploadId = begun.json().uploadId;
     const aborted = await context.app.inject({
       method: 'DELETE',
-      url: `/uploads/${uploadId}`,
+      url: ApiRoutes.upload(uploadId),
       headers: auth('alice'),
     });
     expect(aborted.statusCode).toBe(200);
@@ -105,7 +106,7 @@ describe('uploads: multipart', () => {
 
     const again = await context.app.inject({
       method: 'DELETE',
-      url: `/uploads/${uploadId}`,
+      url: ApiRoutes.upload(uploadId),
       headers: auth('alice'),
     });
     expect(again.statusCode).toBe(200);

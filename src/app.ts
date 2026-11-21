@@ -8,6 +8,7 @@ import { LIMITS } from './constants/limits.js';
 import { Database } from './data/database.js';
 import { registerErrorHandler } from './errors.js';
 import type { Guards } from './http/guards.js';
+import { registerOpenApi } from './http/openapi.js';
 import { loggerOptions } from './logger.js';
 import { LogMailer, type Mailer } from './mail/mailer.js';
 import type { PushSender } from './push/fcm.js';
@@ -73,6 +74,8 @@ export async function buildApp(input: AppInput): Promise<FastifyInstance> {
   registerErrorHandler(app);
   app.decorateRequest('uid', '');
 
+  // Before any route, so every schema lands in the document.
+  await registerOpenApi(app, input.config);
   // Off by default: a route opts in with config.rateLimit.
   await app.register(rateLimitPlugin, { global: false });
   await app.register(websocket, { options: { maxPayload: LIMITS.websocketMaxPayloadBytes } });

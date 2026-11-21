@@ -1,8 +1,8 @@
-import { DEEP_LINK, FALLBACK_NAME, type PushKind } from '../../constants/push.js';
-import { ISSUE_STATUS_LABEL, SEVERITY_LABEL } from '../../constants/issues.js';
-import { LIMITS } from '../../constants/limits.js';
-import { ROLE_LABEL, type Role } from '../../constants/roles.js';
-import { TEXT_CUT } from '../../constants/units.js';
+import { DEEP_LINK, FALLBACK_NAME, type PushKind } from '../../constants/domain/push.js';
+import { ISSUE_STATUS_LABEL, SEVERITY_LABEL } from '../../constants/domain/issues.js';
+import { LIMITS } from '../../constants/runtime/limits.js';
+import { ROLE_LABEL, type Role } from '../../constants/domain/roles.js';
+import { TEXT_CUT } from '../../constants/runtime/units.js';
 
 // What each push kind needs to be written.
 export interface PushData {

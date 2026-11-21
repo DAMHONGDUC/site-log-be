@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, isNull, sql } from 'drizzle-orm';
-import type { Role } from '../../constants/roles.js';
+import type { Role } from '../../constants/domain/roles.js';
 import type { SqlDb } from '../../data/drizzle.js';
 import { invitations } from '../../data/schema/index.js';
 import { daysFromNow } from '../../data/sql-time.js';

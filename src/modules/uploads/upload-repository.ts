@@ -1,14 +1,14 @@
 import { and, asc, count, eq, inArray, isNull, lt, notLike, or, sql } from 'drizzle-orm';
 import { alias, union } from 'drizzle-orm/pg-core';
-import { DURATIONS } from '../../constants/durations.js';
+import { DURATIONS } from '../../constants/runtime/durations.js';
 import {
   UPLOAD_MODE,
   UPLOAD_STATE,
   VERIFY_STATE,
   type VerifyState,
-} from '../../constants/enums.js';
-import { KEY_ROOT } from '../../constants/object-keys.js';
-import { SQL_LIKE_ANY } from '../../constants/db.js';
+} from '../../constants/data/enums.js';
+import { KEY_ROOT } from '../../constants/domain/object-keys.js';
+import { SQL_LIKE_ANY } from '../../constants/data/db.js';
 import type { SqlDb } from '../../data/drizzle.js';
 import {
   captures,
@@ -20,7 +20,7 @@ import {
 } from '../../data/schema/index.js';
 import { intervalAgo } from '../../data/sql-time.js';
 
-export type { UploadMode, UploadState, VerifyState } from '../../constants/enums.js';
+export type { UploadMode, UploadState, VerifyState } from '../../constants/data/enums.js';
 
 export type UploadRow = typeof uploads.$inferSelect;
 export type NewUpload = Omit<

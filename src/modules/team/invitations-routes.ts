@@ -1,9 +1,9 @@
 import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../../app.js';
-import { ApiRoutes } from '../../constants/api-routes.js';
-import { ErrorCode } from '../../constants/error-codes.js';
-import { LIMITS, PATTERNS } from '../../constants/limits.js';
+import { ApiRoutes } from '../../constants/http/api-routes.js';
+import { ErrorCode } from '../../constants/http/error-codes.js';
+import { LIMITS, PATTERNS } from '../../constants/runtime/limits.js';
 import { isRole } from './permissions.js';
 import { badRequest } from '../../core/errors.js';
 import { memberMay, type Guards } from '../../core/http/guards.js';

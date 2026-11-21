@@ -10,8 +10,8 @@ import {
   text,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { PG_ENUM, TABLE } from '../../constants/db.js';
-import { SESSION_STATES } from '../../constants/enums.js';
+import { PG_ENUM, TABLE } from '../../constants/data/db.js';
+import { SESSION_STATES } from '../../constants/data/enums.js';
 import { revColumn, sha256, syncedColumns, teamSyncedColumns, timestamptz } from './columns.js';
 
 // Synced tables (migrations 0001–0009) and the company rev counter. Which of them the app may

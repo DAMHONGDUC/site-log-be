@@ -1,6 +1,6 @@
 import type pg from 'pg';
-import { RejectReason } from '../../../constants/error-codes.js';
-import type { Action } from '../../../constants/roles.js';
+import { RejectReason } from '../../../constants/http/error-codes.js';
+import type { Action } from '../../../constants/domain/roles.js';
 import { reaches } from '../../team/member.js';
 import { can } from '../../team/permissions.js';
 import type { SyncTable } from '../tables.js';

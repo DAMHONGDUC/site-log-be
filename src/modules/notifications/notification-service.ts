@@ -1,4 +1,4 @@
-import type { PushKind } from '../../constants/push.js';
+import type { PushKind } from '../../constants/domain/push.js';
 import type { Database } from '../../data/database.js';
 import type { Log } from '../../core/log.js';
 import type { PushSender } from '../../integrations/fcm.js';

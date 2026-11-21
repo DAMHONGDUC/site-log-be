@@ -9,9 +9,9 @@ import {
   text,
   uuid,
 } from 'drizzle-orm/pg-core';
-import { PG_ENUM, TABLE } from '../../constants/db.js';
-import { MEMBER_EVENT_TYPES } from '../../constants/enums.js';
-import { ROLES } from '../../constants/roles.js';
+import { PG_ENUM, TABLE } from '../../constants/data/db.js';
+import { MEMBER_EVENT_TYPES } from '../../constants/data/enums.js';
+import { ROLES } from '../../constants/domain/roles.js';
 import { timestamptz } from './columns.js';
 
 // Team tables (migration 0012, 05-team-and-roles).

@@ -1,6 +1,6 @@
 import { bigint, integer, pgEnum, pgTable, text, uuid } from 'drizzle-orm/pg-core';
-import { COLUMN, PG_ENUM, TABLE } from '../../constants/db.js';
-import { UPLOAD_MODES, UPLOAD_STATES, VERIFY_STATES } from '../../constants/enums.js';
+import { COLUMN, PG_ENUM, TABLE } from '../../constants/data/db.js';
+import { UPLOAD_MODES, UPLOAD_STATES, VERIFY_STATES } from '../../constants/data/enums.js';
 import { sha256, timestamptz } from './columns.js';
 
 // Server-only upload records (migrations 0004, 0010).

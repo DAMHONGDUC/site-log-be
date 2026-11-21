@@ -1,6 +1,6 @@
 // The Drizzle schema: the shape of every table, for typed queries. Migrations (migrations/*.sql)
 // stay the source of truth; test/data/schema.test.ts fails when the two disagree.
-import { TABLE } from '../../constants/db.js';
+import { TABLE } from '../../constants/data/db.js';
 
 export * from './devices.js';
 export * from './sync.js';

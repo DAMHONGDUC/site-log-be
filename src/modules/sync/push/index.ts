@@ -1,5 +1,5 @@
 import type pg from 'pg';
-import { RejectReason } from '../../../constants/error-codes.js';
+import { RejectReason } from '../../../constants/http/error-codes.js';
 import { withTransaction } from '../../../data/pool.js';
 import { createRepositories } from '../../../data/repositories.js';
 import type { IssueChange } from '../../notifications/issue-notifier.js';

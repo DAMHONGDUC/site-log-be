@@ -1,5 +1,5 @@
-import { ErrorCode } from '../../constants/error-codes.js';
-import { ROLE, ROLES_REACHING_ALL, type Role } from '../../constants/roles.js';
+import { ErrorCode } from '../../constants/http/error-codes.js';
+import { ROLE, ROLES_REACHING_ALL, type Role } from '../../constants/domain/roles.js';
 import type { Database } from '../../data/database.js';
 import type { Member, Reach } from './member.js';
 import { conflict, notFound } from '../../core/errors.js';

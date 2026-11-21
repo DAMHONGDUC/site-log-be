@@ -1,4 +1,4 @@
-import { ROLES_REACHING_ALL } from '../../constants/roles.js';
+import { ROLES_REACHING_ALL } from '../../constants/domain/roles.js';
 import type { Database } from '../../data/database.js';
 import type { Member, MemberLookup, Reach } from './member.js';
 import type { Repositories } from '../../data/repositories.js';

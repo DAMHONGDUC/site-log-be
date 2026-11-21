@@ -1,4 +1,4 @@
-import type { Action } from '../../constants/roles.js';
+import type { Action } from '../../constants/domain/roles.js';
 
 // Every table the app may pull and push. A feature that adds a synced table adds it here.
 

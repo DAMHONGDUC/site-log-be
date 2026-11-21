@@ -1,4 +1,4 @@
-import { byName } from './by-name.js';
+import { byName } from '../data/by-name.js';
 
 // The four roles and the permission table of 05-team-and-roles §3, as data.
 

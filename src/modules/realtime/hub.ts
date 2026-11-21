@@ -2,7 +2,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import pg from 'pg';
 import type { WebSocket } from 'ws';
 import type { Config } from '../../core/config.js';
-import { DURATIONS } from '../../constants/durations.js';
+import { DURATIONS } from '../../constants/runtime/durations.js';
 import { UploadRepository, type UploadSnapshotRow } from '../uploads/upload-repository.js';
 import { toDrizzle } from '../../data/drizzle.js';
 import { connectionOptions } from '../../data/pool.js';

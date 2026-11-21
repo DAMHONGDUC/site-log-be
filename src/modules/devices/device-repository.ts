@@ -1,10 +1,10 @@
 import { and, arrayContains, eq, inArray, isNull, or, sql } from 'drizzle-orm';
-import type { DevicePlatform } from '../../constants/enums.js';
-import type { PushKind } from '../../constants/push.js';
+import type { DevicePlatform } from '../../constants/data/enums.js';
+import type { PushKind } from '../../constants/domain/push.js';
 import type { SqlDb } from '../../data/drizzle.js';
 import { devices, members } from '../../data/schema/index.js';
 
-export type { DevicePlatform } from '../../constants/enums.js';
+export type { DevicePlatform } from '../../constants/data/enums.js';
 
 export interface DeviceRow {
   token: string;

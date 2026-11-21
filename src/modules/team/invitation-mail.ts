@@ -1,5 +1,5 @@
-import { FALLBACK_NAME } from '../../constants/push.js';
-import { ROLE_LABEL, type Role } from '../../constants/roles.js';
+import { FALLBACK_NAME } from '../../constants/domain/push.js';
+import { ROLE_LABEL, type Role } from '../../constants/domain/roles.js';
 import type { MailMessage } from '../../integrations/mailer.js';
 
 export const INVITE_PATH = '/invite/';

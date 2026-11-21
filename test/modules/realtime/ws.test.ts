@@ -1,4 +1,4 @@
-import { ApiRoutes } from '../../../src/constants/api-routes.js';
+import { ApiRoutes } from '../../../src/constants/http/api-routes.js';
 import { HeadObjectCommand } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { WebSocket } from 'ws';

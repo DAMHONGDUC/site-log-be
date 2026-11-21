@@ -2,10 +2,10 @@ import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance } from 'fastify';
 import { setTimeout as sleep } from 'node:timers/promises';
 import type { AppDeps } from '../../app.js';
-import { ApiRoutes } from '../../constants/api-routes.js';
-import { ErrorCode } from '../../constants/error-codes.js';
-import { LIMITS } from '../../constants/limits.js';
-import { TEXT_CUT } from '../../constants/units.js';
+import { ApiRoutes } from '../../constants/http/api-routes.js';
+import { ErrorCode } from '../../constants/http/error-codes.js';
+import { LIMITS } from '../../constants/runtime/limits.js';
+import { TEXT_CUT } from '../../constants/runtime/units.js';
 import { notFound } from '../../core/errors.js';
 import { rateLimit } from '../../core/http/schemas.js';
 

@@ -1,8 +1,8 @@
 import { newVerificationCode } from './verification-code.js';
 import type { Config } from '../../core/config.js';
-import { ErrorCode } from '../../constants/error-codes.js';
-import { HTTP_STATUS } from '../../constants/http-status.js';
-import { LIMITS } from '../../constants/limits.js';
+import { ErrorCode } from '../../constants/http/error-codes.js';
+import { HTTP_STATUS } from '../../constants/http/http-status.js';
+import { LIMITS } from '../../constants/runtime/limits.js';
 import type { Database } from '../../data/database.js';
 import type { Log } from '../../core/log.js';
 import type { Member } from '../team/member.js';

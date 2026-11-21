@@ -1,7 +1,7 @@
 import type { Config } from '../../core/config.js';
-import { ErrorCode } from '../../constants/error-codes.js';
-import { FALLBACK_NAME } from '../../constants/push.js';
-import { ROLES_REACHING_ALL, type Role } from '../../constants/roles.js';
+import { ErrorCode } from '../../constants/http/error-codes.js';
+import { FALLBACK_NAME } from '../../constants/domain/push.js';
+import { ROLES_REACHING_ALL, type Role } from '../../constants/domain/roles.js';
 import type { Database } from '../../data/database.js';
 import { hashToken, maskEmail, nameFromEmail, newInviteToken } from './invitation-token.js';
 import type { Member, Reach } from './member.js';
@@ -10,7 +10,7 @@ import type { Mailer } from '../../integrations/mailer.js';
 import { inviteLink, inviteMail } from './invitation-mail.js';
 import type { Repositories } from '../../data/repositories.js';
 import type { InvitationRow } from './invitation-repository.js';
-import { PATTERNS } from '../../constants/limits.js';
+import { PATTERNS } from '../../constants/runtime/limits.js';
 import type { TeamService } from './team-service.js';
 
 // Invitations (05 §5): create, preview before sign-in, accept, resend, cancel.

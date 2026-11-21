@@ -1,5 +1,5 @@
-import { ROLE } from '../../constants/roles.js';
-import { ErrorCode } from '../../constants/error-codes.js';
+import { ROLE } from '../../constants/domain/roles.js';
+import { ErrorCode } from '../../constants/http/error-codes.js';
 import type { Database } from '../../data/database.js';
 import { conflict } from '../../core/errors.js';
 import type { TokenVerifier } from '../../core/auth.js';

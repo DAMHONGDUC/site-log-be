@@ -1,5 +1,5 @@
-import { ErrorCode } from '../../constants/error-codes.js';
-import type { Action } from '../../constants/roles.js';
+import { ErrorCode } from '../../constants/http/error-codes.js';
+import type { Action } from '../../constants/domain/roles.js';
 import type { Member } from '../team/member.js';
 import { reaches } from '../team/member.js';
 import { can } from '../team/permissions.js';

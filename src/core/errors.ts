@@ -1,6 +1,6 @@
 import type { FastifyError, FastifyInstance } from 'fastify';
-import { ErrorCode } from '../constants/error-codes.js';
-import { CLIENT_ERROR_RANGE, HTTP_STATUS } from '../constants/http-status.js';
+import { ErrorCode } from '../constants/http/error-codes.js';
+import { CLIENT_ERROR_RANGE, HTTP_STATUS } from '../constants/http/http-status.js';
 
 // The error contract: every error is { "error": { "code", "message" } }, never a stack trace.
 // The iOS app aborts an upload on HTTP_STATUS.badRequest and HTTP_STATUS.notFound, so those are only for permanent problems.

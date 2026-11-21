@@ -1,6 +1,6 @@
 import { bigint, char, text, timestamp, uuid } from 'drizzle-orm/pg-core';
-import { COLUMN } from '../../constants/db.js';
-import { LIMITS } from '../../constants/limits.js';
+import { COLUMN } from '../../constants/data/db.js';
+import { LIMITS } from '../../constants/runtime/limits.js';
 
 // Column builders shared by every table. Keys are camelCase; the Drizzle client maps them to
 // snake_case (see data/drizzle.ts), so a name is given only where that mapping gets it wrong.

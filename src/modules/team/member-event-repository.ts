@@ -1,6 +1,6 @@
 import { desc, eq, lt } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import type { MemberEventType } from '../../constants/enums.js';
+import type { MemberEventType } from '../../constants/data/enums.js';
 import type { SqlDb } from '../../data/drizzle.js';
 import { memberEvents, members } from '../../data/schema/index.js';
 

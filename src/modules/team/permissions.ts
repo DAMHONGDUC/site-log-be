@@ -4,14 +4,14 @@ import {
   ROLES,
   type Action,
   type Role,
-} from '../../constants/roles.js';
+} from '../../constants/domain/roles.js';
 
 export interface PermissionContext {
   // The row was created by the caller, today in the site time zone.
   ownSameDay?: boolean;
 }
 
-// The permission table of 05-team-and-roles §3 (data in constants/roles.ts).
+// The permission table of 05-team-and-roles §3 (data in constants/domain/roles.ts).
 export function can(role: Role, action: Action, context: PermissionContext = {}): boolean {
   if (!ROLE_PERMISSIONS[role].includes(action)) {
     return false;

@@ -1,8 +1,8 @@
 import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../../app.js';
-import { ApiRoutes } from '../../constants/api-routes.js';
-import { LIMITS } from '../../constants/limits.js';
+import { ApiRoutes } from '../../constants/http/api-routes.js';
+import { LIMITS } from '../../constants/runtime/limits.js';
 import type { Guards } from '../../core/http/guards.js';
 import { pullChanges } from './pull.js';
 import { pushMutations } from './push/index.js';

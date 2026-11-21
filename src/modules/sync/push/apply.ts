@@ -1,5 +1,5 @@
 import type pg from 'pg';
-import { RejectReason } from '../../../constants/error-codes.js';
+import { RejectReason } from '../../../constants/http/error-codes.js';
 import { createRepositories, type Repositories } from '../../../data/repositories.js';
 import { camelToSnake, rowToJson } from '../case.js';
 import { findSyncTable, type SyncTable } from '../tables.js';

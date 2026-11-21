@@ -1,4 +1,4 @@
-import { NODE_ENVS } from '../constants/environments.js';
+import { NODE_ENVS } from '../constants/runtime/environments.js';
 
 // Reads every setting from environment variables once, at startup.
 

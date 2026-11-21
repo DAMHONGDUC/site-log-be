@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../../app.js';
-import { ApiRoutes } from '../../constants/api-routes.js';
+import { ApiRoutes } from '../../constants/http/api-routes.js';
 import type { Guards } from '../../core/http/guards.js';
 
 // Leaving the company (01-api §5): any signed-in user, so a repeat after removal still answers.

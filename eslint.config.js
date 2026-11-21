@@ -38,7 +38,7 @@ export default tseslint.config(
         {
           // Route paths come from ApiRoutes.
           selector: `CallExpression[callee.property.name=${HTTP_METHODS}] > Literal.arguments:first-child[value=/^\\//]`,
-          message: 'Use a path from ApiRoutes (src/constants/api-routes.ts).',
+          message: 'Use a path from ApiRoutes (src/constants/http/api-routes.ts).',
         },
       ],
     },
@@ -59,7 +59,7 @@ export default tseslint.config(
         'error',
         {
           selector: `CallExpression[callee.property.name=${HTTP_METHODS}] > Literal.arguments:first-child[value=/^\\//]`,
-          message: 'Use a path from ApiRoutes (src/constants/api-routes.ts).',
+          message: 'Use a path from ApiRoutes (src/constants/http/api-routes.ts).',
         },
         {
           selector: "CallExpression[callee.property.name='query']",

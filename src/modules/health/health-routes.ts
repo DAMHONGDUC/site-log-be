@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../../app.js';
-import { ApiRoutes } from '../../constants/api-routes.js';
-import { HTTP_STATUS } from '../../constants/http-status.js';
+import { ApiRoutes } from '../../constants/http/api-routes.js';
+import { HTTP_STATUS } from '../../constants/http/http-status.js';
 
 // Liveness for the load balancer, the deploy script and uptime alarms.
 // The Date header doubles as the app's trusted clock, so nothing may cache this.

@@ -2,9 +2,9 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import type { FastifyInstance } from 'fastify';
 import type { Config } from '../config.js';
-import { ApiRoutes } from '../../constants/api-routes.js';
-import { NODE_ENVS } from '../../constants/environments.js';
-import { OPENAPI } from '../../constants/openapi.js';
+import { ApiRoutes } from '../../constants/http/api-routes.js';
+import { NODE_ENVS } from '../../constants/runtime/environments.js';
+import { OPENAPI } from '../../constants/http/openapi.js';
 
 const PUBLIC = new Set<string>(OPENAPI.publicRoutes);
 const HIDDEN = new Set<string>(OPENAPI.hiddenRoutes);

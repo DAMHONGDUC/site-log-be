@@ -1,4 +1,4 @@
-import { ApiRoutes } from '../../src/constants/api-routes.js';
+import { ApiRoutes } from '../../src/constants/http/api-routes.js';
 import { expect } from 'vitest';
 import { auth, ids, type TestContext } from './helpers.js';
 

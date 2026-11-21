@@ -1,4 +1,4 @@
-import { ApiRoutes } from '../../../src/constants/api-routes.js';
+import { ApiRoutes } from '../../../src/constants/http/api-routes.js';
 import {
   AbortMultipartUploadCommand,
   CompleteMultipartUploadCommand,

@@ -1,4 +1,4 @@
-import { DURATIONS } from '../../constants/durations.js';
+import { DURATIONS } from '../../constants/runtime/durations.js';
 import type { Database } from '../../data/database.js';
 import type { Log } from '../../core/log.js';
 import type { NotificationService } from './notification-service.js';

@@ -15,8 +15,8 @@ import {
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { HTTP_STATUS } from '../constants/http-status.js';
-import { MS_PER_SECOND } from '../constants/units.js';
+import { HTTP_STATUS } from '../constants/http/http-status.js';
+import { MS_PER_SECOND } from '../constants/runtime/units.js';
 import type { Readable } from 'node:stream';
 
 export interface S3ClientOptions {

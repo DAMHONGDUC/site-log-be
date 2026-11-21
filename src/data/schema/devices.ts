@@ -1,7 +1,7 @@
 import { pgTable, text } from 'drizzle-orm/pg-core';
-import { TABLE } from '../../constants/db.js';
-import { DEVICE_PLATFORMS } from '../../constants/enums.js';
-import type { PushKind } from '../../constants/push.js';
+import { TABLE } from '../../constants/data/db.js';
+import { DEVICE_PLATFORMS } from '../../constants/data/enums.js';
+import type { PushKind } from '../../constants/domain/push.js';
 import { timestamptz } from './columns.js';
 
 // Push tokens (migration 0011).

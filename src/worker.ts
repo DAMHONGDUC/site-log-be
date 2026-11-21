@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 import { loadConfig } from './core/config.js';
-import { DURATIONS } from './constants/durations.js';
+import { DURATIONS } from './constants/runtime/durations.js';
 import { Database } from './data/database.js';
 import { createPool } from './data/pool.js';
 import { createLogger } from './core/logger.js';

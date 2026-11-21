@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import type { Config } from '../core/config.js';
-import { PG_TYPE_ID } from '../constants/units.js';
+import { PG_TYPE_ID } from '../constants/runtime/units.js';
 
 // bigint (type 20) comes back as a JS number: sizes and revs stay far below 2^53.
 pg.types.setTypeParser(PG_TYPE_ID.int8, (text) => Number(text));

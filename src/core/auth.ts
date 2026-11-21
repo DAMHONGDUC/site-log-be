@@ -1,8 +1,8 @@
 import { cert, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import type { FastifyRequest } from 'fastify';
-import { ErrorCode } from '../constants/error-codes.js';
-import { MS_PER_SECOND } from '../constants/units.js';
+import { ErrorCode } from '../constants/http/error-codes.js';
+import { MS_PER_SECOND } from '../constants/runtime/units.js';
 import type { Member } from '../modules/team/member.js';
 import { forbidden, serviceUnavailable, unauthorized } from './errors.js';
 import type { AccessService } from '../modules/team/access-service.js';

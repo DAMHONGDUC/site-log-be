@@ -4,7 +4,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import { makeRequireSignedIn, makeRequireUser, type TokenVerifier } from './core/auth.js';
 import type { Config } from './core/config.js';
-import { LIMITS } from './constants/limits.js';
+import { LIMITS } from './constants/runtime/limits.js';
 import { Database } from './data/database.js';
 import { registerErrorHandler } from './core/errors.js';
 import type { Guards } from './core/http/guards.js';

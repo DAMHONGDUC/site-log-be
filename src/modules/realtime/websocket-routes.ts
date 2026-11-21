@@ -2,9 +2,9 @@ import type { FastifyInstance } from 'fastify';
 import type { WebSocket } from 'ws';
 import type { AppDeps } from '../../app.js';
 import { TokenRejectedError } from '../../core/auth.js';
-import { ApiRoutes } from '../../constants/api-routes.js';
-import { DURATIONS } from '../../constants/durations.js';
-import { WS_CLOSE } from '../../constants/websocket.js';
+import { ApiRoutes } from '../../constants/http/api-routes.js';
+import { DURATIONS } from '../../constants/runtime/durations.js';
+import { WS_CLOSE } from '../../constants/runtime/websocket.js';
 import { reaches, type Member } from '../team/member.js';
 import { type ClientSocket, send, uploadMessage } from './hub.js';
 

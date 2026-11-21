@@ -1,9 +1,11 @@
 import { cert, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import type { FastifyRequest } from 'fastify';
-import type pg from 'pg';
-import { AppError, serviceUnavailable, unauthorized } from './errors.js';
-import { loadMember, type Member } from './team/access.js';
+import { ErrorCode } from './constants/error-codes.js';
+import { MS_PER_SECOND } from './constants/units.js';
+import type { Member } from './domain/member.js';
+import { forbidden, serviceUnavailable, unauthorized } from './errors.js';
+import type { AccessService } from './services/access-service.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -52,7 +54,11 @@ export function createFirebaseVerifier(serviceAccountBase64: string): TokenVerif
       try {
         // true = also check that the token was not revoked (sign out everywhere, deleted user)
         const decoded = await auth.verifyIdToken(token, true);
-        return { uid: decoded.uid, expiresAt: new Date(decoded.exp * 1000), email: decoded.email };
+        return {
+          uid: decoded.uid,
+          expiresAt: new Date(decoded.exp * MS_PER_SECOND),
+          email: decoded.email,
+        };
       } catch (error) {
         if (isTokenProblem(error)) {
           throw new TokenRejectedError(String((error as { code: string }).code));
@@ -93,7 +99,7 @@ export function makeRequireSignedIn(tokens: TokenVerifier) {
   return async function requireSignedIn(request: FastifyRequest): Promise<void> {
     const header = request.headers.authorization;
     if (header === undefined || !header.startsWith('Bearer ')) {
-      throw unauthorized('missing_token');
+      throw unauthorized(ErrorCode.missingToken);
     }
     const token = header.slice('Bearer '.length);
     try {
@@ -103,10 +109,10 @@ export function makeRequireSignedIn(tokens: TokenVerifier) {
     } catch (error) {
       if (error instanceof TokenRejectedError) {
         request.log.warn({ reason: error.message }, 'token rejected');
-        throw unauthorized('invalid_token');
+        throw unauthorized(ErrorCode.invalidToken);
       }
       request.log.error({ err: error }, 'token check failed');
-      throw serviceUnavailable('auth_unavailable');
+      throw serviceUnavailable(ErrorCode.authUnavailable);
     }
   };
 }
@@ -114,18 +120,18 @@ export function makeRequireSignedIn(tokens: TokenVerifier) {
 // preHandler for every route that needs a member: a valid token, then a member record.
 // Not a member: 403 not_invited (the app shows "Ask an Admin to invite you").
 // Removed member: 401 (signs out). A bad token stays 401, never 403.
-export function makeRequireUser(tokens: TokenVerifier, pool: pg.Pool) {
+export function makeRequireUser(tokens: TokenVerifier, access: AccessService) {
   const requireSignedIn = makeRequireSignedIn(tokens);
   return async function requireUser(request: FastifyRequest): Promise<void> {
     await requireSignedIn(request);
-    const lookup = await loadMember(pool, request.uid);
+    const lookup = await access.lookup(request.uid);
     if (lookup.status === 'unknown') {
       request.log.warn({ uid: request.uid }, 'not a member');
-      throw new AppError(403, 'not_invited', 'Ask an Admin to invite you');
+      throw forbidden(ErrorCode.notInvited, 'Ask an Admin to invite you');
     }
     if (lookup.status === 'removed') {
       request.log.warn({ uid: request.uid }, 'removed member');
-      throw unauthorized('member_removed');
+      throw unauthorized(ErrorCode.memberRemoved);
     }
     request.member = lookup.member;
   };

@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import type { Config } from './config.js';
+import { PG_TYPE_ID } from './constants/units.js';
 
 // bigint (type 20) comes back as a JS number: sizes and revs stay far below 2^53.
-pg.types.setTypeParser(20, (text) => Number(text));
+pg.types.setTypeParser(PG_TYPE_ID.int8, (text) => Number(text));
 // date (type 1082) stays a plain "2026-11-05" string instead of a local-midnight Date.
-pg.types.setTypeParser(1082, (text) => text);
+pg.types.setTypeParser(PG_TYPE_ID.date, (text) => text);
 
 // Shared by the pool and by the realtime hub's own LISTEN connection.
 export function connectionOptions(config: Config): pg.ClientConfig {

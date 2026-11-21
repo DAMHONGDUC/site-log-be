@@ -29,7 +29,7 @@
 | Step | Hours | Files |
 |---|---|---|
 | [1](#1-migration) | 2 | `migrations/0001_projects.sql` |
-| [2](#2-registry) | 0.5 | `src/sync/tables.ts` |
+| [2](#2-registry) | 0.5 | `src/modules/sync/tables.ts` |
 | [Tests](#tests) | 0.5 | `test/projects.test.ts` |
 
 ```mermaid
@@ -211,7 +211,7 @@ npm run migrate
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-edit">Edit</b> | `src/sync/tables.ts` | The `table()` helper, three entries with their frozen and monotonic columns |
+| <b class="tag-edit">Edit</b> | `src/modules/sync/tables.ts` | The `table()` helper, three entries with their frozen and monotonic columns |
 
 </dd></dl>
 
@@ -223,7 +223,7 @@ npm run migrate
 <summary><strong>2.1 Entries</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/sync/tables.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/sync/tables.ts`
 
 <b>Explain</b> · `columns` is the full row the app sends; `immutable` columns keep their first value; `monotonic` columns only move forward.
 

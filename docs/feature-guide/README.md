@@ -35,6 +35,7 @@ flowchart LR
     S6 --> S7["S7<br/>checklists<br/>TestFlight #2"]
     S7 --> S8["S8<br/>realtime, push"]
     S8 --> S9["S9<br/>production<br/>App Store"]
+    S9 --> S10["S10<br/>team and roles"]
 
     classDef ship fill:#EEEDFE,stroke:#534AB7,color:#3C3489
     class S4,S7,S9 ship
@@ -52,7 +53,9 @@ flowchart LR
 | [S7](S7-checklists/README.md) | [F12 Checklists](S7-checklists/F12-checklists.md) | 2 | Checklist answers sync |
 | [S8](S8-realtime-push/README.md) | [F15 Realtime](S8-realtime-push/F15-realtime.md) · [F16 Push](S8-realtime-push/F16-push.md) | 11 | Uploads turn "verified" live; a push arrives |
 | [S9](S9-release/README.md) | [F18 Production](S9-release/F18-production.md) | 6 | Production live, alarms, backups tested |
+| [S10](S10-team-roles/README.md) | [F19 Team and roles](S10-team-roles/F19-team-roles.md) | 26 | Shared projects, roles, invites, activity, push kinds |
 
+- The repository now splits each guide's code into layers (routes → services → repositories, constants in `src/constants`): see [README → Code structure](../../README.md#code-structure). The guides keep the first, single-file form for learning.
 - Hours come from the sprint plan. A first AWS setup (F00c) often takes longer: budget a spare evening.
 - Features without backend work: F01 Access, F13 DeviceLink, F14 Diagnostics, F17 Accessibility.
 
@@ -75,7 +78,7 @@ flowchart LR
 |---|---|---|
 | 1 Contract | Read the feature's rows in [01-api](../feature-docs/01-api.md) | You can say what the app sends and gets back |
 | 2 Migration | One numbered `.sql` file | `npm run migrate` runs it on your database |
-| 3 Registry or route | A table entry in `src/sync/tables.ts`, or a route file | `npm run typecheck` is clean |
+| 3 Registry or route | A table entry in `src/modules/sync/tables.ts`, or a route file | `npm run typecheck` is clean |
 | 4 Run locally | `npm run dev`, curl, then the app on the simulator | The app's signed-in path works against your Mac |
 | 5 Tests | The guide's test file | `npm test` green |
 | 6 Deploy | PR → CI → merge | Staging answers; the app's staging build works |
@@ -126,7 +129,7 @@ flowchart LR
 | `pino` | 10.4.0 | `@types/node` | 24.19.2 |
 | `firebase-admin` | 14.5.0 | `@types/pg` | 8.23.1 |
 | `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner` | 3.1162.0 | `aws-cdk-lib` | 2.275.0 |
-| `jose` | 6.2.15 | `aws-cdk` (CLI) | 2.1147.0 |
-| PostgreSQL | 16 | `constructs` | 10.8.1 |
+| PostgreSQL | 16 | `aws-cdk` (CLI) | 2.1147.0 |
+| | | `constructs` | 10.8.1 |
 
 </dd></dl>

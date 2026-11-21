@@ -32,11 +32,11 @@
 
 | Step | Hours | Files |
 |---|---|---|
-| [1](#1-uploads-table) | 1 | `migrations/0004_uploads.sql`, `src/routes/account.ts` |
-| [2](#2-keys-and-codes) | 1 | `src/keys.ts`, `src/codes.ts` |
-| [3](#3-signing) | 1 | `src/storage.ts` |
-| [4](#4-begin-complete-abort) | 3 | `src/realtime/events.ts`, `src/routes/uploads.ts`, `src/app.ts` |
-| [5](#5-media-urls) | 0.5 | `src/routes/media.ts` |
+| [1](#1-uploads-table) | 1 | `migrations/0004_uploads.sql`, `src/modules/account/account-routes.ts` |
+| [2](#2-keys-and-codes) | 1 | `src/modules/uploads/object-keys.ts`, `src/modules/uploads/verification-code.ts` |
+| [3](#3-signing) | 1 | `src/integrations/storage.ts` |
+| [4](#4-begin-complete-abort) | 3 | `src/modules/realtime/events.ts`, `src/modules/uploads/uploads-routes.ts`, `src/app.ts` |
+| [5](#5-media-urls) | 0.5 | `src/modules/uploads/media-routes.ts` |
 | [6](#6-try-it-with-a-real-file) | 0.5 | — |
 | [Tests](#tests) | 1 | `test/upload-helpers.ts`, `test/uploads.test.ts` |
 
@@ -77,7 +77,7 @@ npm install @aws-sdk/s3-request-presigner @fastify/rate-limit
 | Action | File | Holds |
 |---|---|---|
 | <b class="tag-new">New</b> | `migrations/0004_uploads.sql` | Three enums, `uploads`, partial unique index on completed keys |
-| <b class="tag-edit">Edit</b> | `src/routes/account.ts` | `uploads` joins `serverTables` |
+| <b class="tag-edit">Edit</b> | `src/modules/account/account-routes.ts` | `uploads` joins `serverTables` |
 
 </dd></dl>
 
@@ -136,7 +136,7 @@ create index uploads_abandoned on uploads (created_at) where state = 'created';
 
 ---
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/routes/account.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/account/account-routes.ts`
 
 ```diff
 @@ -6,3 +6,3 @@
@@ -166,8 +166,8 @@ create index uploads_abandoned on uploads (created_at) where state = 'created';
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/keys.ts` | Three full-key patterns (capture, plan F11, branding logo F10), `parseKey`, `ownedKey` |
-| <b class="tag-new">New</b> | `src/codes.ts` | `newVerificationCode()`: 10 characters, no `0 O 1 I L` |
+| <b class="tag-new">New</b> | `src/modules/uploads/object-keys.ts` | Three full-key patterns (capture, plan F11, branding logo F10), `parseKey`, `ownedKey` |
+| <b class="tag-new">New</b> | `src/modules/uploads/verification-code.ts` | `newVerificationCode()`: 10 characters, no `0 O 1 I L` |
 
 </dd></dl>
 
@@ -179,7 +179,7 @@ create index uploads_abandoned on uploads (created_at) where state = 'created';
 <summary><strong>2.1 Keys</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/keys.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/uploads/object-keys.ts`
 
 <b>Explain</b> · The signer would otherwise be an open door into the bucket: a key like `bob/…` or `../x` must never be signed for `alice`.
 
@@ -261,7 +261,7 @@ export function ownedKey(key: string, uid: string): ParsedKey | undefined {
 
 ---
 
-<b>File</b> · <b class="tag-new">New</b> · `src/codes.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/uploads/verification-code.ts`
 
 <b>Explain</b> · `randomInt` comes from the operating system's secure random source; 31¹⁰ codes are far too many to guess with 30 tries a minute.
 
@@ -306,7 +306,7 @@ export function newVerificationCode(length: number = 10): string {
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-edit">Edit</b> | `src/storage.ts` | `expiresAt`, `presignPut`, `presignGet`, `head`, `deleteObject`, `readStream` |
+| <b class="tag-edit">Edit</b> | `src/integrations/storage.ts` | `expiresAt`, `presignPut`, `presignGet`, `head`, `deleteObject`, `readStream` |
 
 </dd></dl>
 
@@ -318,7 +318,7 @@ export function newVerificationCode(length: number = 10): string {
 <summary><strong>3.1 Storage</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/storage.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/integrations/storage.ts`
 
 <b>Explain</b> · Presigning is local cryptography with your credentials: no call to S3. The signature covers `Content-Type`, so the app must send the same header.
 
@@ -577,8 +577,8 @@ export class Storage {
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/realtime/events.ts` | `notifyUploadEvent`: `pg_notify('upload_events', …)` — nobody listens until F15 |
-| <b class="tag-new">New</b> | `src/routes/uploads.ts` | `POST /uploads` (rate limited), `POST /uploads/:id/complete`, `DELETE /uploads/:id` |
+| <b class="tag-new">New</b> | `src/modules/realtime/events.ts` | `notifyUploadEvent`: `pg_notify('upload_events', …)` — nobody listens until F15 |
+| <b class="tag-new">New</b> | `src/modules/uploads/uploads-routes.ts` | `POST /uploads` (rate limited), `POST /uploads/:id/complete`, `DELETE /uploads/:id` |
 | <b class="tag-edit">Edit</b> | `src/app.ts` | Rate-limit plugin, upload and media routes |
 
 ```mermaid
@@ -600,7 +600,7 @@ stateDiagram-v2
 <summary><strong>4.1 Events</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/realtime/events.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/realtime/events.ts`
 
 <b>Explain</b> · Sent inside the `complete` transaction: Postgres delivers it at commit and drops it on rollback. F15 adds the listener.
 
@@ -638,7 +638,7 @@ export async function notifyUploadEvent(
 <summary><strong>4.2 Upload routes</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/routes/uploads.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/uploads/uploads-routes.ts`
 
 <b>Explain</b> · `complete` locks the row with `select … for update`: a second `complete` waits, then finds `completed` and returns the stored body. That is what makes it idempotent.
 
@@ -1022,7 +1022,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 <summary><strong>5.1 Route</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/routes/media.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/uploads/media-routes.ts`
 
 <b>Explain</b> · A second device pulled a capture with `remoteKey`; it asks for short-lived GET URLs to show the photo. Same key check as begin.
 

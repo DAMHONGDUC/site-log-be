@@ -1,0 +1,54 @@
+# Every pull request and every push to main: format, lint, types, OpenAPI, tests, build, CDK synth.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  api:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sitelog
+          POSTGRES_PASSWORD: sitelog
+          POSTGRES_DB: sitelog
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U sitelog"
+          --health-interval 2s
+          --health-retries 15
+    env:
+      TEST_DATABASE_URL: postgres://sitelog:sitelog@localhost:5432/sitelog_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run openapi:check
+      - run: npm test
+      - run: npm run build
+
+  infra:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run synth

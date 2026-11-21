@@ -169,7 +169,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { loadConfig } from './config.js';
 import { createPool } from './db.js';
 import { createLogger } from './logger.js';
-import { ApnsSender, type PushSender } from './push/apns.js';
+import { FcmSender, type PushSender } from './push/fcm.js';
 import { Storage, createS3Client } from './storage.js';
 import { abortAbandonedUploads } from './workers/abandoned.js';
 import { purgeTombstones } from './workers/purge.js';
@@ -186,8 +186,8 @@ const storage = new Storage(
   config.presignTtlSeconds,
 );
 let push: PushSender | undefined = undefined;
-if (config.apns !== undefined) {
-  push = new ApnsSender(config.apns);
+if (config.firebaseServiceAccountBase64 !== undefined) {
+  push = new FcmSender(config.firebaseServiceAccountBase64);
 }
 const deps: WorkerDeps = { pool, storage, push, log };
 
@@ -815,10 +815,10 @@ cd infra && npx cdk deploy SiteLog-Staging
 
 | # | Do | Command / place |
 |---|---|---|
-| 1 | Firebase project `sitelog-prod` (F00a §3 again); the iOS Release build uses its `GoogleService-Info.plist` | console.firebase.google.com |
+| 1 | Firebase project `sitelog-prod` (F00a §3 again); the iOS Release build uses its `GoogleService-Info.plist`; upload the APNs key under Cloud Messaging ([F16 §1](../S8-realtime-push/F16-push.md#1-firebase-setup)) | console.firebase.google.com |
 | 2 | Deploy the stacks (~15 min) | `npx cdk deploy SiteLog-Prod SiteLog-Prod-Uptime` |
 | 3 | DNS `A` record `api` → `SiteLog-Prod.PublicIpAddress` | registrar |
-| 4 | Secrets | the four `put-parameter` commands of F00c §5 and F16 §1, with `/sitelog/prod/` and the **prod** Firebase key |
+| 4 | Secrets | the `put-parameter` commands of F00c §5, with `/sitelog/prod/` and the **prod** Firebase key |
 | 5 | Confirm both alarm emails | inbox |
 
 ```bash
@@ -1009,7 +1009,7 @@ aws rds delete-db-instance --db-instance-identifier sitelog-restore-test --skip-
 | `DELETE /account` works from the prod app and removes the Firebase user | App Store rule 5.1.1(v): in-app account deletion |
 | The Release build points at `https://api.<domain>` and the prod Firebase project | Testers' staging data never mixes with users' |
 | `/verify/<code>` from a real PDF answers on prod | Reports printed for clients must resolve |
-| APNs parameters in `/sitelog/prod/`; Release registers `production` tokens | Sandbox tokens are rejected by the production host |
+| APNs key uploaded in the `sitelog-prod` Firebase project (Cloud Messaging) | Without it FCM cannot deliver to iOS release builds |
 | Budget alert raised to the expected monthly cost | No surprise bill |
 | OS updates scheduled: first Monday each month, `sudo dnf upgrade -y && sudo reboot` | You own the server (B02) |
 

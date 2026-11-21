@@ -28,8 +28,8 @@
 
 | Step | Hours | Files |
 |---|---|---|
-| [1](#1-branding-table) | 1 | `migrations/0007_report_branding.sql`, `src/sync/tables.ts` |
-| [2](#2-verify-endpoint) | 2 | `src/routes/verify.ts`, `src/app.ts` |
+| [1](#1-branding-table) | 1 | `migrations/0007_report_branding.sql`, `src/modules/sync/tables.ts` |
+| [2](#2-verify-endpoint) | 2 | `src/modules/uploads/verify-routes.ts`, `src/app.ts` |
 | [Tests](#tests) | 1 | `test/fixtures.ts`, `test/verify.test.ts`, `test/branding.test.ts` |
 
 ```mermaid
@@ -84,7 +84,7 @@ create unique index report_branding_one_live on report_branding (uid) where dele
 <summary><strong>1.2 Registry</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/sync/tables.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/sync/tables.ts`
 
 <b>Explain</b> · `naturalKey: []` means "uid alone": the lookup finds the user's live branding row.
 
@@ -244,7 +244,7 @@ export function findSyncTable(name: string): SyncTable | undefined {
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/routes/verify.ts` | `GET /verify/:code`: case-insensitive, rate limited per IP, constant minimum delay, facts only |
+| <b class="tag-new">New</b> | `src/modules/uploads/verify-routes.ts` | `GET /verify/:code`: case-insensitive, rate limited per IP, constant minimum delay, facts only |
 | <b class="tag-edit">Edit</b> | `src/app.ts` | Registers it (no `requireUser`) |
 
 </dd></dl>
@@ -257,7 +257,7 @@ export function findSyncTable(name: string): SyncTable | undefined {
 <summary><strong>2.1 Route</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/routes/verify.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/uploads/verify-routes.ts`
 
 <b>Explain</b> · A hit and a miss both wait until `VERIFY_MIN_DELAY_MS` has passed, so response time does not reveal which codes exist. The IP comes from `X-Forwarded-For` because Caddy is in front (`trustProxy`).
 

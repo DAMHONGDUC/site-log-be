@@ -1,0 +1,17 @@
+{
+  "app": "npx tsx bin/sitelog.ts",
+  "context": {
+    "region": "ap-southeast-1",
+    "githubRepo": "DAMHONGDUC/site-log-be",
+    "staging": {
+      "apiDomain": "api-staging.example.com",
+      "instanceType": "t4g.small",
+      "alarmEmail": ""
+    },
+    "prod": {
+      "apiDomain": "api.example.com",
+      "instanceType": "t4g.small",
+      "alarmEmail": ""
+    }
+  }
+}

@@ -28,7 +28,7 @@
 | Action | File | Holds |
 |---|---|---|
 | <b class="tag-new">New</b> | `migrations/0006_annotations.sql` | `annotations (id = capture id, shapes jsonb)` |
-| <b class="tag-edit">Edit</b> | `src/sync/tables.ts` | `annotations` entry |
+| <b class="tag-edit">Edit</b> | `src/modules/sync/tables.ts` | `annotations` entry |
 | <b class="tag-new">New</b> | `test/annotations.test.ts` | Round trip, layer without a photo |
 
 ```mermaid
@@ -79,7 +79,7 @@ create index annotations_uid_rev on annotations (uid, rev);
 <summary><strong>1.2 Registry</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/sync/tables.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/sync/tables.ts`
 
 ```diff
 @@ -104,2 +104,4 @@

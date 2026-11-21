@@ -2,7 +2,7 @@
 
 <dl><dd>
 
-- What the SiteLog backend does, how it is built and why. The app side: [SiteLog iOS](https://github.com/DAMHONGDUC/site_log_swift_ui).
+- What the SiteLog backend does, how it is built and why. The app side: [SiteLog iOS](https://github.com/DAMHONGDUC/site_log_swift_ui) · [SiteLog Android](https://github.com/DAMHONGDUC/site-log-android).
 - Contract the app codes against: [01-api](01-api.md). Build order: [feature guides](../feature-guide/README.md).
 
 </dd></dl>
@@ -32,8 +32,9 @@
 | Stores every metadata row and serves delta sync to every device | Decide business rules — the app decides, the server records |
 | Signs S3 upload and download URLs, confirms uploads, issues verification codes | Receive or send file bytes (the app talks to S3 directly) |
 | Re-reads stored files and proves their SHA-256 | Render reports |
-| Pushes upload state over a WebSocket and APNs | Hold state in memory that matters (any process can die) |
-| Deletes an account and everything it owns | |
+| Pushes upload state over a WebSocket and Firebase Cloud Messaging | Hold state in memory that matters (any process can die) |
+| Checks every request against the member's role and projects ([05](05-team-and-roles.md)) | |
+| Invites members, removes them, deletes an account; company records stay | |
 
 </dd></dl>
 
@@ -52,7 +53,7 @@ flowchart LR
     API -->|"sign · head · complete<br/>never bytes"| S3
     Worker["worker container"] -->|"stream back, hash"| S3
     Worker --> RDS
-    Worker -->|"push"| APNs["Apple APNs"]
+    Worker -->|"push"| FCM["Firebase Cloud Messaging<br/>→ APNs for iOS"]
     RDS -.->|"pg_notify upload_events"| API
 ```
 
@@ -62,12 +63,12 @@ flowchart LR
 
 | Folder | Layer | Holds |
 |---|---|---|
-| `src/routes/` | HTTP | One file per endpoint group; validates the body, calls the logic, logs |
-| `src/sync/` | Logic | Table registry, pull, push |
-| `src/realtime/` | Logic | WebSocket channel, `pg_notify` fan-out |
+| `src/modules/<feature>/` | Feature | One folder per feature (`account`, `devices`, `health`, `notifications`, `realtime`, `sync`, `team`, `uploads`): its routes, services, repositories and rules |
+| `src/core/` | Core | Config, logger, error contract, auth, HTTP guards, shared schemas, OpenAPI |
+| `src/data/` | Data | Pool, `Database` (repositories on the pool or one transaction), table lists |
+| `src/integrations/` | Adapters | S3, SES, Firebase Cloud Messaging — the only files that talk to outside services (plus `core/auth.ts` for Firebase Auth) |
+| `src/constants/` | Constants | Every fixed value: `ApiRoutes`, error codes, roles, limits, durations |
 | `src/workers/` | Jobs | Verify, abandoned uploads, purge |
-| `src/storage.ts`, `src/auth.ts`, `src/push/` | Adapters | S3, Firebase, APNs — the only files that talk to outside services |
-| `src/config.ts`, `src/db.ts`, `src/errors.ts`, `src/logger.ts` | Core | Settings, database, error contract, logging |
 
 - `app.ts` receives every adapter as a dependency (`AppDeps`), so tests pass fakes for Firebase and S3 and a real Postgres.
 
@@ -86,7 +87,7 @@ flowchart LR
 | Migrations | Numbered `.sql` files, a 60-line runner (`src/migrate.ts`) | — |
 | Files | Amazon S3, `@aws-sdk/client-s3` + `s3-request-presigner` | 3.1162 |
 | Tokens | `firebase-admin` | 14.5 |
-| Push | APNs over HTTP/2 (`node:http2`), JWT with `jose` | jose 6.2 |
+| Push | Firebase Cloud Messaging through `firebase-admin/messaging` ([B09](#b09--firebase-cloud-messaging-for-push)) | firebase-admin 14.5 |
 | Logs | pino (built into Fastify), JSON | pino 10.4 |
 | Tests | vitest, `aws-sdk-client-mock`, a real Postgres | vitest 5.1 |
 | Lint · format | ESLint (`typescript-eslint`) · Prettier | 10.14 · 3.9 |
@@ -186,6 +187,36 @@ flowchart LR
 
 </dd></dl>
 
+### B09 — Firebase Cloud Messaging for push
+
+<dl><dd>
+
+- **Decision:** both apps register an FCM token; the worker sends with `firebase-admin/messaging` and the Firebase service account it already has. The APNs key lives in the Firebase project, not on the server.
+- **Why:** one sender and one `devices` contract for iOS and Android; no APNs JWT, HTTP/2 client or extra secret to run.
+
+| Rejected | Why not |
+|---|---|
+| Direct APNs (HTTP/2 + `jose`) for iOS, FCM for Android | Two senders, two token formats, `.p8` key in SSM |
+| Amazon SNS mobile push | A second vendor next to Firebase; still needs the FCM and APNs credentials |
+
+</dd></dl>
+
+### B10 — One company, four roles, shared projects
+
+<dl><dd>
+
+- **Context:** SiteLog is an internal tool of one company. Several supervisors walk the same projects; clients and subcontractor leads read the results. Data was owned per user.
+- **Decision:** one implicit company; members with one role each (Admin, Manager, Inspector, Viewer); rows belong to a project and keep `created_by`; one company rev counter; access decided by one `reachable(uid)` function. Details: [05-team-and-roles](05-team-and-roles.md).
+- **Why:** shared projects without a second tenant layer; evidence stays with the company when a person leaves.
+
+| Rejected | Why |
+|---|---|
+| Keep data per user, share by copying | Two copies of evidence, no single truth for a dispute |
+| Companies as tenants (SaaS) | One company only; a tenant layer adds a key to every row for nothing |
+| Firebase custom claims for roles | Role changes need a token refresh; the database is already the source of truth |
+
+</dd></dl>
+
 </dd></dl>
 
 ## 5. Environments
@@ -199,7 +230,7 @@ flowchart LR
 | `staging` | EC2 `SiteLog-Staging` | RDS | S3 `sitelog-staging-<account>` | `sitelog-dev` project | Every push to `main` |
 | `prod` | EC2 `SiteLog-Prod` | RDS, deletion protected | S3 `sitelog-prod-<account>` | `sitelog-prod` project | A `v*` tag, after approval |
 
-- The app's build configurations map to these: Debug → `dev` or `staging`, Release → `prod` (iOS `SiteLog/App/Config/`).
+- The apps' builds map to these: iOS Debug → `dev` or `staging`, Release → `prod` (`SiteLog/App/Config/`); Android `debug` → `dev` or `staging`, `staging` → `staging`, `release` → `prod`.
 
 </dd></dl>
 
@@ -223,7 +254,7 @@ flowchart LR
 |---|---|
 | Domain | ~10–15 / year |
 | Route 53 health check (prod) | ~0.5–1 / month |
-| Firebase Auth, APNs, GitHub Actions (free tiers) | 0 |
+| Firebase Auth, Cloud Messaging, GitHub Actions (free tiers) | 0 |
 
 - Staging + production: ~$90/month. To save, stop the staging server and database when not testing (`aws ec2 stop-instances`, `aws rds stop-db-instance`).
 - What grows with users: S3 storage (~$25 per TB per month) and downloads to phones (~$0.12/GB after the free 100 GB). Uploads into S3 are free.
@@ -244,7 +275,7 @@ flowchart LR
 | Comments | Only when the code cannot say it, one short line; no file headers beyond one purpose line |
 | Dependencies | Well-known, maintained packages only; versions pinned by `package-lock.json` |
 | Tests | Written after a feature works end to end; real Postgres, faked Firebase and S3 |
-| Docs | Short, bullets and tables, contents at the top; run `python3 Tools/Docs/indent-md.py` after editing |
+| Docs | Short, bullets and tables, contents at the top; run `python3 tools/docs/indent-md.py` after editing |
 | Secrets | Never in git: `.env` locally, SSM Parameter Store and Secrets Manager on AWS |
 
 </dd></dl>

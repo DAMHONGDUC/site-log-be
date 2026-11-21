@@ -30,10 +30,10 @@
 
 | Step | Hours | Files |
 |---|---|---|
-| [1](#1-revision-counter) | 0.5 | `migrations/0002_sync_state.sql`, `src/routes/account.ts` |
-| [2](#2-pull) | 2 | `src/sync/case.ts`, `src/sync/pull.ts` |
+| [1](#1-revision-counter) | 0.5 | `migrations/0002_sync_state.sql`, `src/modules/account/account-routes.ts` |
+| [2](#2-pull) | 2 | `src/modules/sync/case.ts`, `src/modules/sync/pull.ts` |
 | [3](#3-push) | 3.5 | `src/sync/push.ts` |
-| [4](#4-routes) | 1 | `src/routes/sync.ts`, `src/app.ts` |
+| [4](#4-routes) | 1 | `src/modules/sync/sync-routes.ts`, `src/app.ts` |
 | [Tests](#tests) | 1 | `test/sync-helpers.ts`, `test/sync.test.ts` |
 
 ```mermaid
@@ -65,7 +65,7 @@ sequenceDiagram
 | Action | File | Holds |
 |---|---|---|
 | <b class="tag-new">New</b> | `migrations/0002_sync_state.sql` | `sync_state (uid, last_rev, purged_through_rev, created_at)` |
-| <b class="tag-edit">Edit</b> | `src/routes/account.ts` | `sync_state` joins `serverTables` |
+| <b class="tag-edit">Edit</b> | `src/modules/account/account-routes.ts` | `sync_state` joins `serverTables` |
 
 </dd></dl>
 
@@ -103,7 +103,7 @@ create table sync_state (
 
 ---
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/routes/account.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/account/account-routes.ts`
 
 ```diff
 @@ -6,3 +6,3 @@
@@ -133,8 +133,8 @@ create table sync_state (
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/sync/case.ts` | `snakeToCamel`, `camelToSnake`, `rowToJson` (drops `uid`) |
-| <b class="tag-new">New</b> | `src/sync/pull.ts` | `pullChanges(pool, uid, since, limit)` |
+| <b class="tag-new">New</b> | `src/modules/sync/case.ts` | `snakeToCamel`, `camelToSnake`, `rowToJson` (drops `uid`) |
+| <b class="tag-new">New</b> | `src/modules/sync/pull.ts` | `pullChanges(pool, uid, since, limit)` |
 
 ```mermaid
 flowchart LR
@@ -155,7 +155,7 @@ flowchart LR
 <summary><strong>2.1 Names</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/sync/case.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/sync/case.ts`
 
 <b>Explain</b> · The app speaks `camelCase` JSON, SQL uses `snake_case`. These three small functions are the only place that converts.
 
@@ -195,7 +195,7 @@ export function rowToJson(row: Record<string, unknown>): Record<string, unknown>
 <summary><strong>2.2 Pull</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/sync/pull.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/sync/pull.ts`
 
 <b>Explain</b> · Every row a push writes gets its own rev, so revs are unique per user: taking `limit + 1` from each table is enough to know the first `limit` overall and whether more exist.
 
@@ -722,7 +722,7 @@ export async function pushMutations(
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/routes/sync.ts` | TypeBox schemas, `POST /sync/pull`, `POST /sync/push` |
+| <b class="tag-new">New</b> | `src/modules/sync/sync-routes.ts` | TypeBox schemas, `POST /sync/pull`, `POST /sync/push` |
 | <b class="tag-edit">Edit</b> | `src/app.ts` | Registers the sync routes |
 
 </dd></dl>
@@ -735,7 +735,7 @@ export async function pushMutations(
 <summary><strong>4.1 Routes</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/routes/sync.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/sync/sync-routes.ts`
 
 <b>Explain</b> · `withTypeProvider<TypeBoxTypeProvider>()` makes `request.body` typed from the schema. A body that breaks the schema never reaches the handler: the error handler answers `400 invalid_body`.
 

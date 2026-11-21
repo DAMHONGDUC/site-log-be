@@ -28,7 +28,7 @@
 | Action | File | Holds |
 |---|---|---|
 | <b class="tag-new">New</b> | `migrations/0008_plan_sheets.sql` | `plan_sheets`; `alter table issues add foreign key (uid, plan_sheet_id)` |
-| <b class="tag-edit">Edit</b> | `src/sync/tables.ts` | `plan_sheets` entry |
+| <b class="tag-edit">Edit</b> | `src/modules/sync/tables.ts` | `plan_sheets` entry |
 | <b class="tag-new">New</b> | `test/plans.test.ts` | Plan keys, pin to a real sheet only |
 
 ```mermaid
@@ -91,7 +91,7 @@ alter table issues
 <summary><strong>1.2 Registry</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/sync/tables.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/sync/tables.ts`
 
 ```diff
 @@ -114,2 +114,17 @@

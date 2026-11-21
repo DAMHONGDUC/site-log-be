@@ -90,10 +90,11 @@ flowchart TB
 | `VERIFY_MIN_DELAY_MS` · `VERIFY_RATE_LIMIT_PER_MINUTE` | `300` · `30` | — | `/verify` timing and limit |
 | `UPLOAD_RATE_LIMIT_PER_MINUTE` | `600` | — | Begins per user |
 | `MAX_SOCKETS_PER_USER` | `5` | — | WebSocket cap |
-| `APNS_KEY_P8_BASE64`, `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_BUNDLE_ID` | — | SSM | Push (F16) |
+| `INVITE_FROM_EMAIL` · `INVITE_BASE_URL` | — | `instance.env` | Sender (an Amazon SES verified identity) and link base for member invitations ([05 §5](05-team-and-roles.md#5-invitations-and-sign-in)) |
+| `INVITE_TTL_DAYS` | `7` | — | Invitation lifetime |
 | `ENV_NAME`, `API_DOMAIN`, `ECR_REPOSITORY`, `DB_SECRET_ARN` | — | `instance.env` | Used by `deploy.sh` and Caddy |
 
-- `src/config.ts` reads every variable once at start and fails fast on a missing one.
+- `src/core/config.ts` reads every variable once at start and fails fast on a missing one.
 
 </dd></dl>
 
@@ -105,7 +106,7 @@ flowchart TB
 |---|---|---|---|
 | Database password | Secrets Manager | `SiteLog-Staging…DatabaseSecret…` (generated) | CDK |
 | Firebase service account | SSM Parameter Store, `SecureString` | `/sitelog/<env>/FIREBASE_SERVICE_ACCOUNT_BASE64` | You, once ([F00c](../feature-guide/S0-foundation/F00c-aws-staging.md)) |
-| APNs key | SSM, `SecureString` | `/sitelog/<env>/APNS_KEY_P8_BASE64`, `…/APNS_KEY_ID`, `…/APNS_TEAM_ID`, `…/APNS_BUNDLE_ID` | You, in F16 |
+| APNs key (`.p8`) | Firebase project → Cloud Messaging, never on the server | `sitelog-dev`, `sitelog-prod` | You, in F16 / F18 |
 
 - `deploy.sh` turns every parameter under `/sitelog/<env>/` into `NAME=value` in `/opt/sitelog/secrets.env` (root-only). Adding a secret = one `put-parameter` + a deploy.
 

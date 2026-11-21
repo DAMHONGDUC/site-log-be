@@ -1,0 +1,60 @@
+# Runs on the EC2 server. deploy.sh sets IMAGE and writes secrets.env before `up`.
+services:
+  api:
+    image: ${IMAGE}
+    env_file: [instance.env, secrets.env]
+    environment:
+      PORT: '3000'
+      DATABASE_SSL_CA_PATH: /app/certs/rds-global-bundle.pem
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: /sitelog/${ENV_NAME}/api
+
+  worker:
+    image: ${IMAGE}
+    command: ['node', 'dist/worker.js']
+    env_file: [instance.env, secrets.env]
+    environment:
+      DATABASE_SSL_CA_PATH: /app/certs/rds-global-bundle.pem
+    restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: /sitelog/${ENV_NAME}/worker
+
+  # HTTPS in front of the API: gets and renews a Let's Encrypt certificate for API_DOMAIN.
+  caddy:
+    image: caddy:2.10
+    ports: ['80:80', '443:443']
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [api]
+    restart: unless-stopped
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ${AWS_REGION}
+        awslogs-group: /sitelog/${ENV_NAME}/caddy
+
+volumes:
+  caddy-data:
+  caddy-config:

@@ -49,7 +49,7 @@ flowchart LR
 | API, worker, Postgres | Your Mac | Fast restart, your logs, your data |
 | Firebase Auth | Real `sitelog-dev` project | The app's sign-in is real Firebase; the backend checks the same tokens |
 | S3 | Real dev bucket (`SiteLog-Dev`) | Presigned URLs, ETags and multipart behave exactly as on AWS; costs cents |
-| APNs (F16) | Apple sandbox, real iPhone only | The simulator cannot receive remote pushes from APNs |
+| Push (F16) | Real FCM through `sitelog-dev` | FCM and APNs only deliver real tokens; an Apple silicon simulator or a real iPhone gets them |
 
 </dd></dl>
 
@@ -86,7 +86,6 @@ curl localhost:3000/health
 | `DATABASE_URL` | `postgres://sitelog:sitelog@localhost:5432/sitelog` |
 | `AWS_PROFILE` · `AWS_REGION` · `S3_BUCKET` | `sitelog` · `ap-southeast-1` · `sitelog-dev-<account>` |
 | `FIREBASE_SERVICE_ACCOUNT_BASE64` | the `sitelog-dev` key (F00a §3) |
-| `APNS_*` | only for push tests (F16 §1) |
 
 </dd></dl>
 

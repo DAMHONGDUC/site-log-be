@@ -28,7 +28,7 @@
 | Action | File | Holds |
 |---|---|---|
 | <b class="tag-new">New</b> | `migrations/0003_captures.sql` | `captures`, coordinates pair check, one live row per hash per project |
-| <b class="tag-edit">Edit</b> | `src/sync/tables.ts` | `captures` entry with its frozen columns |
+| <b class="tag-edit">Edit</b> | `src/modules/sync/tables.ts` | `captures` entry with its frozen columns |
 | <b class="tag-new">New</b> | `test/captures.test.ts` | Frozen columns, half coordinates, duplicate file |
 
 ```mermaid
@@ -111,7 +111,7 @@ create unique index captures_sha_live on captures (project_id, sha256) where del
 <summary><strong>1.2 Registry</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/sync/tables.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/sync/tables.ts`
 
 <b>Explain</b> · Only `location_id` (moved), `remote_key` and `verification_code` (set after upload) and `excluded_from_report` (hidden from a report) may change.
 

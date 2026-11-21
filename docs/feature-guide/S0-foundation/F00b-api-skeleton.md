@@ -350,16 +350,11 @@ FIREBASE_WEB_API_KEY=
 PORT=3000
 LOG_LEVEL=info
 
-# Defaults are fine; they must match the iOS app's UploadConstants.
+# Defaults are fine; they must match UploadConstants in the iOS and Android apps.
 # PRESIGN_TTL_SECONDS=3600
 # SINGLE_PUT_THRESHOLD_BYTES=5242880
 # PART_SIZE_BYTES=8388608
 
-# F16 push (optional locally): APNs key from developer.apple.com → Keys
-# APNS_KEY_P8_BASE64=
-# APNS_KEY_ID=
-# APNS_TEAM_ID=
-# APNS_BUNDLE_ID=app.dd.site.log
 ```
 
 </details>
@@ -507,9 +502,9 @@ docker compose ps
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/config.ts` | `loadConfig()`: every environment variable, typed, defaults, fails fast |
-| <b class="tag-new">New</b> | `src/logger.ts` | pino options shared by the API and the worker; hides the `Authorization` header |
-| <b class="tag-new">New</b> | `src/db.ts` | `createPool()`, `connectionOptions()`, `withTransaction()`; bigint and date parsing |
+| <b class="tag-new">New</b> | `src/core/config.ts` | `loadConfig()`: every environment variable, typed, defaults, fails fast |
+| <b class="tag-new">New</b> | `src/core/logger.ts` | pino options shared by the API and the worker; hides the `Authorization` header |
+| <b class="tag-new">New</b> | `src/data/pool.ts` | `createPool()`, `connectionOptions()`, `withTransaction()`; bigint and date parsing |
 
 ```mermaid
 flowchart LR
@@ -530,7 +525,7 @@ flowchart LR
 <summary><strong>3.1 Config</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/config.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/core/config.ts`
 
 <b>Explain</b> · The only file that reads `process.env`. Everything else receives a `Config`, so tests pass their own values.
 
@@ -585,13 +580,6 @@ export function loadConfig(env: Env = process.env): Config {
 ```ts
 // Reads every setting from environment variables once, at startup.
 
-export interface ApnsConfig {
-  keyP8: string;
-  keyId: string;
-  teamId: string;
-  bundleId: string;
-}
-
 export interface Config {
   nodeEnv: string;
   port: number;
@@ -614,7 +602,6 @@ export interface Config {
   verifyRateLimitPerMinute: number;
   uploadRateLimitPerMinute: number;
   maxSocketsPerUser: number;
-  apns: ApnsConfig | undefined;
 }
 
 type Env = Record<string, string | undefined>;
@@ -647,19 +634,6 @@ function integer(env: Env, name: string, fallback: number): number {
   return value;
 }
 
-function loadApns(env: Env): ApnsConfig | undefined {
-  const keyBase64 = optional(env, 'APNS_KEY_P8_BASE64');
-  if (keyBase64 === undefined) {
-    return undefined;
-  }
-  return {
-    keyP8: Buffer.from(keyBase64, 'base64').toString('utf8'),
-    keyId: required(env, 'APNS_KEY_ID'),
-    teamId: required(env, 'APNS_TEAM_ID'),
-    bundleId: required(env, 'APNS_BUNDLE_ID'),
-  };
-}
-
 export function loadConfig(env: Env = process.env): Config {
   return {
     nodeEnv: optional(env, 'NODE_ENV') ?? 'development',
@@ -683,7 +657,6 @@ export function loadConfig(env: Env = process.env): Config {
     verifyRateLimitPerMinute: integer(env, 'VERIFY_RATE_LIMIT_PER_MINUTE', 30),
     uploadRateLimitPerMinute: integer(env, 'UPLOAD_RATE_LIMIT_PER_MINUTE', 600),
     maxSocketsPerUser: integer(env, 'MAX_SOCKETS_PER_USER', 5),
-    apns: loadApns(env),
   };
 }
 ```
@@ -701,7 +674,7 @@ export function loadConfig(env: Env = process.env): Config {
 <summary><strong>3.2 Logger</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/logger.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/core/logger.ts`
 
 <b>Explain</b> · JSON logs, one line each, so CloudWatch can search them. `redact` replaces the token with `[Redacted]` if a request is ever logged with headers.
 
@@ -740,7 +713,7 @@ export function createLogger(level: string) {
 <summary><strong>3.3 Database</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/db.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/data/pool.ts`
 
 <b>Explain</b> · One pool of connections for the process, and `withTransaction` so a route never forgets `commit`, `rollback` or `release`.
 
@@ -878,9 +851,9 @@ npm run typecheck
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/errors.ts` | `AppError` + helpers, the Fastify error and not-found handlers |
+| <b class="tag-new">New</b> | `src/core/errors.ts` | `AppError` + helpers, the Fastify error and not-found handlers |
 | <b class="tag-new">New</b> | `src/app.ts` | `AppDeps`, `buildApp(deps)`: Fastify with logger, body limit, routes |
-| <b class="tag-new">New</b> | `src/routes/health.ts` | `GET /health`: `select 1`, `cache-control: no-store` |
+| <b class="tag-new">New</b> | `src/modules/health/health-routes.ts` | `GET /health`: `select 1`, `cache-control: no-store` |
 | <b class="tag-new">New</b> | `src/main.ts` | Reads config, builds the app, listens, shuts down on `SIGTERM` |
 
 ```mermaid
@@ -907,7 +880,7 @@ sequenceDiagram
 <summary><strong>4.1 Error contract</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/errors.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/core/errors.ts`
 
 <b>Explain</b> · Routes `throw badRequest(...)`, `notFound(...)` and so on; one handler turns any error into `{ error: { code, message } }` with the right status, and logs it. Unknown errors become `500` without details.
 
@@ -1079,7 +1052,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 <summary><strong>4.3 Health route</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/routes/health.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/health/health-routes.ts`
 
 <b>Explain</b> · Used by the deploy script, Docker, and uptime alarms. It answers `ok` only if the database answers.
 

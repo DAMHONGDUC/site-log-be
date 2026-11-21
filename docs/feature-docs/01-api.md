@@ -2,7 +2,7 @@
 
 <dl><dd>
 
-- Every endpoint and WebSocket message the backend serves. The iOS app codes against this page; the backend tests check it.
+- Every endpoint and WebSocket message the backend serves. The iOS and Android apps code against this page; the backend tests check it.
 - How each one works inside: [03-sync-uploads-realtime](03-sync-uploads-realtime.md).
 
 </dd></dl>
@@ -23,6 +23,7 @@
 10. [Devices](#10-devices)
 11. [WebSocket](#11-websocket)
 12. [Shared constants](#12-shared-constants)
+13. [Team](#13-team)
 
 </dd></dl>
 
@@ -33,7 +34,7 @@
 | Item | Rule |
 |---|---|
 | Base URL | dev `http://localhost:3000` · staging `https://api-staging.<domain>` · prod `https://api.<domain>` |
-| Auth | `Authorization: Bearer <Firebase ID token>` on every route except `/health` and `/verify` |
+| Auth | `Authorization: Bearer <Firebase ID token>` on every route except `/health` and `/verify`; the caller must be a member ([05-team-and-roles](05-team-and-roles.md)) |
 | Body | JSON, `Content-Type: application/json`, at most 1 MiB |
 | Field names | `camelCase` in JSON (`clientUpdatedAt`); the server stores `snake_case` |
 | Ids | UUIDs made by the app; any case is accepted, the server returns **lowercase** |
@@ -43,6 +44,7 @@
 | Caching | Nothing may be cached: the app reads its clock offset from the `Date` header |
 
 - Swift: `ISO8601DateFormatter` with `[.withInternetDateTime, .withFractionalSeconds]` reads and writes this timestamp format.
+- Kotlin: an `Instant` serializer with `DateTimeFormatter.ISO_INSTANT`, truncated to milliseconds.
 
 </dd></dl>
 
@@ -61,13 +63,14 @@
 | `200` | Success | Including a repeated `complete` or `DELETE` |
 | `400` | Permanent: **abort the job** | Malformed body, bad key, wrong size, missing parts |
 | `401` | Refresh the token once, retry | Missing, expired, revoked or malformed token — never `403` |
+| `403` | Permanent: show "not allowed", do not retry | `forbidden` (the role may not do this, or the project is not reachable), `not_invited` (signed in but not a member) |
 | `404` | Permanent | Unknown or aborted upload, nothing uploaded, unknown code, unknown route |
-| `409` | Success on `complete` (body carries the stored result) | Same key completed by another upload; abort of a completed upload |
+| `409` | Success on `complete` (body carries the stored result) | Same key completed by another upload; abort of a completed upload; `last_admin` on a team change |
 | `413` | Permanent | Body over 1 MiB, file over the upload limit |
 | `429` | Transient, wait | Rate limit |
 | `5xx` | Transient, retry with backoff | Server fault, `503 auth_unavailable` when Firebase cannot be reached |
 
-- `403` only ever comes from S3 on a presigned URL: it means the URL expired.
+- A `403` from S3 on a presigned URL (XML body) means the URL expired; a `403` from the API (JSON `error` body) means the role or project access says no.
 
 </dd></dl>
 
@@ -78,7 +81,7 @@
 | # | Method | Path | Auth | Purpose | Since |
 |---|---|---|---|---|---|
 | 1 | `GET` | `/health` | none | Liveness | F00 |
-| 2 | `DELETE` | `/account` | Bearer | Delete every file, row and the Firebase user | F02 |
+| 2 | `DELETE` | `/account` | Bearer | Leave the company: delete the Firebase user, devices and phrases; company records stay | F02 · F19 |
 | 3 | `POST` | `/sync/pull` | Bearer | Changes since a cursor | F04 |
 | 4 | `POST` | `/sync/push` | Bearer | Apply a batch of mutations | F04 |
 | 5 | `POST` | `/uploads` | Bearer | Begin: single PUT or multipart plan | F06 · F07 |
@@ -88,8 +91,18 @@
 | 9 | `POST` | `/uploads/:id/parts/refresh` | Bearer | New URLs for expired parts | F07 |
 | 10 | `GET` | `/verify/:code` | none | Facts about a code printed in a report | F10 |
 | 11 | `WS` | `/ws` | first message | Upload state for open sessions | F15 |
-| 12 | `POST` | `/devices` | Bearer | Register an APNs token | F16 |
+| 12 | `POST` | `/devices` | Bearer | Register an FCM token | F16 |
 | 13 | `DELETE` | `/devices/:token` | Bearer | Remove it on sign-out | F16 |
+| 14 | `GET` | `/me` | Bearer | The caller's member record: role, reachable projects | F19 |
+| 15 | `GET` | `/members` | Bearer · Admin, Manager | Every member with role and projects | F19 |
+| 16 | `POST` | `/invitations` | Bearer · Admin | Invite an email with a role and projects | F19 |
+| 17 | `POST` | `/invitations/accept` | Bearer | Join with an invite token | F19 |
+| 18 | `GET` | `/invitations/preview/:token` | none | Preview an invite before sign-in: who invited, role, projects | F19 |
+| 19 | `POST` | `/invitations/:id/resend` | Bearer · Admin | New token and email; the old link stops working | F19 |
+| 20 | `DELETE` | `/invitations/:id` | Bearer · Admin | Cancel an invite | F19 |
+| 21 | `PATCH` · `DELETE` | `/members/:uid` | Bearer · Admin | Change a role and / or projects · remove a member | F19 |
+| 22 | `PUT` | `/projects/:id/members` | Bearer · Admin, Manager | Set who works on a project | F19 |
+| 23 | `GET` | `/member-events` | Bearer · Admin | Team activity log, newest first, paged | F19 |
 
 </dd></dl>
 
@@ -105,10 +118,10 @@
 
 <dl><dd>
 
-- `DELETE /account` → files first, then rows, then the Firebase user. Safe to repeat; a repeat returns zeros.
+- `DELETE /account` → aborts the caller's unfinished uploads, deletes their phrases, devices and the Firebase user, and marks the member removed. Photos, issues and reports they made belong to the company and stay, shown as made by a former member ([05 §8](05-team-and-roles.md#8-removing-a-member-deleting-an-account)). Safe to repeat; a repeat returns zeros. The last Admin gets `409 last_admin`.
 
 ```json
-{ "deletedObjects": 214, "abortedUploads": 1, "deletedRows": 932 }
+{ "abortedUploads": 1, "deletedRows": 18 }
 ```
 
 - The app reauthenticates first (Apple requires recent sign-in), shows the numbers, then wipes local data.
@@ -197,7 +210,7 @@ POST /sync/push
 | `unknown_field:<name>` | A field the table does not have |
 | `invalid_row:<code>` | A value or rule broke: `23502` missing value, `23514` rule (e.g. half a pin), `23505` duplicate, `22…` wrong type |
 | `missing_parent` | A referenced row is not on the server and not in the batch |
-| `forbidden` | The id belongs to another account |
+| `forbidden:<action>` | The project is not reachable, or the role may not do this ([05 §3](05-team-and-roles.md#3-permissions)) |
 
 - Rules the server applies, whatever the timestamps say:
   - `sessions.state` only moves forward: `draft < active < closed < exported`.
@@ -216,18 +229,19 @@ POST /sync/push
 | `locations` | `projectId`, `parentId`, `code`, `kind` (`floor` · `unit` · `room`), `sortIndex` | `projectId` | — | F03 |
 | `sessions` | `projectId`, `startedAt`, `endedAt`, `surveyorName`, `note`, `state` | `projectId`, `startedAt` | — | F03 |
 | `captures` | `projectId`, `sessionId`, `locationId`, `kind` (`photo` · `video` · `audio`), `sha256`, `byteSize`, `capturedAt`, `timeConfidence`, `latitude`, `longitude`, `horizontalAccuracy`, `deviceModel`, `durationSeconds`, `deviceReading`, `remoteKey`, `verificationCode`, `excludedFromReport` | all but `locationId`, `remoteKey`, `verificationCode`, `excludedFromReport` | — | F05 |
-| `issues` | `projectId`, `locationId`, `title`, `detail`, `severity` (`critical` · `major` · `minor`), `status` (`open` · `inProgress` · `resolved` · `verified`), `dueDate`, `assigneeName`, `trade`, `planSheetId`, `pinX`, `pinY`, `resolvedByIssueId`, `sourceChecklistResultId` | — | — | F08 |
+| `issues` | `projectId`, `locationId`, `title`, `detail`, `severity` (`critical` · `major` · `minor`), `status` (`open` · `inProgress` · `resolved` · `verified`), `dueDate`, `assigneeName`, `assigneeUid` (F19: a member; `null` when the assignee is only a typed name), `trade`, `planSheetId`, `pinX`, `pinY`, `resolvedByIssueId`, `sourceChecklistResultId` | — | — | F08 |
 | `issue_captures` | `issueId`, `captureId` | both | `issueId` + `captureId` | F08 |
 | `phrases` | `text`, `usageCount` | `text` | `text` | F08 |
 | `annotations` | `shapes` (JSON array); `id` = the capture id | — | — | F09 |
-| `report_branding` | `companyName`, `logoKey`, `accentHex` (`#RRGGBB`), `clientBlock`, `footerText` | — | one per user | F10 |
+| `report_branding` | `companyName`, `logoKey`, `accentHex` (`#RRGGBB`), `clientBlock`, `footerText` | — | one per company | F10 |
 | `plan_sheets` | `projectId`, `locationId`, `name`, `pageIndex`, `pixelWidth`, `pixelHeight`, `sha256`, `remoteKey` | `projectId`, `sha256`, `pixelWidth`, `pixelHeight` | — | F11 |
 | `checklist_templates` | `projectId`, `name`, `appliesTo`, `isBuiltIn`, `usageCount` | — | — | F12 |
 | `checklist_template_items` | `templateId`, `ordinal`, `text`, `defaultSeverity`, `requiresPhotoOnFail` | — | — | F12 |
 | `checklist_runs` | `templateId`, `sessionId`, `locationId`, `startedAt`, `completedAt` | all but `completedAt` | — | F12 |
 | `checklist_results` | `runId`, `templateItemId`, `outcome` (`pass` · `fail` · `na` · `null`), `note`, `issueId`, `answeredAt` | `runId`, `templateItemId` | `runId` + `templateItemId` | F12 |
 
-- Every pulled row also carries `id`, `rev`, `clientUpdatedAt`, `deletedAt`.
+- Every pulled row also carries `id`, `rev`, `clientUpdatedAt`, `deletedAt` and `createdBy` (the member who made it, set by the server).
+- Pull returns only rows of reachable projects; `phrases` are personal and sync only to their owner ([05 §6](05-team-and-roles.md#6-sync-with-shared-projects)).
 - A pin is `planSheetId` + `pinX` + `pinY` (each 0…1) together, or all three `null`.
 - `latitude` and `longitude` are both set or both `null`.
 
@@ -245,11 +259,11 @@ POST /sync/push
 
 | File | Key |
 |---|---|
-| Capture | `{uid}/{projectId}/{sessionId}/{captureId}.{jpg·heic·png·mov·mp4·m4a}` |
-| Plan sheet | `{uid}/{projectId}/plans/{sheetId}.{pdf·jpg·png·heic}` |
-| Branding logo | `{uid}/branding/{logoId}.{png·jpg}` |
+| Capture | `projects/{projectId}/{sessionId}/{captureId}.{jpg·heic·png·mov·mp4·m4a}` |
+| Plan sheet | `projects/{projectId}/plans/{sheetId}.{pdf·jpg·png·heic}` |
+| Branding logo | `company/branding/{logoId}.{png·jpg}` |
 
-- `uid` is the Firebase uid of the caller. Any other shape, another uid, `..` or a leading `/` → `400 invalid_key`.
+- Any other shape, `..` or a leading `/` → `400 invalid_key`; a project the caller may not write ([05 §3](05-team-and-roles.md#3-permissions)) → `403 forbidden`.
 
 </dd></dl>
 
@@ -338,7 +352,7 @@ POST /media/urls
 → { "urls": [ { "key": "uid/…/….jpg", "url": "https://…" } ], "expiresAt": "…" }
 ```
 
-- At most 200 keys; each must be the caller's. Cache images by key, not by URL (the query string changes).
+- At most 200 keys; each must be in a project the caller reaches. Cache images by key, not by URL (the query string changes).
 
 </dd></dl>
 
@@ -370,13 +384,36 @@ GET /verify/K7M2QX9HTP
 
 ```json
 POST /devices
-{ "token": "<APNs device token, hex>", "environment": "sandbox" }
+{ "token": "<FCM registration token>", "platform": "ios", "kinds": ["uploadsVerified", "issueAssigned", "issueRechecked", "access"] }
 → { "registered": true }
 ```
 
-- `environment`: `sandbox` for Debug builds, `production` for TestFlight and App Store.
+| Field | Rule |
+|---|---|
+| `token` | FCM registration token from the Firebase Messaging SDK (iOS too, never the raw APNs token); `[A-Za-z0-9_:-]`, 20–4096 chars |
+| `platform` | `ios` or `android`; picks the message shape |
+| `kinds` | F19, optional; the push kinds this device wants (table below); missing = all. The app posts again whenever the member changes a switch in You → Notifications, so choices live per device |
+
 - `DELETE /devices/:token` → `{ "removed": true }` on sign-out.
-- A push carries `aps.alert`, `deepLink` (`sitelog://session/<id>`) and `account` (first 16 hex of SHA-256 of the uid): ignore a push whose `account` is not the signed-in user.
+- Register after sign-in and on every token refresh; a token FCM rejects is deleted by the server.
+
+| Platform | Push the app receives |
+|---|---|
+| `ios` | System alert (`notification` title, body) + data `kind`, `deepLink`, `account` |
+| `android` | Data only: `kind`, `deepLink`, `account`, `title`, `body`; the app builds the notification on the channel of that kind |
+
+| Kind | When | Who gets it (never the member who caused it) | Example (title · body) | `deepLink` | Since |
+|---|---|---|---|---|---|
+| `uploadsVerified` | The last upload of a session is verified | F16: the member who started the session; F19: every member who reaches the project | Level 7 walkthrough is safe · All 112 photos are uploaded and verified. | `sitelog://session/<id>` | F16 |
+| `issueAssigned` | `assignee_uid` is set or changed to a member | The new assignee | Assigned to you · Major · Hairline crack by the skirting, 7A Living room. Due Fri. | `sitelog://issue/<id>` | F19 |
+| `issueRechecked` | A re-check is recorded: resolved, still open or worse | The issue's creator and assignee | Re-check: still open · Le Thu re-checked Exposed wiring at socket, 7A Kitchen. | `sitelog://issue/<id>` | F19 |
+| `dueSoon` | Every day at 8:00 site time, open issues due the next day | Each assignee, one summary per project | 2 issues due tomorrow · Riverside Tower B · Phuc Electric, Tuan's crew. | `sitelog://project/<id>` (the app opens its Issues, due tomorrow) | F19 |
+| `access` | Added to or removed from a project, or the role changes | That member | Added to Harbor View Villas · Hanh Nguyen added you as Inspector. | `sitelog://project/<id>`; none on removal | F19 |
+
+- Text never carries a photo or a file name; titles stay under 40 characters, bodies under two lines.
+- F16 ships the first kind only, without `kind` or `kinds`: title "Uploads verified", body "Every file in the session is stored and checked." F19 adds `kind` to every push, honours `kinds` and switches to the titles above.
+
+- `account` = first 16 hex of SHA-256 of the uid: ignore a push whose `account` is not the signed-in user.
 
 </dd></dl>
 
@@ -415,15 +452,73 @@ POST /devices
 
 - These must match on both sides; the backend reads them from its environment ([04-aws-operations](04-aws-operations.md#3-configuration)).
 
-| Constant | Value | iOS |
-|---|---|---|
-| Single-PUT threshold | 5 MiB (5,242,880 bytes) | `UploadConstants.singlePutThresholdBytes` |
-| Part size | 8 MiB (8,388,608 bytes) | `UploadConstants.partSizeBytes` |
-| Presigned URL lifetime | 1 hour | proactive refresh before `expiresAt` |
-| Pull page size | ≤ 500 | `SyncConstants.pullPageSize` |
-| Push batch size | ≤ 200 | `SyncConstants.pushBatchSize` |
-| Tombstone retention | 90 days | `SyncConstants.tombstoneRetentionDays` |
-| WebSocket auth timeout | 5 s | `RealtimeConstants.authTimeout` |
-| WebSocket max message | 64 KiB | `RealtimeConstants.maxMessageBytes` |
+| Constant | Value | iOS | Android |
+|---|---|---|---|
+| Single-PUT threshold | 5 MiB (5,242,880 bytes) | `UploadConstants.singlePutThresholdBytes` | `UploadConstants.SINGLE_PUT_THRESHOLD_BYTES` |
+| Part size | 8 MiB (8,388,608 bytes) | `UploadConstants.partSizeBytes` | `UploadConstants.PART_SIZE_BYTES` |
+| Presigned URL lifetime | 1 hour | proactive refresh before `expiresAt` | proactive refresh before `expiresAt` |
+| Pull page size | ≤ 500 | `SyncConstants.pullPageSize` | `SyncConstants.PULL_PAGE_SIZE` |
+| Push batch size | ≤ 200 | `SyncConstants.pushBatchSize` | `SyncConstants.PUSH_BATCH_SIZE` |
+| Tombstone retention | 90 days | `SyncConstants.tombstoneRetentionDays` | `SyncConstants.TOMBSTONE_RETENTION_DAYS` |
+| WebSocket auth timeout | 5 s | `RealtimeConstants.authTimeout` | `RealtimeConstants.AUTH_TIMEOUT_MS` |
+| WebSocket max message | 64 KiB | `RealtimeConstants.maxMessageBytes` | `RealtimeConstants.MAX_MESSAGE_BYTES` |
+
+</dd></dl>
+
+## 13. Team
+
+<dl><dd>
+
+- Rules behind these calls: [05-team-and-roles](05-team-and-roles.md).
+
+```json
+GET /me
+→ { "uid": "…", "email": "hanh@…", "name": "Hanh Nguyen", "role": "inspector", "projectIds": ["1111…"] }
+```
+
+- `role` is `admin`, `manager`, `inspector` or `viewer`; `projectIds` is `"all"` for Admin and Manager.
+
+```json
+GET /members
+→ { "members": [ { "uid": "…", "email": "…", "name": "…", "role": "manager", "projectIds": "all", "lastSeenAt": "…" } ],
+    "invitations": [ { "id": "…", "email": "…", "role": "viewer", "projectIds": ["1111…"], "expiresAt": "…" } ] }
+
+POST /invitations { "email": "client@…", "role": "viewer", "projectIds": ["1111…"] }
+→ { "invitationId": "…", "expiresAt": "…" }
+
+GET /invitations/preview/:token  (no Authorization: the link itself is the key)
+→ { "invitedBy": "Hanh Nguyen", "role": "inspector", "projects": [ { "id": "1111…", "name": "Riverside Tower B" } ],
+    "email": "v••@eastline.vn", "expiresAt": "…" }
+
+POST /invitations/accept { "token": "…" }
+→ { "uid": "…", "role": "viewer", "projectIds": ["1111…"] }
+
+POST /invitations/:id/resend
+→ { "invitationId": "…", "expiresAt": "…" }
+
+PATCH /members/:uid { "role": "manager" }                → { "uid": "…", "role": "manager", "projectIds": "all" }
+PATCH /members/:uid { "projectIds": ["1111…", "2222…"] } → { "uid": "…", "role": "inspector", "projectIds": ["1111…", "2222…"] }
+DELETE /members/:uid                        → { "removed": true }
+PUT /projects/:id/members { "uids": ["…", "…"] }   → { "projectId": "…", "uids": ["…", "…"] }
+
+GET /member-events?before=<id>&limit=50
+→ { "events": [ { "id": "…", "at": "…", "actor": { "uid": "…", "name": "Hanh Nguyen" },
+                  "type": "role_changed", "subject": { "uid": "…", "name": "Le Thu" }, "detail": { "from": "viewer", "to": "inspector" } } ],
+    "next": "<id or null>" }
+```
+
+- `GET /invitations/preview/:token` never reveals the full email or marks the invite used; it is rate limited per IP (`429`). `PATCH /members/:uid` takes `role`, `projectIds` or both; `projectIds` is ignored for Admin and Manager (they reach every project).
+- `type` in `member_events`: `invited` · `invite_resent` · `invite_cancelled` · `joined` · `role_changed` · `projects_changed` · `removed` · `account_deleted`.
+
+| Error | When |
+|---|---|
+| `400 invalid_email` · `400 invalid_role` | Malformed body |
+| `403 forbidden` | The caller's role may not do this |
+| `404` | Unknown member, invitation or project; an invite token that never existed |
+| `429` | Too many invite previews from one address |
+| `409 already_member` | Invite for an email that is already a member |
+| `409 invite_expired` · `409 invite_used` · `409 email_mismatch` | Accept with a bad token (preview: expired or used only) |
+| `409 invite_accepted` | Resend or cancel an invite that was already accepted |
+| `409 last_admin` | Removing, demoting or deleting the last Admin |
 
 </dd></dl>

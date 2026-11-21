@@ -33,15 +33,20 @@ if (config.inviteFromEmail !== undefined) {
 const push = new FcmSender(config.firebaseServiceAccountBase64);
 const app = await buildApp({ config, pool, tokens, storage, hub, mailer, push });
 
+// app.close() finishes open requests, then lets go of what the server holds: the realtime
+// listener first, the database pool last.
+app.addHook('onClose', async () => {
+  await hub.stop();
+  await pool.end();
+});
+
 await hub.start(app.log);
 await app.listen({ host: ENV_DEFAULT.host, port: config.port });
 
-// docker stop sends SIGTERM: finish open requests, then close the database pool.
+// docker stop sends SIGTERM.
 async function shutdown(signal: string): Promise<void> {
   app.log.info({ signal }, LOG.server.shuttingDown);
   await app.close();
-  await hub.stop();
-  await pool.end();
 }
 
 process.once(SIGNAL.term, () => void shutdown(SIGNAL.term));

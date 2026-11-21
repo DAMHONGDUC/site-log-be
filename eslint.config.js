@@ -17,11 +17,12 @@ const SQL_IN_REPOSITORY_RULE = {
 
 // No hard-coded strings: every value is a named constant in src/constants (README → Code
 // structure). Allowed: '' (no text), typeof checks, the `in` operator, SQL handed to query(),
-// Drizzle's for('update') and sql`` templates.
+// Drizzle's for('update') and sql`` templates, and Fastify hook names (addHook('onClose')), which
+// the compiler already checks.
 const STRING = `Literal[raw=/^['"][^'"]/]`;
 const STRING_MESSAGE = 'Define the string as a constant in src/constants and use it by name.';
 const STRING_RULES = [
-  `CallExpression:not([callee.property.name=/^(query|for)$/]) > ${STRING}`,
+  `CallExpression:not([callee.property.name=/^(query|for|addHook)$/]) > ${STRING}`,
   `NewExpression > ${STRING}`,
   `BinaryExpression:not([left.operator='typeof']):not([operator='in']) > ${STRING}`,
   `Property > ${STRING}.value`,

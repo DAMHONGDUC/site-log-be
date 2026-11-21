@@ -177,6 +177,6 @@ site-log-be/
 | `npm run seed:admin -- <email> <firebase-uid>` | Creates the first Admin, once (F19) |
 | `npm run move-keys` | Moves pre-F19 file keys to `projects/…` and `company/…`, once after migration `0012` |
 | `cd infra && npx cdk deploy SiteLog-Staging` | Creates or updates the staging AWS resources |
-| `python3 Tools/Docs/indent-md.py` | Re-indents every `.md` after an edit |
+| `python3 tools/docs/indent-md.py` | Re-indents every `.md` after an edit |
 
 </dd></dl>

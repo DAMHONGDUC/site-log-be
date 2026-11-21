@@ -275,7 +275,7 @@ flowchart LR
 | Comments | Only when the code cannot say it, one short line; no file headers beyond one purpose line |
 | Dependencies | Well-known, maintained packages only; versions pinned by `package-lock.json` |
 | Tests | Written after a feature works end to end; real Postgres, faked Firebase and S3 |
-| Docs | Short, bullets and tables, contents at the top; run `python3 Tools/Docs/indent-md.py` after editing |
+| Docs | Short, bullets and tables, contents at the top; run `python3 tools/docs/indent-md.py` after editing |
 | Secrets | Never in git: `.env` locally, SSM Parameter Store and Secrets Manager on AWS |
 
 </dd></dl>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Indent every section's content under its title in Markdown files.
 
-Usage: python3 Tools/Docs/indent-md.py README.md docs
+Usage: python3 tools/docs/indent-md.py README.md docs
 
 Markdown has no indentation, so content is wrapped in <dl><dd> (16 px per level on
 GitHub; .vscode/markdown-preview.css does the same in VS Code). Safe to run again:

@@ -169,7 +169,7 @@ git clone https://github.com/DAMHONGDUC/site-log-be.git ~/Documents/GitHub/BE/si
 cd ~/Documents/GitHub/BE/site-log-be && code .
 ```
 
-- Already in the repo: `docs/`, `Tools/Docs/indent-md.py`, `.vscode/`, `.gitignore`, `README.md`. F00b adds the code.
+- Already in the repo: `docs/`, `tools/docs/indent-md.py`, `.vscode/`, `.gitignore`, `README.md`. F00b adds the code.
 
 </dd></dl>
 

@@ -34,12 +34,12 @@
 | Step | Hours | Files |
 |---|---|---|
 | [1](#1-migration) | 3 | `migrations/0012_team.sql` |
-| [2](#2-access) | 2 | `src/team/access.ts`, `src/team/permissions.ts`, `src/auth.ts`, `scripts/seed-admin.ts` |
-| [3](#3-sync-scope) | 3 | `src/sync/pull.ts`, `src/sync/push.ts`, `src/sync/tables.ts`, `src/sync/case.ts` |
-| [4](#4-files) | 2 | `src/keys.ts`, `src/team/files.ts`, `src/routes/uploads.ts`, `src/routes/media.ts`, `src/team/move-keys.ts`, `scripts/move-keys.ts` |
-| [5](#5-team-api-and-invites) | 5 | `src/routes/team.ts`, `src/team/invitations.ts`, `src/team/events.ts`, `src/mail/mailer.ts`, `src/routes/account.ts` |
-| [6](#6-realtime-and-push) | 5 | `src/realtime/ws.ts`, `src/realtime/hub.ts`, `src/push/notify.ts`, `src/push/issues.ts`, `src/workers/verify.ts`, `src/workers/due-soon.ts`, `src/routes/devices.ts` |
-| [Tests](#tests) | 6 | `test/team.test.ts`; S1–S8 tests updated to the project keys and roles |
+| [2](#2-access) | 2 | `src/constants/roles.ts`, `src/domain/permissions.ts`, `src/domain/member.ts`, `src/services/access-service.ts`, `src/auth.ts`, `src/http/guards.ts`, `scripts/seed-admin.ts` |
+| [3](#3-sync-scope) | 3 | `src/sync/tables.ts`, `src/sync/pull.ts`, `src/sync/push/` (`sql`, `placement`, `authorization`, `apply`) |
+| [4](#4-files) | 2 | `src/keys.ts`, `src/services/file-access-service.ts`, `src/services/upload-service.ts`, `src/services/key-migration-service.ts`, `scripts/move-keys.ts` |
+| [5](#5-team-api-and-invites) | 5 | `src/routes/members.ts`, `src/routes/invitations.ts`, `src/services/team-service.ts`, `src/services/invitation-service.ts`, `src/services/account-service.ts`, `src/repositories/*`, `src/mail/` |
+| [6](#6-realtime-and-push) | 5 | `src/constants/push.ts`, `src/push/templates.ts`, `src/services/notification-service.ts`, `src/services/issue-notifier.ts`, `src/services/due-soon-service.ts`, `src/realtime/ws.ts`, `src/workers/verify.ts` |
+| [Tests](#tests) | 6 | `test/team.test.ts`; S1–S8 tests updated to the project keys, roles and `ApiRoutes` |
 
 ```mermaid
 flowchart LR
@@ -84,10 +84,11 @@ flowchart LR
 
 | File | Holds |
 |---|---|
-| `src/team/access.ts` | `loadMember(uid)`, `reachable(member)` (all for Admin / Manager, `project_members` otherwise) |
-| `src/team/permissions.ts` | The table of [05 §3](../../feature-docs/05-team-and-roles.md#3-permissions) as data: `can(role, action, row?)`, including "own, same day" |
-| `src/auth.ts` | After the token: no member → `403 not_invited`; removed member → `401` |
-| `scripts/seed-admin.ts` | `npm run seed:admin -- <email>`: the first Admin, once |
+| `src/services/access-service.ts` | `lookup(uid)`, `reach(member)` (all for `ROLES_REACHING_ALL`, `project_members` otherwise), `membersReaching(projectId)` |
+| `src/constants/roles.ts` | The table of [05 §3](../../feature-docs/05-team-and-roles.md#3-permissions) as data: `ROLE_PERMISSIONS`, `OWN_SAME_DAY_ONLY` |
+| `src/domain/permissions.ts` | `can(role, action, { ownSameDay })` over that table |
+| `src/auth.ts`, `src/http/guards.ts` | After the token: no member → `403 not_invited`; removed member → `401`; `requireAction(action)` for team routes |
+| `scripts/seed-admin.ts` | `npm run seed:admin -- <email> <firebase-uid>`: the first Admin, once |
 
 - **Check:** a token of a stranger gets `403 not_invited`; the seeded Admin gets `200` on `GET /me`.
 

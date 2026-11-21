@@ -1,5 +1,8 @@
 import type pg from 'pg';
-import { reachable, type Member, type Reach } from '../team/access.js';
+import type { Member, Reach } from '../domain/member.js';
+import type { Repositories } from '../repositories/index.js';
+import type { AccessService } from '../services/access-service.js';
+import { purgedThroughRev } from './push/sql.js';
 import { rowToJson } from './case.js';
 import { syncTables, type SyncTable } from './tables.js';
 
@@ -48,25 +51,23 @@ function scopedQuery(
 // Tombstones (deleted_at set) are included so other devices delete them too.
 export async function pullChanges(
   pool: pg.Pool,
+  repos: Repositories,
+  access: AccessService,
   member: Member,
   since: number,
   limit: number,
 ): Promise<PullResult> {
   if (member.resyncRequired) {
     // Access changed (role or projects): the device rebuilds its store from 0.
-    await pool.query('update members set resync_required = false where uid = $1', [member.uid]);
+    await repos.members.clearResync(member.uid);
     return { resyncRequired: true };
   }
-  const state = await pool.query<{ purged_through_rev: number }>(
-    'select purged_through_rev from sync_counter',
-  );
-  const purgedThrough = state.rows[0]?.purged_through_rev ?? 0;
-  if (since > 0 && since < purgedThrough) {
+  if (since > 0 && since < (await purgedThroughRev(pool))) {
     // Tombstones this device never saw are gone: it must start again from 0.
     return { resyncRequired: true };
   }
 
-  const reach = await reachable(pool, member);
+  const reach = await access.reach(member);
   // Revs are unique company-wide, so the first `limit` rows across all tables are found by
   // taking limit + 1 from each table and merging.
   const found: ChangedRow[] = [];

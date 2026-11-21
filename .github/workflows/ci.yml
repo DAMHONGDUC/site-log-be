@@ -1,4 +1,4 @@
-# Every pull request and every push to main: format, lint, types, tests, build, CDK synth.
+# Every pull request and every push to main: format, lint, types, OpenAPI, tests, build, CDK synth.
 name: CI
 
 on:
@@ -33,6 +33,7 @@ jobs:
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm run openapi:check
       - run: npm test
       - run: npm run build
 

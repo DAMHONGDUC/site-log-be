@@ -48,7 +48,7 @@
 |---|---|
 | Docker with Compose (Colima) | `brew install colima docker docker-compose`, then `colima start --memory 2 --cpu 2` |
 | Compose plugin found by Docker | `mkdir -p ~/.docker/cli-plugins && ln -sfn "$(brew --prefix)/opt/docker-compose/bin/docker-compose" ~/.docker/cli-plugins/docker-compose` |
-| Node 24 | `nvm use` (reads `.nvmrc`) |
+| Node 24 | `brew install node@24 && brew link --overwrite node@24`, or `nvm use` (reads `.nvmrc`) |
 | `.env` | `cp .env.example .env`; the S3 lines already point at RustFS |
 | Firebase key | `sitelog-dev` → Project settings → Service accounts → Generate new private key; `base64 -i key.json` into `FIREBASE_SERVICE_ACCOUNT_BASE64` |
 
@@ -163,6 +163,7 @@ adb reverse tcp:3000 tcp:3000 && adb reverse tcp:9000 tcp:9000
 | Symptom | Cause | Fix |
 |---|---|---|
 | `docker: unknown command: docker compose` | Compose plugin not linked | §2, the `cli-plugins` line |
+| `port 5432 is already allocated` | An older Postgres container (started with `docker run`) holds the port | Keep it and start only S3: `docker compose up -d s3`; or `docker stop <name>` and use the compose one |
 | `InvalidLocationConstraint` or `SignatureDoesNotMatch` on every call | `AWS_REGION` differs from `RUSTFS_REGION` in `docker-compose.yml` | Keep both `ap-southeast-1` |
 | `NoSuchBucket` | Bucket not created after a reset | `npm run s3:bucket` |
 | Upload from the Android emulator times out | No `adb reverse` for 9000 | §4 |

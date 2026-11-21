@@ -12,9 +12,15 @@ import type { Repositories } from '../../../data/repositories.js';
 import type { UploadRow } from './upload-repository.js';
 import type { CompletedPart, Storage } from '../../../integrations/storage.js';
 import type { FileAccessService } from '../media/file-access-service.js';
+import { PG_ERROR } from '../../../constants/platform/external.js';
+import { UPLOAD_MODE, UPLOAD_STATE, VERIFY_STATE } from '../../../constants/data/enums.js';
+import { ERROR_TEXT, FAULT_TEXT } from '../../../constants/messages/error-text.js';
+import { FILE_ACCESS } from '../../../constants/domain/team.js';
+import { KEY_KIND } from '../../../constants/domain/object-keys.js';
+import { LOG } from '../../../constants/messages/log.js';
+import { UPLOAD_EVENT } from '../../../constants/domain/realtime.js';
 
 const CODE_ATTEMPTS = 5;
-const PG_UNIQUE_VIOLATION = '23505';
 
 export interface BeginInput {
   key: string;
@@ -30,7 +36,7 @@ export function completedBody(row: UploadRow) {
     remoteKey: row.objectKey,
     sha256: row.sha256,
     verificationCode: row.verificationCode,
-    verified: row.verifyState === 'verified',
+    verified: row.verifyState === VERIFY_STATE.verified,
     receivedAt: row.completedAt,
   };
 }
@@ -38,12 +44,12 @@ export function completedBody(row: UploadRow) {
 // Every part number from 1 to partCount exactly once.
 function checkParts(parts: CompletedPart[], partCount: number): void {
   if (parts.length !== partCount) {
-    throw badRequest(ErrorCode.invalidParts, `Expected ${partCount} parts, got ${parts.length}`);
+    throw badRequest(ErrorCode.invalidParts, ERROR_TEXT.partCount(partCount, parts.length));
   }
   const seen = new Set<number>();
   for (const part of parts) {
     if (part.number < 1 || part.number > partCount || seen.has(part.number)) {
-      throw badRequest(ErrorCode.invalidParts, `Bad or repeated part number ${part.number}`);
+      throw badRequest(ErrorCode.invalidParts, ERROR_TEXT.badPart(part.number));
     }
     seen.add(part.number);
   }
@@ -64,16 +70,16 @@ export class UploadService {
 
   // The backend picks single PUT or multipart from the size.
   async begin(member: Member, input: BeginInput) {
-    const parsed = await this.files.check(member, input.key, 'write');
+    const parsed = await this.files.check(member, input.key, FILE_ACCESS.write);
     if (input.byteSize > this.config.maxUploadBytes) {
       throw new AppError(
         HTTP_STATUS.payloadTooLarge,
         ErrorCode.fileTooLarge,
-        'File is larger than the upload limit',
+        ERROR_TEXT.fileTooLarge,
       );
     }
-    const projectId = parsed.kind === 'branding' ? null : parsed.projectId;
-    const sessionId = parsed.kind === 'capture' ? parsed.sessionId : null;
+    const projectId = parsed.kind === KEY_KIND.branding ? null : parsed.projectId;
+    const sessionId = parsed.kind === KEY_KIND.capture ? parsed.sessionId : null;
     const expiresAt = this.storage.expiresAt(new Date());
     const base = {
       uid: member.uid,
@@ -88,13 +94,16 @@ export class UploadService {
     if (input.byteSize < this.config.singlePutThresholdBytes) {
       const uploadId = await this.db.repos.uploads.create({
         ...base,
-        mode: 'single',
+        mode: UPLOAD_MODE.single,
         s3UploadId: null,
         partCount: null,
       });
       const url = await this.storage.presignPut(input.key, input.contentType);
-      this.log.info({ uid: member.uid, uploadId, key: input.key, mode: 'single' }, 'upload begun');
-      return { mode: 'single' as const, uploadId, url, expiresAt };
+      this.log.info(
+        { uid: member.uid, uploadId, key: input.key, mode: UPLOAD_MODE.single },
+        LOG.uploads.begun,
+      );
+      return { mode: UPLOAD_MODE.single, uploadId, url, expiresAt };
     }
 
     const partCount = Math.ceil(input.byteSize / this.config.partSizeBytes);
@@ -102,13 +111,13 @@ export class UploadService {
       throw new AppError(
         HTTP_STATUS.payloadTooLarge,
         ErrorCode.fileTooLarge,
-        `File needs more than ${LIMITS.s3MaxParts} parts`,
+        ERROR_TEXT.tooManyParts(LIMITS.s3MaxParts),
       );
     }
     const s3UploadId = await this.storage.createMultipart(input.key, input.contentType);
     const uploadId = await this.db.repos.uploads.create({
       ...base,
-      mode: 'multipart',
+      mode: UPLOAD_MODE.multipart,
       s3UploadId,
       partCount,
     });
@@ -116,9 +125,12 @@ export class UploadService {
     for (let number = 1; number <= partCount; number += 1) {
       parts.push({ number, url: await this.storage.presignPart(input.key, s3UploadId, number) });
     }
-    this.log.info({ uid: member.uid, uploadId, partCount, mode: 'multipart' }, 'upload begun');
+    this.log.info(
+      { uid: member.uid, uploadId, partCount, mode: UPLOAD_MODE.multipart },
+      LOG.uploads.begun,
+    );
     return {
-      mode: 'multipart' as const,
+      mode: UPLOAD_MODE.multipart,
       uploadId,
       partSizeBytes: this.config.partSizeBytes,
       parts,
@@ -130,19 +142,19 @@ export class UploadService {
   async refreshParts(uid: string, id: string, numbers: number[]) {
     const upload = await this.db.repos.uploads.findOpenMultipart(id, uid);
     if (upload === undefined) {
-      throw notFound(ErrorCode.uploadNotFound, 'No open multipart upload with this id');
+      throw notFound(ErrorCode.uploadNotFound, ERROR_TEXT.noOpenMultipart);
     }
     const parts: { number: number; url: string }[] = [];
     for (const number of numbers) {
       if (number > upload.partCount!) {
-        throw badRequest(ErrorCode.invalidParts, `Part ${number} is past the last part`);
+        throw badRequest(ErrorCode.invalidParts, ERROR_TEXT.partPastLast(number));
       }
       parts.push({
         number,
         url: await this.storage.presignPart(upload.objectKey, upload.s3UploadId!, number),
       });
     }
-    this.log.info({ uid, uploadId: upload.id, count: parts.length }, 'upload parts refreshed');
+    this.log.info({ uid, uploadId: upload.id, count: parts.length }, LOG.uploads.partsRefreshed);
     return { parts, expiresAt: this.storage.expiresAt(new Date()) };
   }
 
@@ -151,14 +163,14 @@ export class UploadService {
     try {
       return await this.db.transaction(async (repos, client) => {
         const upload = await repos.uploads.lockOwn(id, uid);
-        if (upload === undefined || upload.state === 'aborted') {
-          throw notFound(ErrorCode.uploadNotFound, 'No such upload, or it was aborted');
+        if (upload === undefined || upload.state === UPLOAD_STATE.aborted) {
+          throw notFound(ErrorCode.uploadNotFound, ERROR_TEXT.uploadGone);
         }
-        if (upload.state === 'completed') {
+        if (upload.state === UPLOAD_STATE.completed) {
           // A retry after a lost response: same answer as the first time.
           return completedBody(upload);
         }
-        if (upload.mode === 'multipart') {
+        if (upload.mode === UPLOAD_MODE.multipart) {
           await this.completeMultipart(upload, parts ?? []);
         }
         await this.checkStoredSize(upload);
@@ -167,19 +179,19 @@ export class UploadService {
           uid,
           sessionId: row.sessionId,
           uploadId: row.id,
-          type: 'completed',
+          type: UPLOAD_EVENT.completed,
         });
-        this.log.info({ uid, uploadId: row.id, byteSize: row.byteSize }, 'upload completed');
+        this.log.info({ uid, uploadId: row.id, byteSize: row.byteSize }, LOG.uploads.completed);
         return completedBody(row);
       });
     } catch (error) {
-      if ((error as { code?: string }).code === PG_UNIQUE_VIOLATION) {
+      if ((error as { code?: string }).code === PG_ERROR.uniqueViolation) {
         // Another upload of the same key completed first.
         const existing = await this.db.repos.uploads.completedWithSameKey(id, uid);
         if (existing !== undefined) {
           throw conflict(
             ErrorCode.alreadyCompleted,
-            'This key was already uploaded',
+            ERROR_TEXT.keyUploaded,
             completedBody(existing),
           );
         }
@@ -193,21 +205,21 @@ export class UploadService {
     return this.db.transaction(async (repos, client) => {
       const upload = await repos.uploads.lockOwn(id, uid);
       if (upload === undefined) {
-        throw notFound(ErrorCode.uploadNotFound, 'No such upload');
+        throw notFound(ErrorCode.uploadNotFound, ERROR_TEXT.uploadNotFound);
       }
-      if (upload.state === 'completed') {
-        throw conflict(ErrorCode.alreadyCompleted, 'A completed upload cannot be aborted');
+      if (upload.state === UPLOAD_STATE.completed) {
+        throw conflict(ErrorCode.alreadyCompleted, ERROR_TEXT.completedAbort);
       }
-      if (upload.state === 'created') {
+      if (upload.state === UPLOAD_STATE.created) {
         await this.freeStorage(upload);
         await repos.uploads.markAborted(upload.id);
         await notifyUploadEvent(client, {
           uid,
           sessionId: upload.sessionId,
           uploadId: upload.id,
-          type: 'aborted',
+          type: UPLOAD_EVENT.aborted,
         });
-        this.log.info({ uid, uploadId: upload.id }, 'upload aborted');
+        this.log.info({ uid, uploadId: upload.id }, LOG.uploads.aborted);
       }
       return { uploadId: upload.id, aborted: true };
     });
@@ -237,19 +249,19 @@ export class UploadService {
             uid: upload.uid,
             sessionId: upload.sessionId,
             uploadId: upload.id,
-            type: 'aborted',
+            type: UPLOAD_EVENT.aborted,
           });
           aborted += 1;
         }
       } catch (error) {
-        this.log.error({ err: error, uploadId: upload.id }, 'upload abort failed');
+        this.log.error({ err: error, uploadId: upload.id }, LOG.uploads.abortFailed);
       }
     }
     return aborted;
   }
 
   private async freeStorage(upload: UploadRow): Promise<void> {
-    if (upload.mode === 'multipart') {
+    if (upload.mode === UPLOAD_MODE.multipart) {
       await this.storage.abortMultipart(upload.objectKey, upload.s3UploadId!);
     } else {
       await this.storage.deleteObject(upload.objectKey);
@@ -271,10 +283,10 @@ export class UploadService {
   private async checkStoredSize(upload: UploadRow): Promise<void> {
     const size = await this.storage.head(upload.objectKey);
     if (size === undefined) {
-      throw notFound(ErrorCode.objectNotFound, 'Nothing was uploaded for this key');
+      throw notFound(ErrorCode.objectNotFound, ERROR_TEXT.nothingUploaded);
     }
     if (size !== upload.byteSize) {
-      throw badRequest(ErrorCode.sizeMismatch, `Stored ${size} bytes, expected ${upload.byteSize}`);
+      throw badRequest(ErrorCode.sizeMismatch, ERROR_TEXT.storedSize(size, upload.byteSize));
     }
   }
 
@@ -285,6 +297,6 @@ export class UploadService {
         return code;
       }
     }
-    throw new Error('Could not find a free verification code');
+    throw new Error(FAULT_TEXT.noFreeCode);
   }
 }

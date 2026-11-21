@@ -8,7 +8,7 @@ import {
   type VerifyState,
 } from '../../../constants/data/enums.js';
 import { KEY_ROOT } from '../../../constants/domain/object-keys.js';
-import { SQL_LIKE_ANY } from '../../../constants/data/db.js';
+import { SQL_LIKE_ANY, TABLE_ALIAS } from '../../../constants/data/db.js';
 import type { SqlDb } from '../../../data/drizzle.js';
 import {
   captures,
@@ -37,9 +37,6 @@ const SNAPSHOT = {
   verifyState: uploads.verifyState,
 };
 export type UploadSnapshotRow = Pick<UploadRow, keyof typeof SNAPSHOT>;
-
-// The uploads table joined to itself: "mine" is the caller's upload.
-const UPLOAD_ALIAS = { mine: 'mine' } as const;
 
 const isCompleted = eq(uploads.state, UPLOAD_STATE.completed);
 const isOpen = eq(uploads.state, UPLOAD_STATE.created);
@@ -116,7 +113,7 @@ export class UploadRepository {
 
   // The completed upload that already holds the key of this (caller's) upload.
   async completedWithSameKey(id: string, uid: string): Promise<UploadRow | undefined> {
-    const mine = alias(uploads, UPLOAD_ALIAS.mine);
+    const mine = alias(uploads, TABLE_ALIAS.mine);
     const [row] = await this.db
       .select({ upload: uploads })
       .from(uploads)

@@ -61,6 +61,25 @@
 <dl><dd>
 
 ```bash
+npm run dev:all
+```
+
+- One command runs `scripts/dev-up.sh`, in this order:
+
+| Step | What it does |
+|---|---|
+| Check | Stops if `.env` or the Firebase key is missing; warns if Node is older than 24 |
+| Docker | Starts Colima (2 GB) if Docker is not running |
+| Postgres | Reuses whatever already answers on 5432; starts an older stopped container that owns the port (`sitelog-pg`); otherwise the compose `postgres` service |
+| S3 | `docker compose up -d s3` |
+| Packages | `npm ci` only when `node_modules` is missing or older than `package-lock.json` |
+| Database and bucket | `npm run migrate`, `npm run s3:bucket` |
+| Run | API and worker side by side, log lines tagged `[api]` and `[worker]`; Ctrl+C stops both, and either one stopping stops the other |
+
+- Docker keeps running after Ctrl+C; stop it with `docker compose stop` (§7).
+- The same steps by hand, when you want the API and the worker in separate terminals:
+
+```bash
 docker compose up -d
 ```
 
@@ -71,8 +90,6 @@ npm ci && npm run migrate && npm run s3:bucket
 ```bash
 npm run dev
 ```
-
-- In a second terminal:
 
 ```bash
 npm run worker:dev
@@ -163,7 +180,7 @@ adb reverse tcp:3000 tcp:3000 && adb reverse tcp:9000 tcp:9000
 | Symptom | Cause | Fix |
 |---|---|---|
 | `docker: unknown command: docker compose` | Compose plugin not linked | §2, the `cli-plugins` line |
-| `port 5432 is already allocated` | An older Postgres container (started with `docker run`) holds the port | Keep it and start only S3: `docker compose up -d s3`; or `docker stop <name>` and use the compose one |
+| `port 5432 is already allocated` | An older Postgres container (started with `docker run`) holds the port, and you ran `docker compose up -d` by hand | Use `npm run dev:all`, which reuses it; or start only S3: `docker compose up -d s3` |
 | `InvalidLocationConstraint` or `SignatureDoesNotMatch` on every call | `AWS_REGION` differs from `RUSTFS_REGION` in `docker-compose.yml` | Keep both `ap-southeast-1` |
 | `NoSuchBucket` | Bucket not created after a reset | `npm run s3:bucket` |
 | Upload from the Android emulator times out | No `adb reverse` for 9000 | §4 |

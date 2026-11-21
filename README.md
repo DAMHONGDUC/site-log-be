@@ -39,15 +39,13 @@
 - The backend runs on your Mac with Postgres and S3 (RustFS) in Docker; full steps, app wiring and memory tips: [local development](docs/feature-guide/local-development.md).
 
 ```bash
-docker compose up -d
-```
-
-```bash
 cp .env.example .env
 ```
 
+- Fill `FIREBASE_SERVICE_ACCOUNT_BASE64` in `.env`, then start everything (Docker, packages, migrations, bucket, API and worker; Ctrl+C stops it):
+
 ```bash
-npm ci && npm run migrate && npm run s3:bucket && npm run dev
+npm run dev:all
 ```
 
 ```bash
@@ -189,6 +187,7 @@ site-log-be/
 |---|---|
 | `npm run dev` | API with reload, reads `.env` |
 | `npm run worker:dev` | Worker with reload |
+| `npm run dev:all` | Everything local in one go: Docker, packages, migrations, bucket, API and worker |
 | `npm run migrate` | Runs new migrations |
 | `npm run s3:bucket` | Creates the bucket on the local S3 server, once |
 | `npm test` | All tests against `sitelog_test` |

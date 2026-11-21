@@ -17,7 +17,8 @@
 3. [Docs](#docs)
 4. [API endpoints](#api-endpoints)
 5. [Repository layout](#repository-layout)
-6. [Commands](#commands)
+6. [Code structure](#code-structure)
+7. [Commands](#commands)
 
 </dd></dl>
 
@@ -114,31 +115,50 @@ curl localhost:3000/health
 
 <dl><dd>
 
-- The layout of the repository (S0–S10 built); `src/team/` and `src/mail/` came with F19.
-
 ```text
 site-log-be/
-├── src/                    # the API and the worker (TypeScript)
-│   ├── main.ts             # starts the HTTP + WebSocket server
-│   ├── worker.ts           # background jobs: verify uploads, abort abandoned ones, purge tombstones
-│   ├── app.ts              # builds the Fastify app from its dependencies
-│   ├── routes/             # one file per group of endpoints
-│   ├── sync/               # pull, push, the table registry
+├── src/
+│   ├── main.ts · worker.ts # entry points: HTTP + WebSocket server · background jobs
+│   ├── app.ts              # composition root: builds Database, services, guards, registers routes
+│   ├── constants/          # every fixed value: ApiRoutes, ErrorCode, roles + permissions, push kinds,
+│   │                       # limits, patterns, durations, HTTP status, WebSocket close codes, units
+│   ├── domain/             # pure rules: Member and reach, can(), invitation tokens
+│   ├── http/               # guards (requireUser, requireAction) and shared request schemas
+│   ├── routes/             # thin: schema → guard → one service call → response
+│   ├── services/           # business rules: access, team, invitations, account, uploads,
+│   │                       # file access, notifications, issue notifier, due-soon, key migration
+│   ├── repositories/       # the only place that runs SQL, one class per table group
+│   ├── data/               # Database (repositories on the pool or one transaction), table lists
+│   ├── sync/               # sync engine: table registry, pull, push/ (sql · placement · authorization · apply)
 │   ├── realtime/           # WebSocket channel and pg_notify fan-out
-│   ├── workers/            # the worker's jobs
-│   ├── push/               # Firebase Cloud Messaging sender, push kinds
-│   ├── team/               # F19: members, reach, permissions, invitations, audit
-│   └── mail/               # invite email (Amazon SES)
+│   ├── push/               # FCM sender and one template per push kind
+│   ├── mail/               # Mailer (SES or log) and the invite template
+│   └── workers/            # worker jobs
 ├── migrations/             # numbered .sql files, run once each, forward only
-├── test/                   # vitest against a real Postgres
-├── deploy/                 # what runs on the EC2 server: compose.yml, Caddyfile, deploy.sh
-├── infra/                  # AWS CDK app: every AWS resource
-├── .github/                # CI and deploy workflows
-├── docs/                   # specs (feature-docs) and guides (feature-guide)
-├── Tools/Docs/indent-md.py # run after editing any .md
-├── docker-compose.yml      # local Postgres
-└── Dockerfile              # the one image: API, worker and migrations
+├── test/                   # vitest against a real Postgres; paths from ApiRoutes
+├── scripts/                # dev token, seed the first Admin, move pre-F19 keys
+├── deploy/ · infra/        # what runs on EC2 · AWS CDK app
+└── .github/                # CI and deploy workflows
 ```
+
+</dd></dl>
+
+## Code structure
+
+<dl><dd>
+
+| Rule | How it is kept |
+|---|---|
+| Routes are thin | A route only declares its schema and guard, calls one service, returns the result |
+| SQL only in repositories | ESLint fails on `.query(` inside `src/routes`, `src/services`, `src/http` |
+| Every path from `ApiRoutes` | `src/constants/api-routes.ts` holds every endpoint (`ApiRoutes.UPLOAD_COMPLETE`, `ApiRoutes.uploadComplete(id)`); ESLint fails on a literal path in a route; tests build paths with it |
+| No magic numbers | ESLint `no-magic-numbers` on `src/` (constants and Config excepted) |
+| Small files | ESLint `max-lines` 300 per file |
+| Depend on interfaces | Services take `TokenVerifier`, `PushSender`, `Mailer`, `Storage`, `Database` through the constructor; tests pass fakes |
+| Open for extension | A new role or action: `ROLE_PERMISSIONS`; a new push kind: `PUSH_KINDS` + one template in `PUSH_TEMPLATES`; a new synced table: one entry in `syncTables`; a new endpoint: `ApiRoutes` + a route + a service method |
+| One transaction, many repositories | `db.transaction((repos) => …)` gives every repository the same client |
+
+- The S0–S9 guides show the first form of each file (all in the route); the repository has since been split into these layers with the same behaviour and tests.
 
 </dd></dl>
 

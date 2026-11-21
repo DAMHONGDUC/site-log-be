@@ -52,19 +52,19 @@ export class InvitationService {
       return row;
     });
     await this.sendMail(email, actor.name, input.role, token);
-    return { invitationId: created.id, expiresAt: created.expires_at };
+    return { invitationId: created.id, expiresAt: created.expiresAt };
   }
 
   async preview(token: string) {
     const row = await this.validToken(this.db.repos, token, false);
-    const inviter = await this.db.repos.members.displayName(row.invited_by);
-    const names = await this.db.repos.projects.namesByIds(row.project_ids);
+    const inviter = await this.db.repos.members.displayName(row.invitedBy);
+    const names = await this.db.repos.projects.namesByIds(row.projectIds);
     return {
       invitedBy: inviter || FALLBACK_NAME.admin,
       role: row.role,
-      projects: row.project_ids.map((id) => ({ id, name: names.get(id) ?? '' })),
+      projects: row.projectIds.map((id) => ({ id, name: names.get(id) ?? '' })),
       email: maskEmail(row.email),
-      expiresAt: row.expires_at,
+      expiresAt: row.expiresAt,
     };
   }
 
@@ -81,18 +81,18 @@ export class InvitationService {
         nameFromEmail(invite.email),
         invite.role,
       );
-      await this.team.replaceProjects(repos, uid, invite.project_ids, invite.invited_by);
+      await this.team.replaceProjects(repos, uid, invite.projectIds, invite.invitedBy);
       await repos.invitations.markAccepted(invite.id, uid);
       await repos.memberEvents.record({
         actorUid: uid,
         type: 'joined',
         subjectUid: uid,
         invitationId: invite.id,
-        detail: { role: invite.role, projectIds: invite.project_ids },
+        detail: { role: invite.role, projectIds: invite.projectIds },
       });
       return invite;
     });
-    const projectIds: Reach = ROLES_REACHING_ALL.includes(row.role) ? 'all' : row.project_ids;
+    const projectIds: Reach = ROLES_REACHING_ALL.includes(row.role) ? 'all' : row.projectIds;
     return { uid, role: row.role, projectIds, invitationId: row.id };
   }
 
@@ -135,8 +135,8 @@ export class InvitationService {
       id: row.id,
       email: row.email,
       role: row.role,
-      projectIds: row.project_ids,
-      expiresAt: row.expires_at,
+      projectIds: row.projectIds,
+      expiresAt: row.expiresAt,
     }));
   }
 
@@ -149,10 +149,10 @@ export class InvitationService {
     if (row === undefined) {
       throw notFound(ErrorCode.inviteNotFound, 'This invite does not exist');
     }
-    if (row.accepted_at !== null) {
+    if (row.acceptedAt !== null) {
       throw conflict(ErrorCode.inviteUsed, 'This invite was already used');
     }
-    if (row.cancelled_at !== null || row.expires_at.getTime() < Date.now()) {
+    if (row.cancelledAt !== null || row.expiresAt.getTime() < Date.now()) {
       throw conflict(ErrorCode.inviteExpired, 'This invite has expired or was replaced');
     }
     return row;
@@ -163,7 +163,7 @@ export class InvitationService {
     if (row === undefined) {
       throw notFound(ErrorCode.inviteNotFound, 'No such invite');
     }
-    if (row.accepted_at !== null) {
+    if (row.acceptedAt !== null) {
       throw conflict(ErrorCode.inviteAccepted, 'This invite was already accepted');
     }
     return row;

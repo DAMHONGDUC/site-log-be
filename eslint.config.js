@@ -44,8 +44,15 @@ export default tseslint.config(
     },
   },
   {
-    // Routes and services never run SQL: they go through repositories.
-    files: ['src/routes/**/*.ts', 'src/services/**/*.ts', 'src/http/**/*.ts'],
+    // Only repositories, the data layer and the generic sync / realtime engines run SQL.
+    files: ['src/modules/**/*.ts', 'src/core/**/*.ts'],
+    ignores: [
+      'src/modules/**/*-repository.ts',
+      'src/modules/sync/pull.ts',
+      'src/modules/sync/push/**',
+      'src/modules/realtime/hub.ts',
+      'src/modules/realtime/events.ts',
+    ],
     rules: {
       'no-restricted-syntax': [
         'error',
@@ -55,14 +62,15 @@ export default tseslint.config(
         },
         {
           selector: "CallExpression[callee.property.name='query']",
-          message: 'Run SQL in a repository (src/repositories), not in a route or service.',
+          message:
+            'Run SQL in a repository (src/modules/<feature>/*-repository.ts), not in a route or service.',
         },
       ],
     },
   },
   {
     // Constants and Config are where numbers belong.
-    files: ['src/constants/**/*.ts', 'src/config.ts'],
+    files: ['src/constants/**/*.ts', 'src/core/config.ts'],
     rules: { '@typescript-eslint/no-magic-numbers': 'off' },
   },
 );

@@ -1,11 +1,11 @@
 import { buildApp } from './app.js';
-import { createFirebaseVerifier } from './auth.js';
-import { loadConfig } from './config.js';
-import { createPool } from './db.js';
-import { LogMailer, SesMailer, type Mailer } from './mail/mailer.js';
-import { FcmSender } from './push/fcm.js';
-import { RealtimeHub } from './realtime/hub.js';
-import { Storage, createS3Client } from './storage.js';
+import { createFirebaseVerifier } from './core/auth.js';
+import { loadConfig } from './core/config.js';
+import { createPool } from './data/pool.js';
+import { LogMailer, SesMailer, type Mailer } from './integrations/mailer.js';
+import { FcmSender } from './integrations/fcm.js';
+import { RealtimeHub } from './modules/realtime/hub.js';
+import { Storage, createS3Client } from './integrations/storage.js';
 
 // Starts the HTTP + WebSocket server.
 const config = loadConfig();

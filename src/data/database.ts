@@ -1,6 +1,6 @@
 import type pg from 'pg';
-import { withTransaction } from '../db.js';
-import { createRepositories, type Repositories } from '../repositories/index.js';
+import { withTransaction } from './pool.js';
+import { createRepositories, type Repositories } from './repositories.js';
 
 // Anything that runs SQL: the pool, or one client inside a transaction.
 export type Queryable = pg.Pool | pg.PoolClient;

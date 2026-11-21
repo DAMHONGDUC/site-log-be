@@ -3,11 +3,11 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import pg from 'pg';
 import { buildApp } from '../src/app.js';
-import type { TokenVerifier } from '../src/auth.js';
-import { loadConfig } from '../src/config.js';
+import type { TokenVerifier } from '../src/core/auth.js';
+import { loadConfig } from '../src/core/config.js';
 import { OPENAPI } from '../src/constants/openapi.js';
-import { RealtimeHub } from '../src/realtime/hub.js';
-import { Storage, createS3Client } from '../src/storage.js';
+import { RealtimeHub } from '../src/modules/realtime/hub.js';
+import { Storage, createS3Client } from '../src/integrations/storage.js';
 
 // Building the app needs no database, AWS or Firebase: nothing here is ever called.
 const config = loadConfig({

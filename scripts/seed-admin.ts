@@ -1,9 +1,9 @@
 // F19: creates the first Admin, once, on the server: npm run seed:admin -- <email> <firebase-uid>
 // The uid is the Firebase uid of that account (Firebase console → Authentication).
-import { loadConfig } from '../src/config.js';
+import { loadConfig } from '../src/core/config.js';
 import { Database } from '../src/data/database.js';
-import { createPool } from '../src/db.js';
-import { nameFromEmail } from '../src/domain/invitation-token.js';
+import { createPool } from '../src/data/pool.js';
+import { nameFromEmail } from '../src/modules/team/invitation-token.js';
 
 const [email, uid] = process.argv.slice(2);
 if (email === undefined || uid === undefined) {

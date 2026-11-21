@@ -1,10 +1,10 @@
 // F19, once after migration 0012: npm run move-keys
-import { loadConfig } from '../src/config.js';
+import { loadConfig } from '../src/core/config.js';
 import { Database } from '../src/data/database.js';
-import { createPool } from '../src/db.js';
-import { createLogger } from '../src/logger.js';
-import { KeyMigrationService } from '../src/services/key-migration-service.js';
-import { Storage, createS3Client } from '../src/storage.js';
+import { createPool } from '../src/data/pool.js';
+import { createLogger } from '../src/core/logger.js';
+import { KeyMigrationService } from '../src/modules/uploads/key-migration-service.js';
+import { Storage, createS3Client } from '../src/integrations/storage.js';
 
 const config = loadConfig();
 const log = createLogger(config.logLevel);

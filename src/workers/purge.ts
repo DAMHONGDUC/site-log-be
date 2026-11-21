@@ -1,7 +1,7 @@
 import type pg from 'pg';
 import type { Logger } from 'pino';
-import { withTransaction } from '../db.js';
-import { syncTables } from '../sync/tables.js';
+import { withTransaction } from '../data/pool.js';
+import { syncTables } from '../modules/sync/tables.js';
 
 // Nightly: removes tombstones older than the retention window. Devices whose cursor is older
 // than the newest purged rev get `resyncRequired` on their next pull.

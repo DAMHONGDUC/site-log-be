@@ -1,10 +1,10 @@
 import { createHash } from 'node:crypto';
 import type pg from 'pg';
 import type { Database } from '../data/database.js';
-import type { Log } from '../domain/log.js';
-import { notifyUploadEvent } from '../realtime/events.js';
-import type { CoreServices } from '../services/index.js';
-import type { Storage } from '../storage.js';
+import type { Log } from '../core/log.js';
+import { notifyUploadEvent } from '../modules/realtime/events.js';
+import type { CoreServices } from '../services.js';
+import type { Storage } from '../integrations/storage.js';
 
 export interface WorkerDeps {
   pool: pg.Pool;

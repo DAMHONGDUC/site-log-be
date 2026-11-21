@@ -1,12 +1,12 @@
 import { setTimeout as sleep } from 'node:timers/promises';
-import { loadConfig } from './config.js';
+import { loadConfig } from './core/config.js';
 import { DURATIONS } from './constants/durations.js';
 import { Database } from './data/database.js';
-import { createPool } from './db.js';
-import { createLogger } from './logger.js';
-import { FcmSender, type PushSender } from './push/fcm.js';
-import { createCoreServices } from './services/index.js';
-import { Storage, createS3Client } from './storage.js';
+import { createPool } from './data/pool.js';
+import { createLogger } from './core/logger.js';
+import { FcmSender, type PushSender } from './integrations/fcm.js';
+import { createCoreServices } from './services.js';
+import { Storage, createS3Client } from './integrations/storage.js';
 import { abortAbandonedUploads } from './workers/abandoned.js';
 import { purgeTombstones } from './workers/purge.js';
 import { verifyNextUpload, type WorkerDeps } from './workers/verify.js';

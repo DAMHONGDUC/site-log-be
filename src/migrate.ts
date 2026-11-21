@@ -2,9 +2,9 @@ import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type pg from 'pg';
-import { loadConfig } from './config.js';
-import { createPool } from './db.js';
-import { createLogger } from './logger.js';
+import { loadConfig } from './core/config.js';
+import { createPool } from './data/pool.js';
+import { createLogger } from './core/logger.js';
 
 // Forward-only migrations: every file in migrations/ runs once, in file-name order,
 // each in its own transaction. A file that already ran is never edited, only followed.

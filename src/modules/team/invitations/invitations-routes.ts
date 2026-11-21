@@ -1,19 +1,19 @@
 import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyInstance } from 'fastify';
-import type { AppDeps } from '../../../app.js';
+import type { FastifyPluginAsync } from 'fastify';
 import { ApiRoutes } from '../../../constants/http/api-routes.js';
 import { ErrorCode } from '../../../constants/http/error-codes.js';
 import { LIMITS, PATTERNS } from '../../../constants/runtime/limits.js';
 import { isRole } from '../access/permissions.js';
 import { badRequest } from '../../../core/errors.js';
-import { memberMay, type Guards } from '../../../core/http/guards.js';
+import { memberMay } from '../../../core/http/guards.js';
 import { Schemas, rateLimit } from '../../../core/http/schemas.js';
 import { ACTION } from '../../../constants/domain/roles.js';
 import { LOG } from '../../../constants/messages/log.js';
 import { ERROR_TEXT } from '../../../constants/messages/error-text.js';
 
 // F19 invitation calls (01-api §13, 05 §5).
-export function invitationRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards): void {
+export const invitationRoutes: FastifyPluginAsync = async (app) => {
+  const { deps, guards } = app;
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
   const { invitations } = deps.services;
 
@@ -94,4 +94,4 @@ export function invitationRoutes(app: FastifyInstance, deps: AppDeps, guards: Gu
       return { cancelled: true };
     },
   );
-}
+};

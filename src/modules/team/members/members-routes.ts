@@ -1,15 +1,15 @@
 import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyInstance } from 'fastify';
-import type { AppDeps } from '../../../app.js';
+import type { FastifyPluginAsync } from 'fastify';
 import { ApiRoutes } from '../../../constants/http/api-routes.js';
 import { LIMITS, PATTERNS } from '../../../constants/runtime/limits.js';
-import { memberMay, type Guards } from '../../../core/http/guards.js';
+import { memberMay } from '../../../core/http/guards.js';
 import { Schemas } from '../../../core/http/schemas.js';
 import { ACTION } from '../../../constants/domain/roles.js';
 import { LOG } from '../../../constants/messages/log.js';
 
 // F19 member calls (01-api §13): who am I, the team, roles, projects, activity.
-export function memberRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards): void {
+export const memberRoutes: FastifyPluginAsync = async (app) => {
+  const { deps, guards } = app;
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
   const { team, invitations } = deps.services;
 
@@ -86,4 +86,4 @@ export function memberRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
         request.query.limit ?? LIMITS.memberEventsPageDefault,
       ),
   );
-}
+};

@@ -1,16 +1,15 @@
 import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyInstance } from 'fastify';
-import type { AppDeps } from '../../app.js';
+import type { FastifyPluginAsync } from 'fastify';
 import { ApiRoutes } from '../../constants/http/api-routes.js';
 import { PATTERNS } from '../../constants/runtime/limits.js';
-import type { Guards } from '../../core/http/guards.js';
 import { Schemas } from '../../core/http/schemas.js';
 import { DEVICE_PLATFORMS } from '../../constants/data/enums.js';
 import { LOG } from '../../constants/messages/log.js';
 
 // The app registers its FCM token after sign-in (with the push kinds it wants) and removes it on
 // sign-out (01-api §10).
-export function deviceRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards): void {
+export const deviceRoutes: FastifyPluginAsync = async (app) => {
+  const { deps, guards } = app;
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
   const devices = deps.db.repos.devices;
 
@@ -40,4 +39,4 @@ export function deviceRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards
       return { removed: true };
     },
   );
-}
+};

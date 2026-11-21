@@ -246,6 +246,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     bodyLimit: deps.config.maxRequestBytes,
     // Caddy sits in front: read the client IP from X-Forwarded-For.
     trustProxy: true,
+    // FCM tokens (~160 chars) travel in the path of DELETE /devices/:token; the default limit is 100.
+    routerOptions: { maxParamLength: 4096 },
   });
 
   registerErrorHandler(app);

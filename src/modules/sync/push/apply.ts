@@ -1,6 +1,6 @@
 import type pg from 'pg';
 import { RejectReason } from '../../../constants/error-codes.js';
-import { createRepositories } from '../../../data/repositories.js';
+import { createRepositories, type Repositories } from '../../../data/repositories.js';
 import { camelToSnake, rowToJson } from '../case.js';
 import { findSyncTable, type SyncTable } from '../tables.js';
 import { permissionProblem } from './authorization.js';
@@ -9,13 +9,10 @@ import {
   PG,
   deleteSql,
   isPrimaryKeyViolation,
-  lockCounter,
-  nextRev,
   ownerColumn,
   pgCode,
   rowWithSameNaturalKey,
   storedRow,
-  currentRev,
   upsertSql,
 } from './sql.js';
 import {
@@ -135,6 +132,7 @@ async function applyDelete(
 // One mutation inside a savepoint: a bad or refused row is rejected without losing the batch.
 async function applyMutation(
   client: pg.PoolClient,
+  repos: Repositories,
   batch: Batch,
   mutation: Mutation,
 ): Promise<MutationResult> {
@@ -154,7 +152,7 @@ async function applyMutation(
       if (problem !== null) {
         result = { id: mutation.id, status: 'rejected', reason: problem };
       } else {
-        const rev = await nextRev(client);
+        const rev = await repos.syncState.nextRev();
         result =
           mutation.op === 'delete'
             ? await applyDelete(client, batch, table, mutation, rev)
@@ -178,13 +176,17 @@ export async function applyBatch(
   context: PushContext,
   mutations: Mutation[],
 ): Promise<PushOutcome> {
-  // The row lock: every other push in the company waits here, so revs commit in order.
-  await lockCounter(client);
-  const reach = await context.access.reach(context.member, createRepositories(client));
+  const repos = createRepositories(client);
+  await repos.syncState.lockCounter();
+  const reach = await context.access.reach(context.member, repos);
   const batch = new Batch(context, reach, mutations);
   const results: MutationResult[] = [];
   for (const mutation of mutations) {
-    results.push(await applyMutation(client, batch, mutation));
+    results.push(await applyMutation(client, repos, batch, mutation));
   }
-  return { results, serverRev: await currentRev(client), issueChanges: batch.issueChanges };
+  return {
+    results,
+    serverRev: await repos.syncState.currentRev(),
+    issueChanges: batch.issueChanges,
+  };
 }

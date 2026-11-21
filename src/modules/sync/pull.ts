@@ -2,7 +2,6 @@ import type pg from 'pg';
 import type { Member, Reach } from '../team/member.js';
 import type { Repositories } from '../../data/repositories.js';
 import type { AccessService } from '../team/access-service.js';
-import { purgedThroughRev } from './push/sql.js';
 import { rowToJson } from './case.js';
 import { syncTables, type SyncTable } from './tables.js';
 
@@ -62,7 +61,7 @@ export async function pullChanges(
     await repos.members.clearResync(member.uid);
     return { resyncRequired: true };
   }
-  if (since > 0 && since < (await purgedThroughRev(pool))) {
+  if (since > 0 && since < (await repos.syncState.purgedThroughRev())) {
     // Tombstones this device never saw are gone: it must start again from 0.
     return { resyncRequired: true };
   }

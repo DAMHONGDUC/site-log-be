@@ -114,27 +114,3 @@ export async function rowWithSameNaturalKey(
   );
   return result.rows[0];
 }
-
-// The company rev counter (one row, locked by the batch).
-export async function lockCounter(client: pg.PoolClient): Promise<void> {
-  await client.query('select last_rev from sync_counter for update');
-}
-
-export async function nextRev(client: pg.PoolClient): Promise<number> {
-  const result = await client.query<{ last_rev: number }>(
-    'update sync_counter set last_rev = last_rev + 1 returning last_rev',
-  );
-  return Number(result.rows[0]!.last_rev);
-}
-
-export async function currentRev(db: pg.Pool | pg.PoolClient): Promise<number> {
-  const result = await db.query<{ last_rev: number }>('select last_rev from sync_counter');
-  return Number(result.rows[0]?.last_rev ?? 0);
-}
-
-export async function purgedThroughRev(db: pg.Pool): Promise<number> {
-  const result = await db.query<{ purged_through_rev: number }>(
-    'select purged_through_rev from sync_counter',
-  );
-  return Number(result.rows[0]?.purged_through_rev ?? 0);
-}

@@ -2,6 +2,8 @@ import type { FastifyBaseLogger } from 'fastify';
 import pg from 'pg';
 import type { WebSocket } from 'ws';
 import type { Config } from '../config.js';
+import { DURATIONS } from '../constants/durations.js';
+import { UploadRepository, type UploadSnapshotRow } from '../repositories/upload-repository.js';
 import { connectionOptions } from '../db.js';
 import type { UploadEvent } from './events.js';
 
@@ -9,14 +11,6 @@ export interface ClientSocket {
   socket: WebSocket;
   uid: string;
   sessions: Set<string>;
-}
-
-interface UploadRow {
-  id: string;
-  object_key: string;
-  sha256: string;
-  state: string;
-  verify_state: string | null;
 }
 
 // Keeps the open sockets of this process and forwards upload events to them.
@@ -101,7 +95,7 @@ export class RealtimeHub {
         this.log?.error({ err: error }, 'realtime: reconnect failed');
         this.scheduleReconnect();
       });
-    }, 5000);
+    }, DURATIONS.listenerReconnectMs);
   }
 
   private async onNotification(payload: string | undefined): Promise<void> {
@@ -115,11 +109,7 @@ export class RealtimeHub {
       }
       // F19: every member watching the session gets it, not only the uploader.
       // The payload holds ids only: read the current state of the row.
-      const result = await this.pool.query<UploadRow>(
-        'select id, object_key, sha256, state, verify_state from uploads where id = $1',
-        [event.uploadId],
-      );
-      const row = result.rows[0];
+      const row = await new UploadRepository(this.pool).snapshot(event.uploadId);
       if (row === undefined) {
         return;
       }
@@ -148,7 +138,7 @@ export function send(socket: WebSocket, message: object): void {
 }
 
 // The message the app gets for one upload row, or undefined while it is still uploading.
-export function uploadMessage(row: UploadRow): object | undefined {
+export function uploadMessage(row: UploadSnapshotRow): object | undefined {
   if (row.state === 'aborted') {
     return { type: 'jobFailed', jobID: row.id, reason: 'aborted' };
   }

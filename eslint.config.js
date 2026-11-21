@@ -3,6 +3,36 @@ import tseslint from 'typescript-eslint';
 
 const HTTP_METHODS = '/^(get|post|put|patch|delete)$/';
 
+// Route paths come from ApiRoutes.
+const API_ROUTE_RULE = {
+  selector: `CallExpression[callee.property.name=${HTTP_METHODS}] > Literal.arguments:first-child[value=/^\\//]`,
+  message: 'Use a path from ApiRoutes (src/constants/http/api-routes.ts).',
+};
+
+const SQL_IN_REPOSITORY_RULE = {
+  selector: "CallExpression[callee.property.name='query']",
+  message:
+    'Run SQL in a repository (src/modules/<feature>/*-repository.ts), not in a route or service.',
+};
+
+// No hard-coded strings: every value is a named constant in src/constants (README → Code
+// structure). Allowed: '' (no text), typeof checks, the `in` operator, SQL handed to query(),
+// Drizzle's for('update') and sql`` templates.
+const STRING = `Literal[raw=/^['"][^'"]/]`;
+const STRING_MESSAGE = 'Define the string as a constant in src/constants and use it by name.';
+const STRING_RULES = [
+  `CallExpression:not([callee.property.name=/^(query|for)$/]) > ${STRING}`,
+  `NewExpression > ${STRING}`,
+  `BinaryExpression:not([left.operator='typeof']):not([operator='in']) > ${STRING}`,
+  `Property > ${STRING}.value`,
+  `ReturnStatement > ${STRING}`,
+  `ArrayExpression > ${STRING}`,
+  `VariableDeclarator > ${STRING}.init`,
+  `ConditionalExpression > ${STRING}`,
+  `AssignmentPattern > ${STRING}.right`,
+  `:not(TaggedTemplateExpression):not(CallExpression[callee.property.name='query']) > TemplateLiteral > TemplateElement[value.raw=/(^|[^\\\\])[A-Za-z]/]`,
+].map((selector) => ({ selector, message: STRING_MESSAGE }));
+
 export default tseslint.config(
   { ignores: ['dist', 'infra/cdk.out', 'infra/node_modules'] },
   js.configs.recommended,
@@ -33,14 +63,7 @@ export default tseslint.config(
       ],
       // One responsibility per file: split before a file grows past this.
       'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
-      'no-restricted-syntax': [
-        'error',
-        {
-          // Route paths come from ApiRoutes.
-          selector: `CallExpression[callee.property.name=${HTTP_METHODS}] > Literal.arguments:first-child[value=/^\\//]`,
-          message: 'Use a path from ApiRoutes (src/constants/http/api-routes.ts).',
-        },
-      ],
+      'no-restricted-syntax': ['error', API_ROUTE_RULE, ...STRING_RULES],
     },
   },
   {
@@ -55,18 +78,7 @@ export default tseslint.config(
       'src/modules/realtime/events.ts',
     ],
     rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: `CallExpression[callee.property.name=${HTTP_METHODS}] > Literal.arguments:first-child[value=/^\\//]`,
-          message: 'Use a path from ApiRoutes (src/constants/http/api-routes.ts).',
-        },
-        {
-          selector: "CallExpression[callee.property.name='query']",
-          message:
-            'Run SQL in a repository (src/modules/<feature>/*-repository.ts), not in a route or service.',
-        },
-      ],
+      'no-restricted-syntax': ['error', API_ROUTE_RULE, SQL_IN_REPOSITORY_RULE, ...STRING_RULES],
       'no-restricted-imports': [
         'error',
         {
@@ -82,8 +94,25 @@ export default tseslint.config(
     },
   },
   {
+    // The npm scripts follow the same string rule.
+    files: ['scripts/**/*.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...STRING_RULES] },
+  },
+  {
     // Constants and Config are where numbers belong.
     files: ['src/constants/**/*.ts', 'src/core/config.ts'],
     rules: { '@typescript-eslint/no-magic-numbers': 'off' },
+  },
+  {
+    // Where strings are defined: the constants, the table shapes, the sync table registry, and
+    // the SQL the sync engine builds from it.
+    files: [
+      'src/constants/**/*.ts',
+      'src/data/schema/**/*.ts',
+      'src/modules/sync/tables.ts',
+      'src/modules/sync/pull.ts',
+      'src/modules/sync/push/sql.ts',
+    ],
+    rules: { 'no-restricted-syntax': ['error', API_ROUTE_RULE] },
   },
 );

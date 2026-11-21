@@ -28,7 +28,7 @@
 | Action | File | Holds |
 |---|---|---|
 | <b class="tag-new">New</b> | `migrations/0005_issues.sql` | `issues` (severity, status and pin checks), `issue_captures`, `phrases` |
-| <b class="tag-edit">Edit</b> | `src/sync/tables.ts` | Three entries; `issue_captures` and `phrases` have a natural key |
+| <b class="tag-edit">Edit</b> | `src/modules/sync/tables.ts` | Three entries; `issue_captures` and `phrases` have a natural key |
 | <b class="tag-new">New</b> | `test/issues.test.ts` | Date, bad severity, half pin, phrase merge |
 
 ```mermaid
@@ -132,7 +132,7 @@ create unique index phrases_text_live on phrases (uid, text) where deleted_at is
 <summary><strong>1.2 Registry</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-edit">Edit</b> · `src/sync/tables.ts`
+<b>File</b> · <b class="tag-edit">Edit</b> · `src/modules/sync/tables.ts`
 
 <b>Explain</b> · `naturalKey: ['text']` tells push: when a new phrase id collides with a live phrase of the same text, answer `superseded` with the stored row, so the device adopts it.
 

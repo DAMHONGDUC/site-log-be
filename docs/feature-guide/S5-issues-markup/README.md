@@ -31,7 +31,7 @@
 
 ```mermaid
 flowchart LR
-    M["migration .sql"] --> R["registry entry<br/>src/sync/tables.ts"]
+    M["migration .sql"] --> R["registry entry<br/>src/modules/sync/tables.ts"]
     R --> Push["/sync/push accepts it"]
     R --> Pull["/sync/pull returns it"]
     R --> Acc["DELETE /account removes it"]

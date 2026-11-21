@@ -10,6 +10,8 @@ import { Storage, createS3Client } from './integrations/storage.js';
 import { abortAbandonedUploads } from './workers/abandoned.js';
 import { purgeTombstones } from './workers/purge.js';
 import { verifyNextUpload, type WorkerDeps } from './workers/verify.js';
+import { LOG } from './constants/messages/log.js';
+import { SIGNAL } from './constants/platform/external.js';
 
 // Background jobs, in their own container next to the API: verify uploads all the time, abort
 // abandoned uploads hourly, purge tombstones daily, send the "due tomorrow" pushes once a day.
@@ -34,14 +36,14 @@ let lastAbandonedRun = 0;
 let lastPurgeRun = 0;
 let lastDueSoonDay = '';
 
-process.once('SIGTERM', () => {
+process.once(SIGNAL.term, () => {
   running = false;
 });
-process.once('SIGINT', () => {
+process.once(SIGNAL.interrupt, () => {
   running = false;
 });
 
-log.info('worker started');
+log.info(LOG.worker.started);
 while (running) {
   let didWork = false;
   try {
@@ -60,11 +62,11 @@ while (running) {
       await services.dueSoon.run();
     }
   } catch (error) {
-    log.error({ err: error }, 'worker: job failed');
+    log.error({ err: error }, LOG.worker.jobFailed);
   }
   if (!didWork) {
     await sleep(DURATIONS.workerIdleMs);
   }
 }
 await pool.end();
-log.info('worker stopped');
+log.info(LOG.worker.stopped);

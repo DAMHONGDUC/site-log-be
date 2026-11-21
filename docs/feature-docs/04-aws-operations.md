@@ -94,7 +94,7 @@ flowchart TB
 | `INVITE_TTL_DAYS` | `7` | — | Invitation lifetime |
 | `ENV_NAME`, `API_DOMAIN`, `ECR_REPOSITORY`, `DB_SECRET_ARN` | — | `instance.env` | Used by `deploy.sh` and Caddy |
 
-- `src/config.ts` reads every variable once at start and fails fast on a missing one.
+- `src/core/config.ts` reads every variable once at start and fails fast on a missing one.
 
 </dd></dl>
 

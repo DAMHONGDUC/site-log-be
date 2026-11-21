@@ -63,12 +63,12 @@ flowchart LR
 
 | Folder | Layer | Holds |
 |---|---|---|
-| `src/routes/` | HTTP | One file per endpoint group; validates the body, calls the logic, logs |
-| `src/sync/` | Logic | Table registry, pull, push |
-| `src/realtime/` | Logic | WebSocket channel, `pg_notify` fan-out |
+| `src/modules/<feature>/` | Feature | One folder per feature (`account`, `devices`, `health`, `notifications`, `realtime`, `sync`, `team`, `uploads`): its routes, services, repositories and rules |
+| `src/core/` | Core | Config, logger, error contract, auth, HTTP guards, shared schemas, OpenAPI |
+| `src/data/` | Data | Pool, `Database` (repositories on the pool or one transaction), table lists |
+| `src/integrations/` | Adapters | S3, SES, Firebase Cloud Messaging — the only files that talk to outside services (plus `core/auth.ts` for Firebase Auth) |
+| `src/constants/` | Constants | Every fixed value: `ApiRoutes`, error codes, roles, limits, durations |
 | `src/workers/` | Jobs | Verify, abandoned uploads, purge |
-| `src/storage.ts`, `src/auth.ts`, `src/push/` | Adapters | S3, Firebase (Auth, Cloud Messaging) — the only files that talk to outside services |
-| `src/config.ts`, `src/db.ts`, `src/errors.ts`, `src/logger.ts` | Core | Settings, database, error contract, logging |
 
 - `app.ts` receives every adapter as a dependency (`AppDeps`), so tests pass fakes for Firebase and S3 and a real Postgres.
 

@@ -1,5 +1,5 @@
 # Build stage: compile TypeScript.
-FROM node:24-slim AS build
+FROM node:26-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -8,7 +8,7 @@ COPY src ./src
 RUN npm run build
 
 # Run stage: only production dependencies and the compiled code.
-FROM node:24-slim
+FROM node:26-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json ./

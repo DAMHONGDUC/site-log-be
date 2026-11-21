@@ -258,3 +258,99 @@ describe('team and roles', () => {
     expect((await remove('bob', '2026-11-03T09:00:00.000Z')).results[0].status).toBe('applied');
   });
 
+  it('pushes issueAssigned to a new assignee and issueRechecked to creator and assignee', async () => {
+    await seedProject(context);
+    await addMember(context.pool, 'bob', 'inspector', [ids.project]);
+    for (const uid of ['alice', 'bob']) {
+      await context.app.inject({
+        method: 'POST',
+        url: '/devices',
+        headers: auth(uid),
+        payload: { token: `fX3k:APA91b${uid.repeat(10)}`, platform: 'android' },
+      });
+    }
+    await pushAs(context, 'alice', [issue({ assigneeUid: 'bob', dueDate: '2026-11-07' })]);
+    expect(context.push.sent.map((item) => [item.message.kind, item.message.title])).toEqual([
+      ['issueAssigned', 'Assigned to you · Major'],
+    ]);
+    context.push.sent = [];
+    await pushAs(context, 'bob', [
+      issue({ assigneeUid: 'bob', status: 'resolved' }, '2026-11-02T09:00:00.000Z'),
+    ]);
+    // bob made the change, so only alice (the creator) hears about it.
+    expect(context.push.sent.map((item) => item.message.kind)).toEqual(['issueRechecked']);
+  });
+
+  it('honours the kinds a device asked for', async () => {
+    await seedProject(context);
+    await addMember(context.pool, 'bob', 'inspector', [ids.project]);
+    await context.app.inject({
+      method: 'POST',
+      url: '/devices',
+      headers: auth('bob'),
+      payload: { token: `fX3k:APA91b${'c'.repeat(20)}`, platform: 'ios', kinds: ['dueSoon'] },
+    });
+    await pushAs(context, 'alice', [issue({ assigneeUid: 'bob' })]);
+    expect(context.push.sent).toHaveLength(0);
+  });
+
+  it('sends one dueSoon push per assignee and project', async () => {
+    await seedProject(context);
+    await addMember(context.pool, 'bob', 'inspector', [ids.project]);
+    await context.pool.query(
+      `insert into devices (token, uid, platform) values ('fX3k:APA91b${'d'.repeat(20)}', 'bob', 'android')`,
+    );
+    const tomorrow = await context.pool.query<{ day: string }>(
+      `select ((now() at time zone 'Asia/Ho_Chi_Minh')::date + 1)::text as day`,
+    );
+    await pushAs(context, 'alice', [issue({ assigneeUid: 'bob', dueDate: tomorrow.rows[0]!.day })]);
+    context.push.sent = [];
+    const sent = await pushDueSoon(
+      {
+        pool: context.pool,
+        storage: context.storage,
+        push: context.push,
+        log: context.app.log as never,
+      },
+      'Asia/Ho_Chi_Minh',
+    );
+    expect(sent).toBe(1);
+    expect(context.push.sent[0]!.message).toMatchObject({
+      kind: 'dueSoon',
+      title: '1 issue due tomorrow',
+      deepLink: `sitelog://project/${ids.project}`,
+    });
+  });
+
+  it('records the team activity, newest first, paged', async () => {
+    await call('alice', 'PATCH', '/members/bob', { role: 'viewer' });
+    await call('alice', 'PATCH', '/members/carol', { role: 'viewer' });
+    await call('alice', 'DELETE', '/members/carol');
+    const first = await call('alice', 'GET', '/member-events?limit=2');
+    expect(first.json().events.map((event: { type: string }) => event.type)).toEqual([
+      'removed',
+      'role_changed',
+    ]);
+    expect(first.json().events[1].subject).toEqual({ uid: 'carol', name: 'Carol' });
+    const second = await call('alice', 'GET', `/member-events?limit=2&before=${first.json().next}`);
+    expect(second.json().events).toHaveLength(1);
+    expect(second.json().next).toBeNull();
+    expect((await call('bob', 'GET', '/member-events')).statusCode).toBe(403);
+  });
+});
+
+describe('move-keys (F19)', () => {
+  it('maps old uid keys to project and company keys', async () => {
+    const { newKeyFor } = await import('../src/team/move-keys.js');
+    expect(newKeyFor(`alice/${ids.project}/${ids.session}/${ids.capture}.jpg`)).toBe(
+      `projects/${ids.project}/${ids.session}/${ids.capture}.jpg`,
+    );
+    expect(newKeyFor(`alice/${ids.project}/plans/${ids.capture}.pdf`)).toBe(
+      `projects/${ids.project}/plans/${ids.capture}.pdf`,
+    );
+    expect(newKeyFor(`alice/branding/${ids.capture}.png`)).toBe(
+      `company/branding/${ids.capture}.png`,
+    );
+    expect(newKeyFor(`projects/${ids.project}/x.jpg`)).toBeUndefined();
+  });
+});

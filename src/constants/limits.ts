@@ -9,6 +9,7 @@ export const LIMITS = {
   verificationCodeMinLength: 10,
   verificationCodeMaxLength: 16,
   syncTableNameMaxLength: 64,
+  sha256HexLength: 64,
   emailMinLength: 3,
   emailMaxLength: 254,
   projectsPerInvite: 200,

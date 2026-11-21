@@ -4,7 +4,7 @@ import { loadConfig } from './core/config.js';
 import { createPool } from './data/pool.js';
 import { LogMailer, SesMailer, type Mailer } from './integrations/mailer.js';
 import { FcmSender } from './integrations/fcm.js';
-import { RealtimeHub } from './modules/realtime/hub.js';
+import { RealtimeHub } from './modules/realtime/index.js';
 import { Storage, createS3Client } from './integrations/storage.js';
 import { FAULT_TEXT } from './constants/messages/error-text.js';
 import { ENV, ENV_DEFAULT } from './constants/runtime/env.js';

@@ -10,6 +10,9 @@ export const SCRIPT_TEXT = {
   openapiFresh: (file: string) => `${file} is up to date.\n`,
   openapiWritten: (file: string) => `Wrote ${file}.\n`,
   notUsed: 'not used',
+  bucketNeedsEndpoint: 'S3_ENDPOINT is not set: AWS buckets are created by the CDK app.\n',
+  bucketReady: (bucket: string, created: boolean, endpoint: string) =>
+    `Bucket ${bucket} ${created ? 'created' : 'already exists'} at ${endpoint}.\n`,
 } as const;
 
 // scripts/dev-token.ts: Firebase Auth's REST sign-in for a test user.

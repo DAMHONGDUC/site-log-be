@@ -6,6 +6,7 @@
     "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
     "worker:dev": "tsx watch --env-file-if-exists=.env src/worker.ts",
     "migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
+    "s3:bucket": "tsx --env-file-if-exists=.env scripts/s3-bucket.ts",
     "token": "tsx --env-file-if-exists=.env scripts/dev-token.ts",
     "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "tsc -p tsconfig.build.json",

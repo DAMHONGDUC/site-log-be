@@ -13,7 +13,7 @@ export class AccessService {
     if (row === undefined) {
       return { status: 'unknown' };
     }
-    if (row.removed_at !== null) {
+    if (row.removedAt !== null) {
       return { status: 'removed' };
     }
     return {
@@ -23,7 +23,7 @@ export class AccessService {
         email: row.email,
         name: row.name,
         role: row.role,
-        resyncRequired: row.resync_required,
+        resyncRequired: row.resyncRequired,
       },
     };
   }

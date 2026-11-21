@@ -1,6 +1,5 @@
 import { ErrorCode } from '../../constants/error-codes.js';
-import type { Role } from '../../constants/roles.js';
-import { ROLES_REACHING_ALL } from '../../constants/roles.js';
+import { ROLE, ROLES_REACHING_ALL, type Role } from '../../constants/roles.js';
 import type { Database } from '../../data/database.js';
 import type { Member, Reach } from './member.js';
 import { conflict, notFound } from '../../core/errors.js';
@@ -56,8 +55,8 @@ export class TeamService {
       email: row.email,
       name: row.name,
       role: row.role,
-      projectIds: reachOf(row.role, row.project_ids),
-      lastSeenAt: row.last_seen_at,
+      projectIds: reachOf(row.role, row.projectIds),
+      lastSeenAt: row.lastSeenAt,
     }));
   }
 
@@ -69,7 +68,7 @@ export class TeamService {
     const result = await this.db.transaction(async (repos) => {
       const current = await this.liveMember(repos, uid);
       const role = change.role ?? current.role;
-      if (current.role === 'admin' && role !== 'admin') {
+      if (current.role === ROLE.admin && role !== ROLE.admin) {
         await this.ensureAnotherAdmin(repos);
       }
       const roleChanged = role !== current.role;
@@ -119,7 +118,7 @@ export class TeamService {
   async removeMember(actor: Member, uid: string): Promise<void> {
     await this.db.transaction(async (repos) => {
       const current = await this.liveMember(repos, uid);
-      if (current.role === 'admin') {
+      if (current.role === ROLE.admin) {
         await this.ensureAnotherAdmin(repos);
       }
       await repos.members.markRemoved(uid);
@@ -176,10 +175,10 @@ export class TeamService {
         id: row.id,
         at: row.at,
         type: row.type,
-        actor: row.actor_uid === null ? null : { uid: row.actor_uid, name: row.actor_name ?? '' },
+        actor: row.actorUid === null ? null : { uid: row.actorUid, name: row.actorName ?? '' },
         subject:
-          row.subject_uid === null ? null : { uid: row.subject_uid, name: row.subject_name ?? '' },
-        invitationId: row.invitation_id,
+          row.subjectUid === null ? null : { uid: row.subjectUid, name: row.subjectName ?? '' },
+        invitationId: row.invitationId,
         detail: row.detail,
       })),
       next: rows.length > limit ? page[page.length - 1]!.id : null,
@@ -226,7 +225,7 @@ export class TeamService {
 
   // There must always be one Admin (05 §2, §8).
   private async ensureAnotherAdmin(repos: Repositories): Promise<void> {
-    if ((await repos.members.countLiveWithRole('admin')) <= 1) {
+    if ((await repos.members.countLiveWithRole(ROLE.admin)) <= 1) {
       throw conflict(ErrorCode.lastAdmin, 'There must always be one Admin');
     }
   }

@@ -44,7 +44,8 @@ export default tseslint.config(
     },
   },
   {
-    // Only repositories, the data layer and the generic sync / realtime engines run SQL.
+    // Only repositories, the data layer and the generic sync / realtime engines run SQL
+    // (Drizzle in repositories; raw SQL where the sync engine builds it from syncTables).
     files: ['src/modules/**/*.ts', 'src/core/**/*.ts'],
     ignores: [
       'src/modules/**/*-repository.ts',
@@ -64,6 +65,18 @@ export default tseslint.config(
           selector: "CallExpression[callee.property.name='query']",
           message:
             'Run SQL in a repository (src/modules/<feature>/*-repository.ts), not in a route or service.',
+        },
+      ],
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['drizzle-orm', 'drizzle-orm/*'],
+              message:
+                'Query through a repository (src/modules/<feature>/*-repository.ts), not in a route or service.',
+            },
+          ],
         },
       ],
     },

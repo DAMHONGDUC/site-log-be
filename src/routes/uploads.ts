@@ -1,227 +1,52 @@
 import { Type, type TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
-import type { FastifyInstance, FastifyRequest, preHandlerAsyncHookHandler } from 'fastify';
-import type pg from 'pg';
+import type { FastifyInstance } from 'fastify';
 import type { AppDeps } from '../app.js';
-import { newVerificationCode } from '../codes.js';
-import { withTransaction } from '../db.js';
-import { AppError, badRequest, conflict, notFound } from '../errors.js';
-import { checkKey } from '../team/files.js';
-import { notifyUploadEvent } from '../realtime/events.js';
-import type { CompletedPart } from '../storage.js';
+import { ApiRoutes } from '../constants/api-routes.js';
+import { LIMITS, PATTERNS } from '../constants/limits.js';
+import type { Guards } from '../http/guards.js';
+import { Schemas, rateLimit } from '../http/schemas.js';
 
-// S3 allows at most 10,000 parts per upload.
-const MAX_PARTS = 10_000;
-
-interface UploadRow {
-  id: string;
-  uid: string;
-  object_key: string;
-  project_id: string | null;
-  session_id: string | null;
-  sha256: string;
-  byte_size: number;
-  content_type: string;
-  mode: 'single' | 'multipart';
-  s3_upload_id: string | null;
-  part_count: number | null;
-  state: 'created' | 'completed' | 'aborted';
-  verification_code: string | null;
-  verify_state: 'registered' | 'verified' | 'mismatch' | null;
-  completed_at: Date | null;
-}
-
-// The body `complete` returns. A repeated `complete` returns the same body again.
-function completedBody(row: UploadRow) {
-  return {
-    uploadId: row.id,
-    remoteKey: row.object_key,
-    sha256: row.sha256,
-    verificationCode: row.verification_code,
-    verified: row.verify_state === 'verified',
-    receivedAt: row.completed_at,
-  };
-}
-
-async function lockUpload(
-  client: pg.PoolClient,
-  id: string,
-  uid: string,
-): Promise<UploadRow | undefined> {
-  const result = await client.query<UploadRow>(
-    'select * from uploads where id = $1 and uid = $2 for update',
-    [id, uid],
-  );
-  return result.rows[0];
-}
-
-async function uniqueCode(client: pg.PoolClient): Promise<string> {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const code = newVerificationCode();
-    const taken = await client.query('select 1 from uploads where verification_code = $1', [code]);
-    if (taken.rows.length === 0) {
-      return code;
-    }
-  }
-  throw new Error('Could not find a free verification code');
-}
-
-// Every part number from 1 to partCount exactly once.
-function checkParts(parts: CompletedPart[], partCount: number): void {
-  if (parts.length !== partCount) {
-    throw badRequest('invalid_parts', `Expected ${partCount} parts, got ${parts.length}`);
-  }
-  const seen = new Set<number>();
-  for (const part of parts) {
-    if (part.number < 1 || part.number > partCount || seen.has(part.number)) {
-      throw badRequest('invalid_parts', `Bad or repeated part number ${part.number}`);
-    }
-    seen.add(part.number);
-  }
-}
-
-export function uploadRoutes(
-  app: FastifyInstance,
-  deps: AppDeps,
-  requireUser: preHandlerAsyncHookHandler,
-): void {
+// Presigned uploads (01-api §7); the rules live in UploadService.
+export function uploadRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards): void {
   const typed = app.withTypeProvider<TypeBoxTypeProvider>();
-  const { config, pool, storage } = deps;
+  const { uploads } = deps.services;
 
   const BeginBody = Type.Object({
-    key: Type.String({ minLength: 1, maxLength: 300 }),
+    key: Schemas.objectKey(),
     byteSize: Type.Integer({ minimum: 1 }),
-    contentType: Type.String({ pattern: '^[a-z]+/[a-z0-9.+-]+$' }),
-    sha256: Type.String({ pattern: '^[0-9a-f]{64}$' }),
+    contentType: Type.String({ pattern: PATTERNS.contentType }),
+    sha256: Type.String({ pattern: PATTERNS.sha256Hex }),
   });
-
-  // Per signed-in user (the token), so one runaway device cannot flood S3 with uploads.
-  const beginLimit = {
-    max: config.uploadRateLimitPerMinute,
-    timeWindow: '1 minute',
-    keyGenerator: (request: FastifyRequest) => request.headers.authorization ?? request.ip,
-  };
-
-  // 1. Begin: the backend picks single PUT or multipart from the size.
   typed.post(
-    '/uploads',
-    { preHandler: requireUser, schema: { body: BeginBody }, config: { rateLimit: beginLimit } },
-    async (request) => {
-      const { key, byteSize, contentType, sha256 } = request.body;
-      const parsed = await checkKey(pool, request.member, key, 'write');
-      if (byteSize > config.maxUploadBytes) {
-        throw new AppError(413, 'file_too_large', 'File is larger than the upload limit');
-      }
-
-      let projectId: string | null = null;
-      let sessionId: string | null = null;
-      if (parsed.kind === 'capture') {
-        projectId = parsed.projectId;
-        sessionId = parsed.sessionId;
-      } else if (parsed.kind === 'plan') {
-        projectId = parsed.projectId;
-      }
-      const expiresAt = storage.expiresAt(new Date());
-
-      if (byteSize < config.singlePutThresholdBytes) {
-        const inserted = await pool.query<{ id: string }>(
-          `insert into uploads (uid, object_key, project_id, session_id, sha256, byte_size, content_type, mode)
-         values ($1, $2, $3, $4, $5, $6, $7, 'single') returning id`,
-          [request.uid, key, projectId, sessionId, sha256, byteSize, contentType],
-        );
-        const uploadId = inserted.rows[0]!.id;
-        const url = await storage.presignPut(key, contentType);
-        request.log.info(
-          { uid: request.uid, uploadId, key, byteSize, mode: 'single' },
-          'upload begun',
-        );
-        return { mode: 'single', uploadId, url, expiresAt };
-      }
-
-      const partCount = Math.ceil(byteSize / config.partSizeBytes);
-      if (partCount > MAX_PARTS) {
-        throw new AppError(413, 'file_too_large', 'File needs more than 10,000 parts');
-      }
-      const s3UploadId = await storage.createMultipart(key, contentType);
-      const inserted = await pool.query<{ id: string }>(
-        `insert into uploads
-         (uid, object_key, project_id, session_id, sha256, byte_size, content_type, mode, s3_upload_id, part_count)
-       values ($1, $2, $3, $4, $5, $6, $7, 'multipart', $8, $9) returning id`,
-        [
-          request.uid,
-          key,
-          projectId,
-          sessionId,
-          sha256,
-          byteSize,
-          contentType,
-          s3UploadId,
-          partCount,
-        ],
-      );
-      const uploadId = inserted.rows[0]!.id;
-      const parts: { number: number; url: string }[] = [];
-      for (let number = 1; number <= partCount; number += 1) {
-        parts.push({ number, url: await storage.presignPart(key, s3UploadId, number) });
-      }
-      request.log.info(
-        { uid: request.uid, uploadId, key, byteSize, partCount, mode: 'multipart' },
-        'upload begun',
-      );
-      return { mode: 'multipart', uploadId, partSizeBytes: config.partSizeBytes, parts, expiresAt };
+    ApiRoutes.UPLOADS,
+    {
+      preHandler: guards.requireUser,
+      schema: { body: BeginBody },
+      config: { rateLimit: rateLimit(deps.config.uploadRateLimitPerMinute, true) },
     },
+    async (request) => uploads.begin(request.member, request.body),
   );
 
-  const IdParams = Type.Object({ id: Type.String({ format: 'uuid' }) });
   const RefreshBody = Type.Object({
-    numbers: Type.Array(Type.Integer({ minimum: 1, maximum: MAX_PARTS }), {
+    numbers: Type.Array(Type.Integer({ minimum: 1, maximum: LIMITS.s3MaxParts }), {
       minItems: 1,
-      maxItems: 1000,
+      maxItems: LIMITS.partsPerRefresh,
     }),
   });
-
-  // 2. Fresh URLs for parts whose URLs expired (the app was killed for hours).
   typed.post(
-    '/uploads/:id/parts/refresh',
-    { preHandler: requireUser, schema: { params: IdParams, body: RefreshBody } },
-    async (request) => {
-      const result = await pool.query<UploadRow>(
-        `select * from uploads where id = $1 and uid = $2 and state = 'created' and mode = 'multipart'`,
-        [request.params.id, request.uid],
-      );
-      const upload = result.rows[0];
-      if (upload === undefined) {
-        throw notFound('upload_not_found', 'No open multipart upload with this id');
-      }
-      const parts: { number: number; url: string }[] = [];
-      for (const number of request.body.numbers) {
-        if (number > upload.part_count!) {
-          throw badRequest('invalid_parts', `Part ${number} is past the last part`);
-        }
-        parts.push({
-          number,
-          url: await storage.presignPart(upload.object_key, upload.s3_upload_id!, number),
-        });
-      }
-      request.log.info(
-        { uid: request.uid, uploadId: upload.id, count: parts.length },
-        'upload parts refreshed',
-      );
-      return { parts, expiresAt: storage.expiresAt(new Date()) };
-    },
+    ApiRoutes.UPLOAD_PARTS_REFRESH,
+    { preHandler: guards.requireUser, schema: { params: Schemas.idParams(), body: RefreshBody } },
+    async (request) => uploads.refreshParts(request.uid, request.params.id, request.body.numbers),
   );
 
   const CompleteBody = Type.Object({
     parts: Type.Optional(
       Type.Array(
         Type.Object({ number: Type.Integer({ minimum: 1 }), etag: Type.String({ minLength: 1 }) }),
-        {
-          maxItems: MAX_PARTS,
-        },
+        { maxItems: LIMITS.s3MaxParts },
       ),
     ),
   });
-
-  // 3. Complete: confirm the object exists, record it, issue a verification code. Idempotent.
   typed.post(
     '/uploads/:id/complete',
     { preHandler: requireUser, schema: { params: IdParams, body: CompleteBody } },

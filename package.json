@@ -1,0 +1,66 @@
+{
+  "name": "site-log-be",
+  "version": "0.1.0",
+  "description": "<dl><dd>",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
+    "worker:dev": "tsx watch --env-file-if-exists=.env src/worker.ts",
+    "migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
+    "token": "tsx --env-file-if-exists=.env scripts/dev-token.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "seed:admin": "tsx --env-file-if-exists=.env scripts/seed-admin.ts",
+    "move-keys": "tsx --env-file-if-exists=.env scripts/move-keys.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DAMHONGDUC/site-log-be.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/DAMHONGDUC/site-log-be/issues"
+  },
+  "homepage": "https://github.com/DAMHONGDUC/site-log-be#readme",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1173.0",
+    "@aws-sdk/client-sesv2": "^3.1173.0",
+    "@aws-sdk/s3-request-presigner": "^3.1173.0",
+    "@fastify/rate-limit": "^11.2.2",
+    "@fastify/type-provider-typebox": "^6.3.0",
+    "@fastify/websocket": "^11.3.7",
+    "fastify": "^5.12.8",
+    "firebase-admin": "^14.5.1",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "typebox": "^1.4.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
+    "@types/ws": "^8.18.2",
+    "aws-sdk-client-mock": "^4.1.0",
+    "eslint": "^10.15.0",
+    "prettier": "^3.10.1",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^5.1.1"
+  }
+}

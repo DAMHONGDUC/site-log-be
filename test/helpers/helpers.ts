@@ -9,7 +9,7 @@ import { LogMailer } from '../../src/integrations/mailer.js';
 import type { DevicePlatform, PushMessage, PushSender } from '../../src/integrations/fcm.js';
 import { RealtimeHub } from '../../src/modules/realtime/hub.js';
 import { Database } from '../../src/data/database.js';
-import { SERVER_TABLES } from '../../src/data/schema.js';
+import { SERVER_TABLES } from '../../src/data/schema/index.js';
 import { createLogger } from '../../src/core/logger.js';
 import { createCoreServices } from '../../src/services.js';
 import type { WorkerDeps } from '../../src/workers/verify.js';

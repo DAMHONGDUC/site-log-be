@@ -121,9 +121,11 @@ site-log-be/
 │   ├── main.ts · worker.ts # entry points: HTTP + WebSocket server · background jobs
 │   ├── app.ts              # composition root: builds Database, services, guards, registers routes
 │   ├── services.ts         # builds every service once (API and worker)
-│   ├── constants/          # every fixed value: ApiRoutes, ErrorCode, roles + permissions, push kinds,
-│   │                       # limits, patterns, durations, HTTP status, WebSocket close codes, OpenAPI,
-│   │                       # table and enum names (db, enums)
+│   ├── constants/          # every fixed value, by kind:
+│   │                       #   http/ (ApiRoutes, ErrorCode, HTTP status, OpenAPI) · data/ (table and
+│   │                       #   enum names, enum values) · domain/ (roles + permissions, push kinds,
+│   │                       #   issues, object key roots) · runtime/ (limits, patterns, durations, units,
+│   │                       #   environments, WebSocket close codes)
 │   ├── core/               # config, logger, errors, auth, log; http/ (guards, schemas, openapi)
 │   ├── data/               # pool, Database (repositories on the pool or one transaction), Drizzle client,
 │   │                       # schema/ (every table, for typed queries)
@@ -131,12 +133,15 @@ site-log-be/
 │   ├── modules/            # one folder per feature: *-routes · *-service · *-repository · rules
 │   │   ├── account/  devices/  health/  notifications/
 │   │   ├── realtime/       # WebSocket channel and pg_notify fan-out
-│   │   ├── sync/           # table registry, pull, push/ (sql · placement · authorization · apply)
-│   │   ├── team/           # members, invitations, access, permissions
-│   │   └── uploads/        # uploads, media URLs, /verify, object keys, key migration
+│   │   ├── sync/           # table registry, pull, push/ (sql · placement · authorization · apply),
+│   │   │                   # repositories/ (projects, phrases, issues, rev counter)
+│   │   ├── team/           # members/ · invitations/ · access/ (reach, permissions, project members)
+│   │   └── uploads/        # transfer/ (uploads) · media/ (media URLs) · verify/ (/verify) ·
+│   │                       # keys/ (object keys, key migration)
 │   └── workers/            # worker jobs
 ├── migrations/             # numbered .sql files, run once each, forward only
-├── test/                   # vitest against a real Postgres: core/, data/, modules/<feature>/, helpers/
+├── test/                   # vitest against a real Postgres: core/, data/, modules/<feature>/ (sync: engine/ ·
+│                           # tables/), helpers/
 ├── scripts/                # dev token, seed the first Admin, move pre-F19 keys, OpenAPI
 ├── docs/                   # feature docs, guides, openapi.json (generated)
 ├── deploy/ · infra/        # what runs on EC2 · AWS CDK app
@@ -156,9 +161,9 @@ site-log-be/
 | Routes are thin | A route only declares its schema and guard, calls one service, returns the result |
 | SQL only in repositories | Repositories query through Drizzle (`src/data/schema/`); ESLint fails on `.query(` or a `drizzle-orm` import anywhere in `src/modules` and `src/core` except `*-repository.ts` and the sync and realtime engines. The sync push and pull keep raw SQL: they build it from `syncTables` metadata (`jsonb_populate_record`, savepoints) |
 | Migrations own the schema | `migrations/*.sql` create the tables; `src/data/schema/` only describes them for Drizzle. `test/data/schema.test.ts` fails when a column or its nullability differs, or a synced table is missing |
-| No hard-coded strings | Every string value is a named constant: table and enum names in `constants/db.ts`, enum values in `constants/enums.ts` (`UPLOAD_STATE.completed`, `ROLE.admin`), the rest in its `constants/` file |
-| Features grouped by folder | A folder holds a handful of files; when it grows, it splits into one sub-folder per sub-feature |
-| Every path from `ApiRoutes` | `src/constants/api-routes.ts` holds every endpoint (`ApiRoutes.UPLOAD_COMPLETE`, `ApiRoutes.uploadComplete(id)`); ESLint fails on a literal path in a route; tests build paths with it |
+| No hard-coded strings | Every string value is a named constant: table and enum names in `constants/data/db.ts`, enum values in `constants/data/enums.ts` (`UPLOAD_STATE.completed`, `ROLE.admin`), the rest in its `constants/` file |
+| Features grouped by folder | A folder holds at most 6 files; past that it splits into one sub-folder per sub-feature (`team/members/`, `team/invitations/`, `team/access/`) |
+| Every path from `ApiRoutes` | `src/constants/http/api-routes.ts` holds every endpoint (`ApiRoutes.UPLOAD_COMPLETE`, `ApiRoutes.uploadComplete(id)`); ESLint fails on a literal path in a route; tests build paths with it |
 | No magic numbers | ESLint `no-magic-numbers` on `src/` (constants and Config excepted) |
 | Small files | ESLint `max-lines` 300 per file |
 | Depend on interfaces | Services take `TokenVerifier`, `PushSender`, `Mailer`, `Storage`, `Database` through the constructor; tests pass fakes |

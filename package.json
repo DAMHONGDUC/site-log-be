@@ -1,11 +1,7 @@
 {
   "name": "site-log-be",
   "version": "0.1.0",
-  "description": "<dl><dd>",
-  "main": "index.js",
-  "directories": {
-    "doc": "docs"
-  },
+  "description": "Site Log backend: sync, uploads, realtime and team API for the iOS and Android apps",
   "scripts": {
     "dev": "tsx watch --env-file-if-exists=.env src/main.ts",
     "worker:dev": "tsx watch --env-file-if-exists=.env src/worker.ts",
@@ -25,9 +21,7 @@
     "type": "git",
     "url": "git+https://github.com/DAMHONGDUC/site-log-be.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "bugs": {
     "url": "https://github.com/DAMHONGDUC/site-log-be/issues"
   },

@@ -1,9 +1,10 @@
-// F19, once after the 0012 migration: npm run move-keys
+// F19, once after migration 0012: npm run move-keys
 import { loadConfig } from '../src/config.js';
+import { Database } from '../src/data/database.js';
 import { createPool } from '../src/db.js';
 import { createLogger } from '../src/logger.js';
+import { KeyMigrationService } from '../src/services/key-migration-service.js';
 import { Storage, createS3Client } from '../src/storage.js';
-import { moveKeys } from '../src/team/move-keys.js';
 
 const config = loadConfig();
 const log = createLogger(config.logLevel);
@@ -13,5 +14,5 @@ const storage = new Storage(
   config.s3Bucket,
   config.presignTtlSeconds,
 );
-await moveKeys(pool, storage, log);
+await new KeyMigrationService(new Database(pool), storage, log).run();
 await pool.end();

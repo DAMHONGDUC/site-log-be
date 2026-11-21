@@ -1,5 +1,6 @@
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import type { FastifyBaseLogger } from 'fastify';
+import { LOG } from '../constants/messages/log.js';
 
 export interface MailMessage {
   to: string;
@@ -48,9 +49,6 @@ export class LogMailer implements Mailer {
 
   async send(message: MailMessage): Promise<void> {
     this.sent.push(message);
-    this.log?.info(
-      { to: message.to, subject: message.subject },
-      'mail (not sent: no sender configured)',
-    );
+    this.log?.info({ to: message.to, subject: message.subject }, LOG.mail.notSent);
   }
 }

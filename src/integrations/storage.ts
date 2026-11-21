@@ -18,6 +18,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { HTTP_STATUS } from '../constants/http/http-status.js';
 import { MS_PER_SECOND } from '../constants/runtime/units.js';
 import type { Readable } from 'node:stream';
+import { S3 } from '../constants/platform/external.js';
+import { FAULT_TEXT } from '../constants/messages/error-text.js';
 
 export interface S3ClientOptions {
   region: string;
@@ -30,8 +32,8 @@ export function createS3Client({ region, endpoint }: S3ClientOptions): S3Client 
     region,
     // Without these, the SDK adds checksum parameters to presigned URLs that the iOS
     // upload does not send, and S3 rejects every PUT.
-    requestChecksumCalculation: 'WHEN_REQUIRED',
-    responseChecksumValidation: 'WHEN_REQUIRED',
+    requestChecksumCalculation: S3.checksumWhenRequired,
+    responseChecksumValidation: S3.checksumWhenRequired,
     // Local servers answer at one host, so the bucket goes in the path, not the host name.
     ...(endpoint === undefined ? {} : { endpoint, forcePathStyle: true }),
   });
@@ -47,7 +49,7 @@ function isMissing(error: unknown): boolean {
   if (!(error instanceof S3ServiceException)) {
     return false;
   }
-  if (error.name === 'NotFound' || error.name === 'NoSuchKey' || error.name === 'NoSuchUpload') {
+  if ((S3.missingErrors as readonly string[]).includes(error.name)) {
     return true;
   }
   return error.$metadata.httpStatusCode === HTTP_STATUS.notFound;
@@ -92,7 +94,7 @@ export class Storage {
     });
     const result = await this.s3.send(command);
     if (result.UploadId === undefined) {
-      throw new Error('S3 returned no UploadId');
+      throw new Error(FAULT_TEXT.noUploadId);
     }
     return result.UploadId;
   }
@@ -156,7 +158,7 @@ export class Storage {
     await this.s3.send(
       new CopyObjectCommand({
         Bucket: this.bucket,
-        CopySource: `${this.bucket}/${encodeURIComponent(fromKey)}`,
+        CopySource: [this.bucket, encodeURIComponent(fromKey)].join(S3.pathSeparator),
         Key: toKey,
       }),
     );

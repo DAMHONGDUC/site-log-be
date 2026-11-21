@@ -4,6 +4,7 @@ import type { WebSocket } from 'ws';
 import type { Config } from '../../core/config.js';
 import { DURATIONS } from '../../constants/durations.js';
 import { UploadRepository, type UploadSnapshotRow } from '../uploads/upload-repository.js';
+import { toDrizzle } from '../../data/drizzle.js';
 import { connectionOptions } from '../../data/pool.js';
 import type { UploadEvent } from './events.js';
 
@@ -109,7 +110,7 @@ export class RealtimeHub {
       }
       // F19: every member watching the session gets it, not only the uploader.
       // The payload holds ids only: read the current state of the row.
-      const row = await new UploadRepository(this.pool).snapshot(event.uploadId);
+      const row = await new UploadRepository(toDrizzle(this.pool)).snapshot(event.uploadId);
       if (row === undefined) {
         return;
       }
@@ -145,14 +146,14 @@ export function uploadMessage(row: UploadSnapshotRow): object | undefined {
   if (row.state !== 'completed') {
     return undefined;
   }
-  if (row.verify_state === 'mismatch') {
+  if (row.verifyState === 'mismatch') {
     return { type: 'jobFailed', jobID: row.id, reason: 'integrity' };
   }
   return {
     type: 'jobCompleted',
     jobID: row.id,
-    remoteKey: row.object_key,
+    remoteKey: row.objectKey,
     sha256: row.sha256,
-    verified: row.verify_state === 'verified',
+    verified: row.verifyState === 'verified',
   };
 }

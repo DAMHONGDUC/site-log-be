@@ -23,7 +23,7 @@ export async function verifyNextUpload(deps: WorkerDeps): Promise<boolean> {
   }
 
   const hash = createHash('sha256');
-  const stream = await deps.storage.readStream(upload.object_key);
+  const stream = await deps.storage.readStream(upload.objectKey);
   for await (const chunk of stream) {
     hash.update(chunk as Buffer);
   }
@@ -31,17 +31,17 @@ export async function verifyNextUpload(deps: WorkerDeps): Promise<boolean> {
   await deps.db.repos.uploads.setVerifyState(upload.id, state);
   await notifyUploadEvent(deps.pool, {
     uid: upload.uid,
-    sessionId: upload.session_id,
+    sessionId: upload.sessionId,
     uploadId: upload.id,
     type: state,
   });
   deps.log.info(
-    { uid: upload.uid, uploadId: upload.id, key: upload.object_key, state },
+    { uid: upload.uid, uploadId: upload.id, key: upload.objectKey, state },
     'upload verified',
   );
 
-  if (state === 'verified' && upload.session_id !== null) {
-    await pushWhenSessionVerified(deps, upload.uid, upload.session_id);
+  if (state === 'verified' && upload.sessionId !== null) {
+    await pushWhenSessionVerified(deps, upload.uid, upload.sessionId);
   }
   return true;
 }

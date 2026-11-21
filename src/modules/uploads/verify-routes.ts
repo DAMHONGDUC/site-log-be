@@ -43,19 +43,19 @@ export function verifyRoutes(app: FastifyInstance, deps: AppDeps): void {
         request.log.info({ found: false }, 'verify lookup');
         throw notFound(ErrorCode.codeNotFound, 'Unknown verification code');
       }
-      request.log.info({ found: true, verifyState: row.verify_state }, 'verify lookup');
+      request.log.info({ found: true, verifyState: row.verifyState }, 'verify lookup');
       let projectRef: string | null = null;
-      if (row.project_id !== null) {
-        projectRef = row.project_id.slice(0, TEXT_CUT.projectRef).toUpperCase();
+      if (row.projectId !== null) {
+        projectRef = row.projectId.slice(0, TEXT_CUT.projectRef).toUpperCase();
       }
       return {
         code,
         sha256: row.sha256,
-        byteSize: row.byte_size,
-        receivedAt: row.completed_at,
-        verifyState: row.verify_state,
-        verified: row.verify_state === 'verified',
-        verifiedAt: row.verified_at,
+        byteSize: row.byteSize,
+        receivedAt: row.completedAt,
+        verifyState: row.verifyState,
+        verified: row.verifyState === 'verified',
+        verifiedAt: row.verifiedAt,
         projectRef,
       };
     },

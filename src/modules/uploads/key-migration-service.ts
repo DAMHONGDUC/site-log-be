@@ -34,17 +34,17 @@ export class KeyMigrationService {
   async run(): Promise<number> {
     let moved = 0;
     for (const upload of await this.db.repos.uploads.completedWithLegacyKeys()) {
-      const newKey = newKeyFor(upload.object_key);
+      const newKey = newKeyFor(upload.objectKey);
       if (newKey === undefined) {
         continue;
       }
-      await this.storage.copyObject(upload.object_key, newKey);
+      await this.storage.copyObject(upload.objectKey, newKey);
       await this.db.transaction((repos) =>
-        repos.uploads.renameKey(upload.id, upload.object_key, newKey),
+        repos.uploads.renameKey(upload.id, upload.objectKey, newKey),
       );
-      await this.storage.deleteObject(upload.object_key);
+      await this.storage.deleteObject(upload.objectKey);
       moved += 1;
-      this.log.info({ from: upload.object_key, to: newKey }, 'key moved');
+      this.log.info({ from: upload.objectKey, to: newKey }, 'key moved');
     }
     this.log.info({ moved }, 'move keys done');
     return moved;

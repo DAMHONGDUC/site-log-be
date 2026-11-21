@@ -27,11 +27,11 @@ export interface BeginInput {
 export function completedBody(row: UploadRow) {
   return {
     uploadId: row.id,
-    remoteKey: row.object_key,
+    remoteKey: row.objectKey,
     sha256: row.sha256,
-    verificationCode: row.verification_code,
-    verified: row.verify_state === 'verified',
-    receivedAt: row.completed_at,
+    verificationCode: row.verificationCode,
+    verified: row.verifyState === 'verified',
+    receivedAt: row.completedAt,
   };
 }
 
@@ -134,12 +134,12 @@ export class UploadService {
     }
     const parts: { number: number; url: string }[] = [];
     for (const number of numbers) {
-      if (number > upload.part_count!) {
+      if (number > upload.partCount!) {
         throw badRequest(ErrorCode.invalidParts, `Part ${number} is past the last part`);
       }
       parts.push({
         number,
-        url: await this.storage.presignPart(upload.object_key, upload.s3_upload_id!, number),
+        url: await this.storage.presignPart(upload.objectKey, upload.s3UploadId!, number),
       });
     }
     this.log.info({ uid, uploadId: upload.id, count: parts.length }, 'upload parts refreshed');
@@ -165,11 +165,11 @@ export class UploadService {
         const row = await repos.uploads.markCompleted(upload.id, await this.uniqueCode(repos));
         await notifyUploadEvent(client, {
           uid,
-          sessionId: row.session_id,
+          sessionId: row.sessionId,
           uploadId: row.id,
           type: 'completed',
         });
-        this.log.info({ uid, uploadId: row.id, byteSize: row.byte_size }, 'upload completed');
+        this.log.info({ uid, uploadId: row.id, byteSize: row.byteSize }, 'upload completed');
         return completedBody(row);
       });
     } catch (error) {
@@ -203,7 +203,7 @@ export class UploadService {
         await repos.uploads.markAborted(upload.id);
         await notifyUploadEvent(client, {
           uid,
-          sessionId: upload.session_id,
+          sessionId: upload.sessionId,
           uploadId: upload.id,
           type: 'aborted',
         });
@@ -235,7 +235,7 @@ export class UploadService {
         if (await this.db.repos.uploads.markAborted(upload.id)) {
           await notifyUploadEvent(this.db.pool, {
             uid: upload.uid,
-            sessionId: upload.session_id,
+            sessionId: upload.sessionId,
             uploadId: upload.id,
             type: 'aborted',
           });
@@ -250,34 +250,31 @@ export class UploadService {
 
   private async freeStorage(upload: UploadRow): Promise<void> {
     if (upload.mode === 'multipart') {
-      await this.storage.abortMultipart(upload.object_key, upload.s3_upload_id!);
+      await this.storage.abortMultipart(upload.objectKey, upload.s3UploadId!);
     } else {
-      await this.storage.deleteObject(upload.object_key);
+      await this.storage.deleteObject(upload.objectKey);
     }
   }
 
   private async completeMultipart(upload: UploadRow, parts: CompletedPart[]): Promise<void> {
-    checkParts(parts, upload.part_count!);
+    checkParts(parts, upload.partCount!);
     try {
-      await this.storage.completeMultipart(upload.object_key, upload.s3_upload_id!, parts);
+      await this.storage.completeMultipart(upload.objectKey, upload.s3UploadId!, parts);
     } catch (error) {
       // S3 may have completed it already on an earlier try whose database write failed.
-      if ((await this.storage.head(upload.object_key)) === undefined) {
+      if ((await this.storage.head(upload.objectKey)) === undefined) {
         throw error;
       }
     }
   }
 
   private async checkStoredSize(upload: UploadRow): Promise<void> {
-    const size = await this.storage.head(upload.object_key);
+    const size = await this.storage.head(upload.objectKey);
     if (size === undefined) {
       throw notFound(ErrorCode.objectNotFound, 'Nothing was uploaded for this key');
     }
-    if (size !== upload.byte_size) {
-      throw badRequest(
-        ErrorCode.sizeMismatch,
-        `Stored ${size} bytes, expected ${upload.byte_size}`,
-      );
+    if (size !== upload.byteSize) {
+      throw badRequest(ErrorCode.sizeMismatch, `Stored ${size} bytes, expected ${upload.byteSize}`);
     }
   }
 

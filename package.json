@@ -7,6 +7,7 @@
     "worker:dev": "tsx watch --env-file-if-exists=.env src/worker.ts",
     "migrate": "tsx --env-file-if-exists=.env src/migrate.ts",
     "token": "tsx --env-file-if-exists=.env scripts/dev-token.ts",
+    "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",

@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { can } from '../src/team/permissions.js';
-import { pushDueSoon } from '../src/workers/due-soon.js';
+import { ApiRoutes } from '../src/constants/api-routes.js';
+import { can } from '../src/domain/permissions.js';
 import {
   addMember,
   auth,
+  workerDeps,
   closeTestContext,
   createTestContext,
   ids,
@@ -81,11 +82,11 @@ describe('team and roles', () => {
   it('answers /me with the role and reachable projects', async () => {
     await seedProject(context);
     await addMember(context.pool, 'bob', 'inspector', [ids.project]);
-    expect((await call('alice', 'GET', '/me')).json()).toMatchObject({
+    expect((await call('alice', 'GET', ApiRoutes.ME)).json()).toMatchObject({
       role: 'admin',
       projectIds: 'all',
     });
-    expect((await call('bob', 'GET', '/me')).json()).toMatchObject({
+    expect((await call('bob', 'GET', ApiRoutes.ME)).json()).toMatchObject({
       role: 'inspector',
       projectIds: [ids.project],
     });
@@ -93,7 +94,7 @@ describe('team and roles', () => {
 
   it('invites, previews without sign-in, and accepts with the matching email', async () => {
     await seedProject(context);
-    const invited = await call('alice', 'POST', '/invitations', {
+    const invited = await call('alice', 'POST', ApiRoutes.INVITATIONS, {
       email: 'Vu@Eastline.vn',
       role: 'inspector',
       projectIds: [ids.project],
@@ -101,7 +102,10 @@ describe('team and roles', () => {
     expect(invited.statusCode).toBe(200);
     const token = tokenFromMail();
 
-    const preview = await context.app.inject({ method: 'GET', url: `/invitations/${token}` });
+    const preview = await context.app.inject({
+      method: 'GET',
+      url: ApiRoutes.invitationPreview(token),
+    });
     expect(preview.statusCode).toBe(200);
     expect(preview.json()).toMatchObject({
       invitedBy: 'Alice',
@@ -112,7 +116,7 @@ describe('team and roles', () => {
 
     const wrong = await context.app.inject({
       method: 'POST',
-      url: '/invitations/accept',
+      url: ApiRoutes.INVITATION_ACCEPT,
       headers: { authorization: 'Bearer uid:vu|someone@else.dev' },
       payload: { token },
     });
@@ -120,13 +124,16 @@ describe('team and roles', () => {
 
     const accepted = await context.app.inject({
       method: 'POST',
-      url: '/invitations/accept',
+      url: ApiRoutes.INVITATION_ACCEPT,
       headers: { authorization: 'Bearer uid:vu|vu@eastline.vn' },
       payload: { token },
     });
     expect(accepted.json()).toEqual({ uid: 'vu', role: 'inspector', projectIds: [ids.project] });
 
-    const again = await context.app.inject({ method: 'GET', url: `/invitations/${token}` });
+    const again = await context.app.inject({
+      method: 'GET',
+      url: ApiRoutes.invitationPreview(token),
+    });
     expect(again.json().error.code).toBe('invite_used');
     // A new member rebuilds from 0, then sees the project.
     expect(await pullAs(context, 'vu', 0)).toEqual({ resyncRequired: true });
@@ -135,19 +142,19 @@ describe('team and roles', () => {
 
   it('only lets an Admin invite, and refuses an email that is already a member', async () => {
     await addMember(context.pool, 'mia', 'manager');
-    const manager = await call('mia', 'POST', '/invitations', {
+    const manager = await call('mia', 'POST', ApiRoutes.INVITATIONS, {
       email: 'x@y.dev',
       role: 'viewer',
       projectIds: [],
     });
     expect(manager.statusCode).toBe(403);
-    const member = await call('alice', 'POST', '/invitations', {
+    const member = await call('alice', 'POST', ApiRoutes.INVITATIONS, {
       email: 'bob@test.dev',
       role: 'viewer',
       projectIds: [],
     });
     expect(member.json().error.code).toBe('already_member');
-    const badRole = await call('alice', 'POST', '/invitations', {
+    const badRole = await call('alice', 'POST', ApiRoutes.INVITATIONS, {
       email: 'x@y.dev',
       role: 'boss',
       projectIds: [],
@@ -156,26 +163,32 @@ describe('team and roles', () => {
   });
 
   it('resend voids the old link; cancel closes the invite', async () => {
-    const invited = await call('alice', 'POST', '/invitations', {
+    const invited = await call('alice', 'POST', ApiRoutes.INVITATIONS, {
       email: 'qa@aquaseal.vn',
       role: 'viewer',
       projectIds: [],
     });
     const id = invited.json().invitationId;
     const oldToken = tokenFromMail();
-    const resent = await call('alice', 'POST', `/invitations/${id}/resend`);
+    const resent = await call('alice', 'POST', ApiRoutes.invitationResend(id));
     expect(resent.statusCode).toBe(200);
     const newToken = tokenFromMail();
     expect(newToken).not.toBe(oldToken);
-    const old = await context.app.inject({ method: 'GET', url: `/invitations/${oldToken}` });
+    const old = await context.app.inject({
+      method: 'GET',
+      url: ApiRoutes.invitationPreview(oldToken),
+    });
     expect(old.json().error.code).toBe('invite_not_found');
 
-    const members = await call('alice', 'GET', '/members');
+    const members = await call('alice', 'GET', ApiRoutes.MEMBERS);
     expect(members.json().invitations).toHaveLength(1);
-    expect((await call('alice', 'DELETE', `/invitations/${id}`)).json()).toEqual({
+    expect((await call('alice', 'DELETE', ApiRoutes.invitation(id))).json()).toEqual({
       cancelled: true,
     });
-    const fresh = await context.app.inject({ method: 'GET', url: `/invitations/${newToken}` });
+    const fresh = await context.app.inject({
+      method: 'GET',
+      url: ApiRoutes.invitationPreview(newToken),
+    });
     expect(fresh.json().error.code).toBe('invite_expired');
   });
 
@@ -184,7 +197,7 @@ describe('team and roles', () => {
     await context.pool.query(
       `insert into devices (token, uid, platform) values ('fX3k:APA91b${'b'.repeat(30)}', 'bob', 'ios')`,
     );
-    const patched = await call('alice', 'PATCH', '/members/bob', {
+    const patched = await call('alice', 'PATCH', ApiRoutes.member('bob'), {
       role: 'viewer',
       projectIds: [ids.project],
     });
@@ -196,26 +209,30 @@ describe('team and roles', () => {
   });
 
   it('never demotes or removes the last Admin', async () => {
-    const demote = await call('alice', 'PATCH', '/members/alice', { role: 'manager' });
+    const demote = await call('alice', 'PATCH', ApiRoutes.member('alice'), { role: 'manager' });
     expect(demote.json().error.code).toBe('last_admin');
-    const remove = await call('alice', 'DELETE', '/members/alice');
+    const remove = await call('alice', 'DELETE', ApiRoutes.member('alice'));
     expect(remove.json().error.code).toBe('last_admin');
   });
 
   it('removes a member: tokens revoked, then 401', async () => {
-    expect((await call('alice', 'DELETE', '/members/carol')).json()).toEqual({ removed: true });
+    expect((await call('alice', 'DELETE', ApiRoutes.member('carol'))).json()).toEqual({
+      removed: true,
+    });
     expect(context.tokens.revokedUsers).toContain('carol');
-    expect((await call('carol', 'GET', '/me')).statusCode).toBe(401);
+    expect((await call('carol', 'GET', ApiRoutes.ME)).statusCode).toBe(401);
   });
 
   it('sets who works on a project and keeps Inspectors apart', async () => {
     await seedProject(context);
-    const set = await call('alice', 'PUT', `/projects/${ids.project}/members`, { uids: ['bob'] });
+    const set = await call('alice', 'PUT', ApiRoutes.projectMembers(ids.project), {
+      uids: ['bob'],
+    });
     expect(set.json()).toEqual({ projectId: ids.project, uids: ['bob'] });
     await pullAs(context, 'bob', 0); // clears the resync flag
     expect((await pullAs(context, 'bob', 0)).changes.projects).toHaveLength(1);
     expect((await pullAs(context, 'carol', 0)).changes).toEqual({});
-    const inspector = await call('bob', 'PUT', `/projects/${ids.project}/members`, { uids: [] });
+    const inspector = await call('bob', 'PUT', ApiRoutes.projectMembers(ids.project), { uids: [] });
     expect(inspector.statusCode).toBe(403);
   });
 
@@ -264,7 +281,7 @@ describe('team and roles', () => {
     for (const uid of ['alice', 'bob']) {
       await context.app.inject({
         method: 'POST',
-        url: '/devices',
+        url: ApiRoutes.DEVICES,
         headers: auth(uid),
         payload: { token: `fX3k:APA91b${uid.repeat(10)}`, platform: 'android' },
       });
@@ -286,7 +303,7 @@ describe('team and roles', () => {
     await addMember(context.pool, 'bob', 'inspector', [ids.project]);
     await context.app.inject({
       method: 'POST',
-      url: '/devices',
+      url: ApiRoutes.DEVICES,
       headers: auth('bob'),
       payload: { token: `fX3k:APA91b${'c'.repeat(20)}`, platform: 'ios', kinds: ['dueSoon'] },
     });
@@ -305,15 +322,7 @@ describe('team and roles', () => {
     );
     await pushAs(context, 'alice', [issue({ assigneeUid: 'bob', dueDate: tomorrow.rows[0]!.day })]);
     context.push.sent = [];
-    const sent = await pushDueSoon(
-      {
-        pool: context.pool,
-        storage: context.storage,
-        push: context.push,
-        log: context.app.log as never,
-      },
-      'Asia/Ho_Chi_Minh',
-    );
+    const sent = await workerDeps(context, context.push).services.dueSoon.run();
     expect(sent).toBe(1);
     expect(context.push.sent[0]!.message).toMatchObject({
       kind: 'dueSoon',
@@ -323,25 +332,29 @@ describe('team and roles', () => {
   });
 
   it('records the team activity, newest first, paged', async () => {
-    await call('alice', 'PATCH', '/members/bob', { role: 'viewer' });
-    await call('alice', 'PATCH', '/members/carol', { role: 'viewer' });
-    await call('alice', 'DELETE', '/members/carol');
-    const first = await call('alice', 'GET', '/member-events?limit=2');
+    await call('alice', 'PATCH', ApiRoutes.member('bob'), { role: 'viewer' });
+    await call('alice', 'PATCH', ApiRoutes.member('carol'), { role: 'viewer' });
+    await call('alice', 'DELETE', ApiRoutes.member('carol'));
+    const first = await call('alice', 'GET', `${ApiRoutes.MEMBER_EVENTS}?limit=2`);
     expect(first.json().events.map((event: { type: string }) => event.type)).toEqual([
       'removed',
       'role_changed',
     ]);
     expect(first.json().events[1].subject).toEqual({ uid: 'carol', name: 'Carol' });
-    const second = await call('alice', 'GET', `/member-events?limit=2&before=${first.json().next}`);
+    const second = await call(
+      'alice',
+      'GET',
+      `${ApiRoutes.MEMBER_EVENTS}?limit=2&before=${first.json().next}`,
+    );
     expect(second.json().events).toHaveLength(1);
     expect(second.json().next).toBeNull();
-    expect((await call('bob', 'GET', '/member-events')).statusCode).toBe(403);
+    expect((await call('bob', 'GET', ApiRoutes.MEMBER_EVENTS)).statusCode).toBe(403);
   });
 });
 
 describe('move-keys (F19)', () => {
   it('maps old uid keys to project and company keys', async () => {
-    const { newKeyFor } = await import('../src/team/move-keys.js');
+    const { newKeyFor } = await import('../src/services/key-migration-service.js');
     expect(newKeyFor(`alice/${ids.project}/${ids.session}/${ids.capture}.jpg`)).toBe(
       `projects/${ids.project}/${ids.session}/${ids.capture}.jpg`,
     );

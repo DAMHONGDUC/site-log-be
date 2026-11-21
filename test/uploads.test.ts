@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import { DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -96,7 +97,7 @@ describe('uploads: single PUT', () => {
     const uploadId = begun.json().uploadId;
     const aborted = await context.app.inject({
       method: 'DELETE',
-      url: `/uploads/${uploadId}`,
+      url: ApiRoutes.upload(uploadId),
       headers: auth('alice'),
     });
     expect(aborted.statusCode).toBe(200);
@@ -117,7 +118,7 @@ describe('uploads: single PUT', () => {
     await addMember(context.pool, 'vera', 'viewer', [ids.project]);
     const read = await context.app.inject({
       method: 'POST',
-      url: '/media/urls',
+      url: ApiRoutes.MEDIA_URLS,
       headers: auth('vera'),
       payload: { keys: [captureKey] },
     });
@@ -129,7 +130,7 @@ describe('uploads: single PUT', () => {
   it('signs GET URLs only for projects the caller reaches', async () => {
     const mine = await context.app.inject({
       method: 'POST',
-      url: '/media/urls',
+      url: ApiRoutes.MEDIA_URLS,
       headers: auth('alice'),
       payload: { keys: [captureKey] },
     });
@@ -138,7 +139,7 @@ describe('uploads: single PUT', () => {
 
     const theirs = await context.app.inject({
       method: 'POST',
-      url: '/media/urls',
+      url: ApiRoutes.MEDIA_URLS,
       headers: auth('bob'),
       payload: { keys: [captureKey] },
     });

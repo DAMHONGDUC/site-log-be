@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import { S3ServiceException } from '@aws-sdk/client-s3';
 import { auth, ids, sha, type TestContext } from './helpers.js';
 
@@ -21,7 +22,7 @@ export async function beginUpload(
 ) {
   return context.app.inject({
     method: 'POST',
-    url: '/uploads',
+    url: ApiRoutes.UPLOADS,
     headers: auth(uid),
     payload: { key, byteSize, contentType: 'image/jpeg', sha256: sha },
   });
@@ -39,7 +40,7 @@ export async function completeUpload(
   }
   return context.app.inject({
     method: 'POST',
-    url: `/uploads/${uploadId}/complete`,
+    url: ApiRoutes.uploadComplete(uploadId),
     headers: auth(uid),
     payload,
   });

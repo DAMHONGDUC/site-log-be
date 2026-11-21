@@ -1,10 +1,10 @@
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createLogger } from '../src/logger.js';
 import { abortAbandonedUploads } from '../src/workers/abandoned.js';
 import { verifyNextUpload, type WorkerDeps } from '../src/workers/verify.js';
 import { contentHash, insertCompletedUpload, objectBody } from './fixtures.js';
 import {
+  workerDeps,
   closeTestContext,
   createTestContext,
   ids,
@@ -25,12 +25,7 @@ describe('worker', () => {
   beforeEach(async () => {
     await resetDatabase(context.pool);
     context.s3.reset();
-    deps = {
-      pool: context.pool,
-      storage: context.storage,
-      push: undefined,
-      log: createLogger('silent'),
-    };
+    deps = workerDeps(context, undefined);
   });
 
   it('marks a matching object verified, then has nothing left to do', async () => {

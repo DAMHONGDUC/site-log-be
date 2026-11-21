@@ -1,3 +1,4 @@
+import { ApiRoutes } from '../src/constants/api-routes.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { insertCompletedUpload } from './fixtures.js';
 import { closeTestContext, createTestContext, resetDatabase, type TestContext } from './helpers.js';
@@ -18,7 +19,7 @@ describe('GET /verify/:code', () => {
     await insertCompletedUpload(context.pool, { code: 'ABCDEFGH23' });
     const response = await context.app.inject({
       method: 'GET',
-      url: '/verify/abcdefgh23',
+      url: ApiRoutes.verify('abcdefgh23'),
       remoteAddress: '10.0.0.1',
     });
     expect(response.statusCode).toBe(200);
@@ -43,7 +44,7 @@ describe('GET /verify/:code', () => {
     const started = Date.now();
     const response = await context.app.inject({
       method: 'GET',
-      url: '/verify/ZZZZZZZZZZ',
+      url: ApiRoutes.verify('ZZZZZZZZZZ'),
       remoteAddress: '10.0.0.2',
     });
     expect(response.statusCode).toBe(404);
@@ -55,7 +56,7 @@ describe('GET /verify/:code', () => {
     for (let index = 0; index < 6; index += 1) {
       const response = await context.app.inject({
         method: 'GET',
-        url: '/verify/ZZZZZZZZZZ',
+        url: ApiRoutes.verify('ZZZZZZZZZZ'),
         remoteAddress: '10.0.0.3',
       });
       last = response.statusCode;

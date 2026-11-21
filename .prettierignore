@@ -1,0 +1,8 @@
+dist
+coverage
+package-lock.json
+infra/cdk.out
+# Docs are formatted by Tools/Docs/indent-md.py, not Prettier.
+*.md
+.vscode
+infra/node_modules

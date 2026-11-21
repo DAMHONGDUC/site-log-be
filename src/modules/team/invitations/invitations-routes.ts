@@ -8,6 +8,9 @@ import { isRole } from '../access/permissions.js';
 import { badRequest } from '../../../core/errors.js';
 import { memberMay, type Guards } from '../../../core/http/guards.js';
 import { Schemas, rateLimit } from '../../../core/http/schemas.js';
+import { ACTION } from '../../../constants/domain/roles.js';
+import { LOG } from '../../../constants/messages/log.js';
+import { ERROR_TEXT } from '../../../constants/messages/error-text.js';
 
 // F19 invitation calls (01-api §13, 05 §5).
 export function invitationRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards): void {
@@ -22,16 +25,16 @@ export function invitationRoutes(app: FastifyInstance, deps: AppDeps, guards: Gu
   });
   typed.post(
     ApiRoutes.INVITATIONS,
-    { preHandler: memberMay(guards, 'team.manage'), schema: { body: InviteBody } },
+    { preHandler: memberMay(guards, ACTION.teamManage), schema: { body: InviteBody } },
     async (request) => {
       const { role } = request.body;
       if (!isRole(role)) {
-        throw badRequest(ErrorCode.invalidRole, 'Role must be admin, manager, inspector or viewer');
+        throw badRequest(ErrorCode.invalidRole, ERROR_TEXT.invalidRole);
       }
       const result = await invitations.invite(request.member, { ...request.body, role });
       request.log.info(
         { uid: request.uid, invitationId: result.invitationId, role },
-        'member invited',
+        LOG.team.invited,
       );
       return result;
     },
@@ -58,27 +61,36 @@ export function invitationRoutes(app: FastifyInstance, deps: AppDeps, guards: Gu
         request.email,
         request.body.token,
       );
-      request.log.info({ uid: request.uid, invitationId, role: joined.role }, 'invite accepted');
+      request.log.info(
+        { uid: request.uid, invitationId, role: joined.role },
+        LOG.team.inviteAccepted,
+      );
       return joined;
     },
   );
 
   typed.post(
     ApiRoutes.INVITATION_RESEND,
-    { preHandler: memberMay(guards, 'team.manage'), schema: { params: Schemas.idParams() } },
+    { preHandler: memberMay(guards, ACTION.teamManage), schema: { params: Schemas.idParams() } },
     async (request) => {
       const result = await invitations.resend(request.member, request.params.id);
-      request.log.info({ uid: request.uid, invitationId: result.invitationId }, 'invite resent');
+      request.log.info(
+        { uid: request.uid, invitationId: result.invitationId },
+        LOG.team.inviteResent,
+      );
       return result;
     },
   );
 
   typed.delete(
     ApiRoutes.INVITATION,
-    { preHandler: memberMay(guards, 'team.manage'), schema: { params: Schemas.idParams() } },
+    { preHandler: memberMay(guards, ACTION.teamManage), schema: { params: Schemas.idParams() } },
     async (request) => {
       await invitations.cancel(request.member, request.params.id);
-      request.log.info({ uid: request.uid, invitationId: request.params.id }, 'invite cancelled');
+      request.log.info(
+        { uid: request.uid, invitationId: request.params.id },
+        LOG.team.inviteCancelled,
+      );
       return { cancelled: true };
     },
   );

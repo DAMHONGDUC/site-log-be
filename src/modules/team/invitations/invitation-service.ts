@@ -12,6 +12,9 @@ import type { Repositories } from '../../../data/repositories.js';
 import type { InvitationRow } from './invitation-repository.js';
 import { PATTERNS } from '../../../constants/runtime/limits.js';
 import type { TeamService } from '../members/team-service.js';
+import { MEMBER_EVENT_TYPE } from '../../../constants/data/enums.js';
+import { ERROR_TEXT } from '../../../constants/messages/error-text.js';
+import { REACH_ALL } from '../../../constants/domain/team.js';
 
 // Invitations (05 §5): create, preview before sign-in, accept, resend, cancel.
 export class InvitationService {
@@ -25,12 +28,12 @@ export class InvitationService {
   async invite(actor: Member, input: { email: string; role: Role; projectIds: string[] }) {
     const email = input.email.trim().toLowerCase();
     if (!PATTERNS.email.test(email)) {
-      throw badRequest(ErrorCode.invalidEmail, 'This is not an email address');
+      throw badRequest(ErrorCode.invalidEmail, ERROR_TEXT.notAnEmail);
     }
     const projectIds = [...new Set(input.projectIds.map((id) => id.toLowerCase()))];
     await this.team.ensureProjectsExist(this.db.repos, projectIds);
     if (await this.db.repos.members.liveEmailExists(email)) {
-      throw conflict(ErrorCode.alreadyMember, 'This email already belongs to a member');
+      throw conflict(ErrorCode.alreadyMember, ERROR_TEXT.alreadyMember);
     }
     const token = newInviteToken();
     const created = await this.db.transaction(async (repos) => {
@@ -45,7 +48,7 @@ export class InvitationService {
       });
       await repos.memberEvents.record({
         actorUid: actor.uid,
-        type: 'invited',
+        type: MEMBER_EVENT_TYPE.invited,
         invitationId: row.id,
         detail: { email, role: input.role, projectIds },
       });
@@ -73,7 +76,7 @@ export class InvitationService {
     const row = await this.db.transaction(async (repos) => {
       const invite = await this.validToken(repos, token, true);
       if ((email ?? '').toLowerCase() !== invite.email.toLowerCase()) {
-        throw conflict(ErrorCode.emailMismatch, 'Sign in with the email the invite was sent to');
+        throw conflict(ErrorCode.emailMismatch, ERROR_TEXT.emailMismatch);
       }
       await repos.members.upsertFromInvitation(
         uid,
@@ -85,14 +88,14 @@ export class InvitationService {
       await repos.invitations.markAccepted(invite.id, uid);
       await repos.memberEvents.record({
         actorUid: uid,
-        type: 'joined',
+        type: MEMBER_EVENT_TYPE.joined,
         subjectUid: uid,
         invitationId: invite.id,
         detail: { role: invite.role, projectIds: invite.projectIds },
       });
       return invite;
     });
-    const projectIds: Reach = ROLES_REACHING_ALL.includes(row.role) ? 'all' : row.projectIds;
+    const projectIds: Reach = ROLES_REACHING_ALL.includes(row.role) ? REACH_ALL : row.projectIds;
     return { uid, role: row.role, projectIds, invitationId: row.id };
   }
 
@@ -108,7 +111,7 @@ export class InvitationService {
       );
       await repos.memberEvents.record({
         actorUid: actor.uid,
-        type: 'invite_resent',
+        type: MEMBER_EVENT_TYPE.invite_resent,
         invitationId: invite.id,
       });
       return { invite, expiresAt };
@@ -123,7 +126,7 @@ export class InvitationService {
       await repos.invitations.cancel(invite.id);
       await repos.memberEvents.record({
         actorUid: actor.uid,
-        type: 'invite_cancelled',
+        type: MEMBER_EVENT_TYPE.invite_cancelled,
         invitationId: invite.id,
       });
     });
@@ -147,13 +150,13 @@ export class InvitationService {
   ): Promise<InvitationRow> {
     const row = await repos.invitations.findByTokenHash(hashToken(token), lock);
     if (row === undefined) {
-      throw notFound(ErrorCode.inviteNotFound, 'This invite does not exist');
+      throw notFound(ErrorCode.inviteNotFound, ERROR_TEXT.inviteMissing);
     }
     if (row.acceptedAt !== null) {
-      throw conflict(ErrorCode.inviteUsed, 'This invite was already used');
+      throw conflict(ErrorCode.inviteUsed, ERROR_TEXT.inviteUsed);
     }
     if (row.cancelledAt !== null || row.expiresAt.getTime() < Date.now()) {
-      throw conflict(ErrorCode.inviteExpired, 'This invite has expired or was replaced');
+      throw conflict(ErrorCode.inviteExpired, ERROR_TEXT.inviteExpired);
     }
     return row;
   }
@@ -161,10 +164,10 @@ export class InvitationService {
   private async openInvitation(repos: Repositories, id: string): Promise<InvitationRow> {
     const row = await repos.invitations.findForUpdate(id);
     if (row === undefined) {
-      throw notFound(ErrorCode.inviteNotFound, 'No such invite');
+      throw notFound(ErrorCode.inviteNotFound, ERROR_TEXT.inviteNotFound);
     }
     if (row.acceptedAt !== null) {
-      throw conflict(ErrorCode.inviteAccepted, 'This invite was already accepted');
+      throw conflict(ErrorCode.inviteAccepted, ERROR_TEXT.inviteAccepted);
     }
     return row;
   }

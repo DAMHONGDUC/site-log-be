@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ApiRoutes } from '../../../src/constants/http/api-routes.js';
-import { can } from '../../../src/modules/team/permissions.js';
+import { can } from '../../../src/modules/team/access/permissions.js';
 import {
   addMember,
   auth,

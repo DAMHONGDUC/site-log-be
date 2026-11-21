@@ -3,9 +3,9 @@ import { getAuth } from 'firebase-admin/auth';
 import type { FastifyRequest } from 'fastify';
 import { ErrorCode } from '../constants/http/error-codes.js';
 import { MS_PER_SECOND } from '../constants/runtime/units.js';
-import type { Member } from '../modules/team/member.js';
+import type { Member } from '../modules/team/members/member.js';
 import { forbidden, serviceUnavailable, unauthorized } from './errors.js';
-import type { AccessService } from '../modules/team/access-service.js';
+import type { AccessService } from '../modules/team/access/access-service.js';
 
 declare module 'fastify' {
   interface FastifyRequest {

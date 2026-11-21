@@ -4,7 +4,7 @@ import {
   ROLES,
   type Action,
   type Role,
-} from '../../constants/domain/roles.js';
+} from '../../../constants/domain/roles.js';
 
 export interface PermissionContext {
   // The row was created by the caller, today in the site time zone.

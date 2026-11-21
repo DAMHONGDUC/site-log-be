@@ -1,5 +1,5 @@
-import type { Member, Reach } from '../../team/member.js';
-import type { AccessService } from '../../team/access-service.js';
+import type { Member, Reach } from '../../team/members/member.js';
+import type { AccessService } from '../../team/access/access-service.js';
 import type { IssueChange } from '../../notifications/issue-notifier.js';
 
 export interface Mutation {

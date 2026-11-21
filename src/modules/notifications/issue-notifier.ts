@@ -1,4 +1,4 @@
-import type { Member } from '../team/member.js';
+import type { Member } from '../team/members/member.js';
 import type { NotificationService } from './notification-service.js';
 
 // An issue row before and after one applied push (snake_case columns).

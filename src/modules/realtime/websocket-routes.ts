@@ -5,7 +5,7 @@ import { TokenRejectedError } from '../../core/auth.js';
 import { ApiRoutes } from '../../constants/http/api-routes.js';
 import { DURATIONS } from '../../constants/runtime/durations.js';
 import { WS_CLOSE } from '../../constants/runtime/websocket.js';
-import { reaches, type Member } from '../team/member.js';
+import { reaches, type Member } from '../team/members/member.js';
 import { type ClientSocket, send, uploadMessage } from './hub.js';
 
 const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;

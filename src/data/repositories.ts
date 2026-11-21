@@ -1,12 +1,12 @@
 import type { Queryable } from './database.js';
 import { toDrizzle } from './drizzle.js';
 import { DeviceRepository } from '../modules/devices/device-repository.js';
-import { InvitationRepository } from '../modules/team/invitation-repository.js';
+import { InvitationRepository } from '../modules/team/invitations/invitation-repository.js';
 import { IssueRepository } from '../modules/sync/issue-repository.js';
-import { MemberEventRepository } from '../modules/team/member-event-repository.js';
-import { MemberRepository } from '../modules/team/member-repository.js';
+import { MemberEventRepository } from '../modules/team/members/member-event-repository.js';
+import { MemberRepository } from '../modules/team/members/member-repository.js';
 import { PhraseRepository } from '../modules/sync/phrase-repository.js';
-import { ProjectMemberRepository } from '../modules/team/project-member-repository.js';
+import { ProjectMemberRepository } from '../modules/team/access/project-member-repository.js';
 import { ProjectRepository } from '../modules/sync/project-repository.js';
 import { SyncStateRepository } from '../modules/sync/sync-state-repository.js';
 import { UploadRepository } from '../modules/uploads/upload-repository.js';

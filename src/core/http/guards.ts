@@ -1,6 +1,6 @@
 import type { FastifyRequest, preHandlerAsyncHookHandler } from 'fastify';
 import type { Action } from '../../constants/domain/roles.js';
-import { can } from '../../modules/team/permissions.js';
+import { can } from '../../modules/team/access/permissions.js';
 import { forbidden } from '../errors.js';
 
 // preHandlers every route picks from.

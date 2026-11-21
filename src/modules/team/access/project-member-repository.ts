@@ -1,6 +1,6 @@
 import { and, asc, eq } from 'drizzle-orm';
-import type { SqlDb } from '../../data/drizzle.js';
-import { projectMembers } from '../../data/schema/index.js';
+import type { SqlDb } from '../../../data/drizzle.js';
+import { projectMembers } from '../../../data/schema/index.js';
 
 export class ProjectMemberRepository {
   constructor(private readonly db: SqlDb) {}

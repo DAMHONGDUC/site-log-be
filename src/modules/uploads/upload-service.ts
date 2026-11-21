@@ -5,7 +5,7 @@ import { HTTP_STATUS } from '../../constants/http/http-status.js';
 import { LIMITS } from '../../constants/runtime/limits.js';
 import type { Database } from '../../data/database.js';
 import type { Log } from '../../core/log.js';
-import type { Member } from '../team/member.js';
+import type { Member } from '../team/members/member.js';
 import { AppError, badRequest, conflict, notFound } from '../../core/errors.js';
 import { notifyUploadEvent } from '../realtime/events.js';
 import type { Repositories } from '../../data/repositories.js';

@@ -1,7 +1,7 @@
-import { ROLES_REACHING_ALL } from '../../constants/domain/roles.js';
-import type { Database } from '../../data/database.js';
-import type { Member, MemberLookup, Reach } from './member.js';
-import type { Repositories } from '../../data/repositories.js';
+import { ROLES_REACHING_ALL } from '../../../constants/domain/roles.js';
+import type { Database } from '../../../data/database.js';
+import type { Member, MemberLookup, Reach } from '../members/member.js';
+import type { Repositories } from '../../../data/repositories.js';
 
 // The one place that decides who is a member and which projects they reach. Every route, the
 // sync pull and push, the upload signer, the WebSocket and push ask it (05 §4).

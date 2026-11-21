@@ -1,13 +1,13 @@
-import { ErrorCode } from '../../constants/http/error-codes.js';
-import { ROLE, ROLES_REACHING_ALL, type Role } from '../../constants/domain/roles.js';
-import type { Database } from '../../data/database.js';
+import { ErrorCode } from '../../../constants/http/error-codes.js';
+import { ROLE, ROLES_REACHING_ALL, type Role } from '../../../constants/domain/roles.js';
+import type { Database } from '../../../data/database.js';
 import type { Member, Reach } from './member.js';
-import { conflict, notFound } from '../../core/errors.js';
-import type { Repositories } from '../../data/repositories.js';
+import { conflict, notFound } from '../../../core/errors.js';
+import type { Repositories } from '../../../data/repositories.js';
 import type { MemberEventRow } from './member-event-repository.js';
-import type { TokenVerifier } from '../../core/auth.js';
-import type { AccessService } from './access-service.js';
-import type { NotificationService } from '../notifications/notification-service.js';
+import type { TokenVerifier } from '../../../core/auth.js';
+import type { AccessService } from '../access/access-service.js';
+import type { NotificationService } from '../../notifications/notification-service.js';
 
 export interface MemberView {
   uid: string;

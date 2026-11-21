@@ -1,7 +1,7 @@
 import { and, asc, count, eq, inArray, isNull, or, sql } from 'drizzle-orm';
-import { ROLE, type Role } from '../../constants/domain/roles.js';
-import type { SqlDb } from '../../data/drizzle.js';
-import { members, projectMembers } from '../../data/schema/index.js';
+import { ROLE, type Role } from '../../../constants/domain/roles.js';
+import type { SqlDb } from '../../../data/drizzle.js';
+import { members, projectMembers } from '../../../data/schema/index.js';
 
 export interface MemberRow {
   uid: string;

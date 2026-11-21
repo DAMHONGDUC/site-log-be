@@ -1,4 +1,4 @@
-import type { Role } from '../../constants/domain/roles.js';
+import type { Role } from '../../../constants/domain/roles.js';
 
 export interface Member {
   uid: string;

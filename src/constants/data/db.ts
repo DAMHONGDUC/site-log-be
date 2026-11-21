@@ -40,5 +40,23 @@ export const COLUMN = {
   s3UploadId: 's3_upload_id',
 } as const;
 
+// Where the forward-only .sql migrations live, from the compiled src/ (or dist/) folder.
+export const MIGRATIONS = { parentDir: '..', dir: 'migrations', extension: '.sql' } as const;
+
+// Schema keys are camelCase; Drizzle writes them as snake_case columns.
+export const DRIZZLE_CASING = 'snake_case';
+
+// Set on every connection: timestamps are read and written in UTC.
+export const PG_SESSION_OPTIONS = '-c TimeZone=UTC';
+
+// Names a table gets when a query joins it more than once.
+export const TABLE_ALIAS = {
+  // member_events → members, for who acted and whom it was about.
+  actor: 'actor',
+  subject: 'subject',
+  // uploads → uploads: the caller's own upload.
+  mine: 'mine',
+} as const;
+
 // LIKE pattern for "any characters".
 export const SQL_LIKE_ANY = '%';

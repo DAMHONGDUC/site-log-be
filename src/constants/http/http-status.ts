@@ -14,3 +14,6 @@ export const HTTP_STATUS = {
 
 // 4xx: the client's mistake.
 export const CLIENT_ERROR_RANGE = { from: 400, below: 500 } as const;
+
+// The body of /health.
+export const HEALTH_STATUS = { ok: 'ok', databaseUnreachable: 'database_unreachable' } as const;

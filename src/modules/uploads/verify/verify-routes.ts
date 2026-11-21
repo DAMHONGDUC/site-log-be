@@ -8,6 +8,10 @@ import { LIMITS } from '../../../constants/runtime/limits.js';
 import { TEXT_CUT } from '../../../constants/runtime/units.js';
 import { notFound } from '../../../core/errors.js';
 import { rateLimit } from '../../../core/http/schemas.js';
+import { HTTP_HEADER } from '../../../constants/platform/external.js';
+import { LOG } from '../../../constants/messages/log.js';
+import { ERROR_TEXT } from '../../../constants/messages/error-text.js';
+import { VERIFY_STATE } from '../../../constants/data/enums.js';
 
 // Public: anyone holding a report can check a code printed under a photo.
 // It returns facts about the file only: never the image, a URL, the uid or the location.
@@ -37,13 +41,13 @@ export function verifyRoutes(app: FastifyInstance, deps: AppDeps): void {
       if (elapsed < deps.config.verifyMinDelayMs) {
         await sleep(deps.config.verifyMinDelayMs - elapsed);
       }
-      reply.header('cache-control', 'no-store');
+      reply.header(HTTP_HEADER.cacheControl, HTTP_HEADER.noStore);
 
       if (row === undefined) {
-        request.log.info({ found: false }, 'verify lookup');
-        throw notFound(ErrorCode.codeNotFound, 'Unknown verification code');
+        request.log.info({ found: false }, LOG.uploads.verifyLookup);
+        throw notFound(ErrorCode.codeNotFound, ERROR_TEXT.unknownCode);
       }
-      request.log.info({ found: true, verifyState: row.verifyState }, 'verify lookup');
+      request.log.info({ found: true, verifyState: row.verifyState }, LOG.uploads.verifyLookup);
       let projectRef: string | null = null;
       if (row.projectId !== null) {
         projectRef = row.projectId.slice(0, TEXT_CUT.projectRef).toUpperCase();
@@ -54,7 +58,7 @@ export function verifyRoutes(app: FastifyInstance, deps: AppDeps): void {
         byteSize: row.byteSize,
         receivedAt: row.completedAt,
         verifyState: row.verifyState,
-        verified: row.verifyState === 'verified',
+        verified: row.verifyState === VERIFY_STATE.verified,
         verifiedAt: row.verifiedAt,
         projectRef,
       };

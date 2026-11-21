@@ -5,6 +5,8 @@ import { ApiRoutes } from '../../../constants/http/api-routes.js';
 import { LIMITS } from '../../../constants/runtime/limits.js';
 import type { Guards } from '../../../core/http/guards.js';
 import { Schemas } from '../../../core/http/schemas.js';
+import { FILE_ACCESS } from '../../../constants/domain/team.js';
+import { LOG } from '../../../constants/messages/log.js';
 
 // A device shows a photo it pulled: short-lived GET URLs for keys in projects it reaches.
 export function mediaRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards): void {
@@ -19,10 +21,10 @@ export function mediaRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards)
     async (request) => {
       const urls: { key: string; url: string }[] = [];
       for (const key of request.body.keys) {
-        await deps.services.files.check(request.member, key, 'read');
+        await deps.services.files.check(request.member, key, FILE_ACCESS.read);
         urls.push({ key, url: await deps.storage.presignGet(key) });
       }
-      request.log.info({ uid: request.uid, count: urls.length }, 'media urls signed');
+      request.log.info({ uid: request.uid, count: urls.length }, LOG.uploads.mediaSigned);
       return { urls, expiresAt: deps.storage.expiresAt(new Date()) };
     },
   );

@@ -31,9 +31,9 @@
 
 | Step | Hours | Files |
 |---|---|---|
-| [1](#1-token-check) | 1 | `src/auth.ts` |
-| [2](#2-s3-storage) | 1 | `src/storage.ts` |
-| [3](#3-account-deletion) | 1 | `src/sync/tables.ts`, `src/routes/account.ts`, `src/app.ts` |
+| [1](#1-token-check) | 1 | `src/core/auth.ts` |
+| [2](#2-s3-storage) | 1 | `src/integrations/storage.ts` |
+| [3](#3-account-deletion) | 1 | `src/modules/sync/tables.ts`, `src/modules/account/account-routes.ts`, `src/app.ts` |
 | [4](#4-run-it-with-real-firebase) | 0.5 | `src/main.ts`, `scripts/dev-token.ts` |
 | [Tests](#tests) | 0.5 | `test/helpers.ts`, `test/auth.test.ts`, `test/account.test.ts` |
 
@@ -74,7 +74,7 @@ npm install firebase-admin @aws-sdk/client-s3 && npm install -D aws-sdk-client-m
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/auth.ts` | `TokenVerifier` (interface), `createFirebaseVerifier`, `TokenRejectedError`, `makeRequireUser` |
+| <b class="tag-new">New</b> | `src/core/auth.ts` | `TokenVerifier` (interface), `createFirebaseVerifier`, `TokenRejectedError`, `makeRequireUser` |
 
 </dd></dl>
 
@@ -86,7 +86,7 @@ npm install firebase-admin @aws-sdk/client-s3 && npm install -D aws-sdk-client-m
 <summary><strong>1.1 Auth</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/auth.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/core/auth.ts`
 
 <b>Explain</b> · Routes depend on the `TokenVerifier` interface, not on Firebase: tests pass a fake that understands `uid:alice`. `declare module 'fastify'` adds `uid` to every request's type.
 
@@ -258,7 +258,7 @@ export function makeRequireUser(tokens: TokenVerifier) {
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/storage.ts` | `createS3Client`, `Storage` with `deletePrefix`, `abortMultipart`, `abortMultipartUnder` |
+| <b class="tag-new">New</b> | `src/integrations/storage.ts` | `createS3Client`, `Storage` with `deletePrefix`, `abortMultipart`, `abortMultipartUnder` |
 
 ```mermaid
 flowchart LR
@@ -278,7 +278,7 @@ flowchart LR
 <summary><strong>2.1 Storage</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/storage.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/integrations/storage.ts`
 
 <b>Explain</b> · The S3 client is created with checksum calculation `WHEN_REQUIRED`; without it, presigned URLs (F06) demand a checksum header the app never sends. Credentials come from the environment: your SSO profile locally, the server's IAM role on AWS.
 
@@ -435,8 +435,8 @@ export class Storage {
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/sync/tables.ts` | The registry of synced tables, empty until F03; F04 sync reads it too |
-| <b class="tag-new">New</b> | `src/routes/account.ts` | `DELETE /account`, `serverTables` (empty until F04) |
+| <b class="tag-new">New</b> | `src/modules/sync/tables.ts` | The registry of synced tables, empty until F03; F04 sync reads it too |
+| <b class="tag-new">New</b> | `src/modules/account/account-routes.ts` | `DELETE /account`, `serverTables` (empty until F04) |
 | <b class="tag-edit">Edit</b> | `src/app.ts` | `tokens` and `storage` in `AppDeps`, `uid` on requests, `requireUser`, the account route |
 
 ```mermaid
@@ -459,7 +459,7 @@ flowchart LR
 <summary><strong>3.1 Table registry</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/sync/tables.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/sync/tables.ts`
 
 <b>Explain</b> · Every synced table is listed once, here. Account deletion, pull, push and the purge all loop over this list, so a new table cannot be forgotten by one of them.
 
@@ -503,7 +503,7 @@ export function findSyncTable(name: string): SyncTable | undefined {
 <summary><strong>3.2 Account route</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/routes/account.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/account/account-routes.ts`
 
 <b>Explain</b> · Order matters: if row deletion ran first and S3 failed, nothing would remember which files to delete. Files are found by prefix, so a retry always finds what is left.
 

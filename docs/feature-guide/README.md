@@ -78,7 +78,7 @@ flowchart LR
 |---|---|---|
 | 1 Contract | Read the feature's rows in [01-api](../feature-docs/01-api.md) | You can say what the app sends and gets back |
 | 2 Migration | One numbered `.sql` file | `npm run migrate` runs it on your database |
-| 3 Registry or route | A table entry in `src/sync/tables.ts`, or a route file | `npm run typecheck` is clean |
+| 3 Registry or route | A table entry in `src/modules/sync/tables.ts`, or a route file | `npm run typecheck` is clean |
 | 4 Run locally | `npm run dev`, curl, then the app on the simulator | The app's signed-in path works against your Mac |
 | 5 Tests | The guide's test file | `npm test` green |
 | 6 Deploy | PR → CI → merge | Staging answers; the app's staging build works |

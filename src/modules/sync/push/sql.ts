@@ -1,12 +1,15 @@
 import type pg from 'pg';
 import type { SyncTable } from '../tables.js';
+import { PG_ERROR } from '../../../constants/platform/external.js';
+import { SYNC_COLUMN, SYNC_SCOPE } from '../../../constants/data/sync.js';
 
-// Postgres error codes: 23505 unique, 23503 foreign key, 22xxx bad value, 23xxx other rules.
-export const PG = {
-  uniqueViolation: '23505',
-  foreignKeyViolation: '23503',
-  badValueClass: '22',
-  ruleClass: '23',
+export { PG_ERROR as PG } from '../../../constants/platform/external.js';
+
+// One savepoint of a push: open it, keep it, or undo back to it.
+export const savepointSql = {
+  open: (name: string) => `savepoint ${name}`,
+  release: (name: string) => `release savepoint ${name}`,
+  rollback: (name: string) => `rollback to savepoint ${name}`,
 } as const;
 
 export function pgCode(error: unknown): string {
@@ -18,19 +21,25 @@ export function pgCode(error: unknown): string {
 
 export function isPrimaryKeyViolation(error: unknown): boolean {
   const constraint = (error as { constraint?: string }).constraint ?? '';
-  return constraint.endsWith('_pkey');
+  return constraint.endsWith(PG_ERROR.primaryKeySuffix);
 }
 
 // The owner column: phrases are personal (uid), every other row keeps who made it.
 export function ownerColumn(table: SyncTable): string {
-  return table.scope === 'personal' ? 'uid' : 'created_by';
+  return table.scope === SYNC_SCOPE.personal ? SYNC_COLUMN.uid : SYNC_COLUMN.createdBy;
 }
 
 function syncColumns(table: SyncTable): string[] {
-  const columns = ['id', ownerColumn(table), 'rev', 'client_updated_at', 'deleted_at'];
+  const columns: string[] = [
+    SYNC_COLUMN.id,
+    ownerColumn(table),
+    SYNC_COLUMN.rev,
+    SYNC_COLUMN.clientUpdatedAt,
+    SYNC_COLUMN.deletedAt,
+  ];
   if (table.parent !== null) {
     // Copied from the parent row by the server.
-    columns.push('project_id');
+    columns.push(SYNC_COLUMN.projectId);
   }
   return columns;
 }
@@ -65,7 +74,7 @@ export function upsertSql(table: SyncTable): string {
   // jsonb_populate_record lets Postgres turn JSON values into the column types (and reject bad ones).
   // Permissions were checked before; here: a tombstone never comes back, only a newer write wins,
   // and personal rows still match their owner.
-  const owner = table.scope === 'personal' ? 't.uid = excluded.uid and ' : '';
+  const owner = table.scope === SYNC_SCOPE.personal ? 't.uid = excluded.uid and ' : '';
   return `insert into ${table.name} as t (${columnList})
 select ${selectList} from jsonb_populate_record(null::${table.name}, $1::jsonb) as r
 on conflict (id) do update set ${sets.join(', ')}
@@ -75,7 +84,7 @@ returning *`;
 
 // A delete wins a tie with an edit made at the same instant.
 export function deleteSql(table: SyncTable): string {
-  const owner = table.scope === 'personal' ? ' and uid = $2' : ' and $2::text is not null';
+  const owner = table.scope === SYNC_SCOPE.personal ? ' and uid = $2' : ' and $2::text is not null';
   return `update ${table.name}
 set deleted_at = $3, client_updated_at = $3, rev = $4
 where id = $1${owner} and deleted_at is null and client_updated_at <= $3
@@ -100,7 +109,7 @@ export async function rowWithSameNaturalKey(
 ): Promise<Record<string, unknown> | undefined> {
   const conditions = ['deleted_at is null'];
   const values: unknown[] = [];
-  if (table.scope === 'personal') {
+  if (table.scope === SYNC_SCOPE.personal) {
     values.push(uid);
     conditions.push(`uid = $${values.length}`);
   }

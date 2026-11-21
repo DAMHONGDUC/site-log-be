@@ -6,6 +6,9 @@ import { LIMITS } from '../../constants/runtime/limits.js';
 import type { Guards } from '../../core/http/guards.js';
 import { pullChanges } from './pull.js';
 import { pushMutations } from './push/index.js';
+import { LOG } from '../../constants/messages/log.js';
+import { JSON_FORMAT } from '../../constants/http/openapi.js';
+import { MUTATION_OPS, MUTATION_STATUS } from '../../constants/data/sync.js';
 
 export function syncRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards): void {
   const { requireUser } = guards;
@@ -30,10 +33,7 @@ export function syncRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards):
         request.body.limit,
       );
       if (result.resyncRequired) {
-        request.log.info(
-          { uid: request.uid, since: request.body.since },
-          'sync pull: resync required',
-        );
+        request.log.info({ uid: request.uid, since: request.body.since }, LOG.sync.pullResync);
         return { resyncRequired: true };
       }
       let pulled = 0;
@@ -48,7 +48,7 @@ export function syncRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards):
           nextRev: result.nextRev,
           elapsedMs: Date.now() - started,
         },
-        'sync pull',
+        LOG.sync.pull,
       );
       return { changes: result.changes, nextRev: result.nextRev, hasMore: result.hasMore };
     },
@@ -56,9 +56,9 @@ export function syncRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards):
 
   const Mutation = Type.Object({
     table: Type.String({ minLength: 1, maxLength: LIMITS.syncTableNameMaxLength }),
-    id: Type.String({ format: 'uuid' }),
-    op: Type.Union([Type.Literal('upsert'), Type.Literal('delete')]),
-    clientUpdatedAt: Type.String({ format: 'date-time' }),
+    id: Type.String({ format: JSON_FORMAT.uuid }),
+    op: Type.Union(MUTATION_OPS.map((op) => Type.Literal(op))),
+    clientUpdatedAt: Type.String({ format: JSON_FORMAT.dateTime }),
     fields: Type.Record(Type.String(), Type.Unknown()),
   });
   const PushBody = Type.Object({
@@ -84,10 +84,10 @@ export function syncRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards):
       let superseded = 0;
       let rejected = 0;
       for (const item of result.results) {
-        if (item.status === 'superseded') {
+        if (item.status === MUTATION_STATUS.superseded) {
           superseded += 1;
         }
-        if (item.status === 'rejected') {
+        if (item.status === MUTATION_STATUS.rejected) {
           rejected += 1;
         }
       }
@@ -100,7 +100,7 @@ export function syncRoutes(app: FastifyInstance, deps: AppDeps, guards: Guards):
           serverRev: result.serverRev,
           elapsedMs: Date.now() - started,
         },
-        'sync push',
+        LOG.sync.push,
       );
       return result;
     },

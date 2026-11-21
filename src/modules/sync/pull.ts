@@ -4,6 +4,8 @@ import type { Repositories } from '../../data/repositories.js';
 import type { AccessService } from '../team/access/access-service.js';
 import { rowToJson } from './case.js';
 import { syncTables, type SyncTable } from './tables.js';
+import { SYNC_SCOPE } from '../../constants/data/sync.js';
+import { REACH_ALL } from '../../constants/domain/team.js';
 
 export type PullResult =
   | { resyncRequired: true }
@@ -30,13 +32,13 @@ function scopedQuery(
 ): { sql: string; values: unknown[] } {
   const base = `select * from ${table.name} where rev > $1`;
   const order = 'order by rev limit $2';
-  if (table.scope === 'personal') {
+  if (table.scope === SYNC_SCOPE.personal) {
     return { sql: `${base} and uid = $3 ${order}`, values: [since, limit + 1, member.uid] };
   }
-  if (table.scope === 'company' || reach === 'all') {
+  if (table.scope === SYNC_SCOPE.company || reach === REACH_ALL) {
     return { sql: `${base} ${order}`, values: [since, limit + 1] };
   }
-  if (table.scope === 'projects') {
+  if (table.scope === SYNC_SCOPE.projects) {
     return { sql: `${base} and id = any($3) ${order}`, values: [since, limit + 1, reach] };
   }
   const optional = table.projectOptional ? 'project_id is null or ' : '';

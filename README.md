@@ -188,6 +188,7 @@ site-log-be/
 | `npm run dev` | API with reload, reads `.env` |
 | `npm run worker:dev` | Worker with reload |
 | `npm run dev:all` | Everything local in one go: Docker, packages, migrations, bucket, API and worker |
+| `npm run dev:stop` | Stops the API, the worker and the containers (data stays); `-- --colima` also stops Colima |
 | `npm run migrate` | Runs new migrations |
 | `npm run s3:bucket` | Creates the bucket on the local S3 server, once |
 | `npm test` | All tests against `sitelog_test` |

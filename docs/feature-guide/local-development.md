@@ -76,7 +76,13 @@ npm run dev:all
 | Database and bucket | `npm run migrate`, `npm run s3:bucket` |
 | Run | API and worker side by side, log lines tagged `[api]` and `[worker]`; Ctrl+C stops both, and either one stopping stops the other |
 
-- Docker keeps running after Ctrl+C; stop it with `docker compose stop` (§7).
+- Docker keeps running after Ctrl+C. Stop everything, from any terminal (data stays in the Docker volumes):
+
+```bash
+npm run dev:stop
+```
+
+- `npm run dev:stop -- --colima` also stops the Colima VM, giving its 2 GB back while you work on the apps only.
 - The same steps by hand, when you want the API and the worker in separate terminals:
 
 ```bash
@@ -169,7 +175,7 @@ adb reverse tcp:3000 tcp:3000 && adb reverse tcp:9000 tcp:9000
 |---|---|
 | Database and files (everything) | `docker compose down -v && docker compose up -d && npm run migrate && npm run s3:bucket` |
 | Only the files | S3 console → bucket `sitelog-dev` → delete objects |
-| Stop for the day | `docker compose stop` (data stays) |
+| Stop for the day | `npm run dev:stop` (data stays); add `-- --colima` to stop the VM too |
 
 </dd></dl>
 

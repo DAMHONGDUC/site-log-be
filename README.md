@@ -3,7 +3,7 @@
 <dl><dd>
 
 - The server behind the SiteLog [iOS](https://github.com/DAMHONGDUC/site_log_swift_ui) and [Android](https://github.com/DAMHONGDUC/site-log-android) apps: sign-in check, delta sync, presigned S3 uploads, verification codes, realtime upload state, push (Firebase Cloud Messaging).
-- Node 24 · TypeScript · Fastify · PostgreSQL 16 · AWS (EC2 + Docker Compose, RDS, S3), infrastructure in AWS CDK.
+- Node 24 · TypeScript · Fastify · PostgreSQL 16 (Drizzle ORM) · AWS (EC2 + Docker Compose, RDS, S3), infrastructure in AWS CDK.
 - Built step by step from the guides in [docs/feature-guide](docs/feature-guide/README.md), sprint by sprint, next to the iOS and Android apps.
 
 </dd></dl>
@@ -26,7 +26,7 @@
 
 <dl><dd>
 
-- The code of S0–S10 is in the repository: every call of [01-api §3](docs/feature-docs/01-api.md#3-endpoints), the worker, migrations `0001`–`0012`, the AWS CDK app (`infra/`) and CI. `npm test`: 99 tests green against Postgres 16; format, lint, typecheck, the OpenAPI check, build and `cdk synth` pass.
+- The code of S0–S10 is in the repository: every call of [01-api §3](docs/feature-docs/01-api.md#3-endpoints), the worker, migrations `0001`–`0012`, the AWS CDK app (`infra/`) and CI. `npm test`: 104 tests green against Postgres 16; format, lint, typecheck, the OpenAPI check, build and `cdk synth` pass.
 - Not running anywhere yet: AWS, Firebase and SES accounts, DNS and the first deploy are still to do ([ROADMAP](docs/ROADMAP.md) P0, S0.3, S9, S10.9, P4).
 - S0–S9 code comes from the guides as written; S10 (team and roles) was built from [05-team-and-roles](docs/feature-docs/05-team-and-roles.md) and is described in [F19](docs/feature-guide/S10-team-roles/F19-team-roles.md).
 
@@ -122,9 +122,11 @@ site-log-be/
 │   ├── app.ts              # composition root: builds Database, services, guards, registers routes
 │   ├── services.ts         # builds every service once (API and worker)
 │   ├── constants/          # every fixed value: ApiRoutes, ErrorCode, roles + permissions, push kinds,
-│   │                       # limits, patterns, durations, HTTP status, WebSocket close codes, OpenAPI
+│   │                       # limits, patterns, durations, HTTP status, WebSocket close codes, OpenAPI,
+│   │                       # table and enum names (db, enums)
 │   ├── core/               # config, logger, errors, auth, log; http/ (guards, schemas, openapi)
-│   ├── data/               # pool, Database (repositories on the pool or one transaction), table lists
+│   ├── data/               # pool, Database (repositories on the pool or one transaction), Drizzle client,
+│   │                       # schema/ (every table, for typed queries)
 │   ├── integrations/       # S3 storage, SES mailer, FCM sender
 │   ├── modules/            # one folder per feature: *-routes · *-service · *-repository · rules
 │   │   ├── account/  devices/  health/  notifications/
@@ -134,7 +136,7 @@ site-log-be/
 │   │   └── uploads/        # uploads, media URLs, /verify, object keys, key migration
 │   └── workers/            # worker jobs
 ├── migrations/             # numbered .sql files, run once each, forward only
-├── test/                   # vitest against a real Postgres: core/, modules/<feature>/, helpers/
+├── test/                   # vitest against a real Postgres: core/, data/, modules/<feature>/, helpers/
 ├── scripts/                # dev token, seed the first Admin, move pre-F19 keys, OpenAPI
 ├── docs/                   # feature docs, guides, openapi.json (generated)
 ├── deploy/ · infra/        # what runs on EC2 · AWS CDK app
@@ -152,7 +154,8 @@ site-log-be/
 |---|---|
 | One folder per feature | `src/modules/<feature>/` holds that feature's routes, services and repositories; shared code lives in `core/`, `data/`, `integrations/`, `constants/` |
 | Routes are thin | A route only declares its schema and guard, calls one service, returns the result |
-| SQL only in repositories | ESLint fails on `.query(` anywhere in `src/modules` and `src/core` except `*-repository.ts` and the sync and realtime engines |
+| SQL only in repositories | Repositories query through Drizzle (`src/data/schema/`); ESLint fails on `.query(` or a `drizzle-orm` import anywhere in `src/modules` and `src/core` except `*-repository.ts` and the sync and realtime engines. The sync push and pull keep raw SQL: they build it from `syncTables` metadata (`jsonb_populate_record`, savepoints) |
+| Migrations own the schema | `migrations/*.sql` create the tables; `src/data/schema/` only describes them for Drizzle. `test/data/schema.test.ts` fails when a column or its nullability differs, or a synced table is missing |
 | Every path from `ApiRoutes` | `src/constants/api-routes.ts` holds every endpoint (`ApiRoutes.UPLOAD_COMPLETE`, `ApiRoutes.uploadComplete(id)`); ESLint fails on a literal path in a route; tests build paths with it |
 | No magic numbers | ESLint `no-magic-numbers` on `src/` (constants and Config excepted) |
 | Small files | ESLint `max-lines` 300 per file |

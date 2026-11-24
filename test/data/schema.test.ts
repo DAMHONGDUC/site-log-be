@@ -23,8 +23,10 @@ const drizzleTables = Object.values(schema).filter((value) => is(value, PgTable)
 function drizzleColumns(): string[] {
   return drizzleTables.flatMap((table) => {
     const config = getTableConfig(table);
+
     return config.columns.map((column) => {
       const name = column.keyAsName ? toSnakeCase(column.name) : column.name;
+
       return `${config.name}.${name}:${column.notNull ? 'NO' : 'YES'}`;
     });
   });
@@ -32,6 +34,7 @@ function drizzleColumns(): string[] {
 
 describe('Drizzle schema', () => {
   let pool: pg.Pool;
+
   beforeAll(() => {
     pool = new pg.Pool({ connectionString: testDatabaseUrl });
   });
@@ -48,6 +51,7 @@ describe('Drizzle schema', () => {
     const database = result.rows.map(
       (row) => `${row.table_name}.${row.column_name}:${row.is_nullable}`,
     );
+
     expect(drizzleColumns().sort()).toEqual(database.sort());
   });
 

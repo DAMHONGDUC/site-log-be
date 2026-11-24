@@ -16,6 +16,7 @@ import { pullAs, pushAs, seedProject } from '../../helpers/sync-helpers.js';
 // F19: one company, four roles, shared projects (05-team-and-roles, 01-api §13).
 describe('team and roles', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -38,6 +39,7 @@ describe('team and roles', () => {
 
   const tokenFromMail = () => {
     const text = context.mailer.sent.at(-1)!.text;
+
     return /invite\/([A-Za-z0-9_-]{43})/.exec(text)![1]!;
   };
 
@@ -99,6 +101,7 @@ describe('team and roles', () => {
       role: 'inspector',
       projectIds: [ids.project],
     });
+
     expect(invited.statusCode).toBe(200);
     const token = tokenFromMail();
 
@@ -106,6 +109,7 @@ describe('team and roles', () => {
       method: 'GET',
       url: ApiRoutes.invitationPreview(token),
     });
+
     expect(preview.statusCode).toBe(200);
     expect(preview.json()).toMatchObject({
       invitedBy: 'Alice',
@@ -120,6 +124,7 @@ describe('team and roles', () => {
       headers: { authorization: 'Bearer uid:vu|someone@else.dev' },
       payload: { token },
     });
+
     expect(wrong.json().error.code).toBe('email_mismatch');
 
     const accepted = await context.app.inject({
@@ -128,12 +133,14 @@ describe('team and roles', () => {
       headers: { authorization: 'Bearer uid:vu|vu@eastline.vn' },
       payload: { token },
     });
+
     expect(accepted.json()).toEqual({ uid: 'vu', role: 'inspector', projectIds: [ids.project] });
 
     const again = await context.app.inject({
       method: 'GET',
       url: ApiRoutes.invitationPreview(token),
     });
+
     expect(again.json().error.code).toBe('invite_used');
     // A new member rebuilds from 0, then sees the project.
     expect(await pullAs(context, 'vu', 0)).toEqual({ resyncRequired: true });
@@ -147,18 +154,21 @@ describe('team and roles', () => {
       role: 'viewer',
       projectIds: [],
     });
+
     expect(manager.statusCode).toBe(403);
     const member = await call('alice', 'POST', ApiRoutes.INVITATIONS, {
       email: 'bob@test.dev',
       role: 'viewer',
       projectIds: [],
     });
+
     expect(member.json().error.code).toBe('already_member');
     const badRole = await call('alice', 'POST', ApiRoutes.INVITATIONS, {
       email: 'x@y.dev',
       role: 'boss',
       projectIds: [],
     });
+
     expect(badRole.json().error.code).toBe('invalid_role');
   });
 
@@ -171,16 +181,20 @@ describe('team and roles', () => {
     const id = invited.json().invitationId;
     const oldToken = tokenFromMail();
     const resent = await call('alice', 'POST', ApiRoutes.invitationResend(id));
+
     expect(resent.statusCode).toBe(200);
     const newToken = tokenFromMail();
+
     expect(newToken).not.toBe(oldToken);
     const old = await context.app.inject({
       method: 'GET',
       url: ApiRoutes.invitationPreview(oldToken),
     });
+
     expect(old.json().error.code).toBe('invite_not_found');
 
     const members = await call('alice', 'GET', ApiRoutes.MEMBERS);
+
     expect(members.json().invitations).toHaveLength(1);
     expect((await call('alice', 'DELETE', ApiRoutes.invitation(id))).json()).toEqual({
       cancelled: true,
@@ -189,6 +203,7 @@ describe('team and roles', () => {
       method: 'GET',
       url: ApiRoutes.invitationPreview(newToken),
     });
+
     expect(fresh.json().error.code).toBe('invite_expired');
   });
 
@@ -201,17 +216,21 @@ describe('team and roles', () => {
       role: 'viewer',
       projectIds: [ids.project],
     });
+
     expect(patched.json()).toEqual({ uid: 'bob', role: 'viewer', projectIds: [ids.project] });
     expect(await pullAs(context, 'bob', 0)).toEqual({ resyncRequired: true });
     const kinds = context.push.sent.map((item) => item.message.kind);
+
     expect(kinds).toEqual(['access', 'access']);
     expect(context.push.sent[1]!.message.deepLink).toBe(`sitelog://project/${ids.project}`);
   });
 
   it('never demotes or removes the last Admin', async () => {
     const demote = await call('alice', 'PATCH', ApiRoutes.member('alice'), { role: 'manager' });
+
     expect(demote.json().error.code).toBe('last_admin');
     const remove = await call('alice', 'DELETE', ApiRoutes.member('alice'));
+
     expect(remove.json().error.code).toBe('last_admin');
   });
 
@@ -228,11 +247,13 @@ describe('team and roles', () => {
     const set = await call('alice', 'PUT', ApiRoutes.projectMembers(ids.project), {
       uids: ['bob'],
     });
+
     expect(set.json()).toEqual({ projectId: ids.project, uids: ['bob'] });
     await pullAs(context, 'bob', 0); // clears the resync flag
     expect((await pullAs(context, 'bob', 0)).changes.projects).toHaveLength(1);
     expect((await pullAs(context, 'carol', 0)).changes).toEqual({});
     const inspector = await call('bob', 'PUT', ApiRoutes.projectMembers(ids.project), { uids: [] });
+
     expect(inspector.statusCode).toBe(403);
   });
 
@@ -241,6 +262,7 @@ describe('team and roles', () => {
     await addMember(context.pool, 'bob', 'inspector', [ids.project]);
     await addMember(context.pool, 'vera', 'viewer', [ids.project]);
     const logged = await pushAs(context, 'bob', [issue({})]);
+
     expect(logged.results[0].status).toBe('applied');
     const room = await pushAs(context, 'bob', [
       {
@@ -251,12 +273,15 @@ describe('team and roles', () => {
         fields: { projectId: ids.project, parentId: null, code: 'L2', kind: 'floor', sortIndex: 1 },
       },
     ]);
+
     expect(room.results[0].reason).toBe('forbidden:location.edit');
     const viewer = await pushAs(context, 'vera', [
       issue({ title: 'x' }, '2026-11-02T09:00:00.000Z'),
     ]);
+
     expect(viewer.results[0].reason).toBe('forbidden:issue.write');
     const pulled = await pullAs(context, 'vera', 0);
+
     expect(pulled.changes.issues[0].createdBy).toBe('bob');
   });
 
@@ -269,6 +294,7 @@ describe('team and roles', () => {
       pushAs(context, uid, [
         { table: 'issues', id: issue({}).id, op: 'delete', clientUpdatedAt: at, fields: {} },
       ]);
+
     expect((await remove('carol', '2026-11-03T09:00:00.000Z')).results[0].reason).toBe(
       'forbidden:issue.delete',
     );
@@ -320,9 +346,11 @@ describe('team and roles', () => {
     const tomorrow = await context.pool.query<{ day: string }>(
       `select ((now() at time zone 'Asia/Ho_Chi_Minh')::date + 1)::text as day`,
     );
+
     await pushAs(context, 'alice', [issue({ assigneeUid: 'bob', dueDate: tomorrow.rows[0]!.day })]);
     context.push.sent = [];
     const sent = await workerDeps(context, context.push).services.dueSoon.run();
+
     expect(sent).toBe(1);
     expect(context.push.sent[0]!.message).toMatchObject({
       kind: 'dueSoon',
@@ -336,6 +364,7 @@ describe('team and roles', () => {
     await call('alice', 'PATCH', ApiRoutes.member('carol'), { role: 'viewer' });
     await call('alice', 'DELETE', ApiRoutes.member('carol'));
     const first = await call('alice', 'GET', `${ApiRoutes.MEMBER_EVENTS}?limit=2`);
+
     expect(first.json().events.map((event: { type: string }) => event.type)).toEqual([
       'removed',
       'role_changed',
@@ -346,6 +375,7 @@ describe('team and roles', () => {
       'GET',
       `${ApiRoutes.MEMBER_EVENTS}?limit=2&before=${first.json().next}`,
     );
+
     expect(second.json().events).toHaveLength(1);
     expect(second.json().next).toBeNull();
     expect((await call('bob', 'GET', ApiRoutes.MEMBER_EVENTS)).statusCode).toBe(403);
@@ -356,6 +386,7 @@ describe('move-keys (F19)', () => {
   it('maps old uid keys to project and company keys', async () => {
     const { newKeyFor } =
       await import('../../../src/modules/uploads/keys/key-migration-service.js');
+
     expect(newKeyFor(`alice/${ids.project}/${ids.session}/${ids.capture}.jpg`)).toBe(
       `projects/${ids.project}/${ids.session}/${ids.capture}.jpg`,
     );

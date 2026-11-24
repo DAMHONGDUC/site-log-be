@@ -43,6 +43,7 @@ export class SharedStack extends Stack {
         },
       }),
     });
+
     this.repository.grantPullPush(deployRole);
     deployRole.addToPolicy(
       new iam.PolicyStatement({

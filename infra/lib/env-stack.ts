@@ -55,6 +55,7 @@ export class EnvStack extends Stack {
       vpc,
       description: 'SiteLog API server: HTTP and HTTPS from anywhere, nothing else',
     });
+
     serverSecurityGroup.addIngressRule(
       ec2.Peer.anyIpv4(),
       ec2.Port.tcp(80),
@@ -66,6 +67,7 @@ export class EnvStack extends Stack {
       vpc,
       description: 'SiteLog Postgres: only from the API server',
     });
+
     databaseSecurityGroup.addIngressRule(
       serverSecurityGroup,
       ec2.Port.tcp(5432),
@@ -93,6 +95,7 @@ export class EnvStack extends Stack {
     });
 
     const logGroups: logs.LogGroup[] = [];
+
     for (const service of ['api', 'worker', 'caddy']) {
       logGroups.push(
         new logs.LogGroup(this, `Logs-${service}`, {
@@ -114,6 +117,7 @@ export class EnvStack extends Stack {
         iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
       ],
     });
+
     repository.grantPull(role);
     bucket.grantReadWrite(role);
     database.secret!.grantRead(role);
@@ -138,6 +142,7 @@ export class EnvStack extends Stack {
     ].join('\n');
 
     const userData = ec2.UserData.forLinux();
+
     userData.addCommands(
       'set -euo pipefail',
       'dnf install -y docker jq',
@@ -186,10 +191,12 @@ SCRIPTEOF`,
         },
       ],
     });
+
     Tags.of(server).add('sitelog:env', envName);
 
     // A fixed public IP for the DNS record.
     const ip = new ec2.CfnEIP(this, 'PublicIp', { domain: 'vpc' });
+
     new ec2.CfnEIPAssociation(this, 'PublicIpAssociation', {
       allocationId: ip.attrAllocationId,
       instanceId: server.instanceId,
@@ -197,6 +204,7 @@ SCRIPTEOF`,
 
     // Alarms mail the address in cdk.json; EC2 also restarts itself on a hardware fault.
     const topic = new sns.Topic(this, 'Alarms', { topicName: `sitelog-${envName}-alarms` });
+
     if (settings.alarmEmail !== '') {
       topic.addSubscription(new subscriptions.EmailSubscription(settings.alarmEmail));
     }
@@ -213,6 +221,7 @@ SCRIPTEOF`,
       threshold: 1,
       evaluationPeriods: 2,
     });
+
     systemCheck.addAlarmAction(new actions.Ec2Action(actions.Ec2InstanceAction.RECOVER), notify);
 
     const instanceCheck = new cloudwatch.Alarm(this, 'ServerInstanceCheck', {
@@ -226,6 +235,7 @@ SCRIPTEOF`,
       threshold: 1,
       evaluationPeriods: 3,
     });
+
     instanceCheck.addAlarmAction(new actions.Ec2Action(actions.Ec2InstanceAction.REBOOT), notify);
 
     const lowStorage = new cloudwatch.Alarm(this, 'DatabaseLowStorage', {
@@ -234,6 +244,7 @@ SCRIPTEOF`,
       comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
       evaluationPeriods: 1,
     });
+
     lowStorage.addAlarmAction(notify);
 
     const busyDatabase = new cloudwatch.Alarm(this, 'DatabaseCpu', {
@@ -241,6 +252,7 @@ SCRIPTEOF`,
       threshold: 80,
       evaluationPeriods: 3,
     });
+
     busyDatabase.addAlarmAction(notify);
 
     // Counts 5xx answers in the API's JSON logs.
@@ -258,6 +270,7 @@ SCRIPTEOF`,
       evaluationPeriods: 1,
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
+
     serverErrors.addAlarmAction(notify);
 
     new CfnOutput(this, 'PublicIpAddress', {

@@ -16,6 +16,7 @@ export class DevStack extends Stack {
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
     });
+
     new CfnOutput(this, 'BucketName', { value: bucket.bucketName });
   }
 }

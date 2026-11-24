@@ -29,6 +29,7 @@ export class UptimeStack extends Stack {
     });
 
     const topic = new sns.Topic(this, 'Alarms', { topicName: 'sitelog-prod-uptime' });
+
     if (props.alarmEmail !== '') {
       topic.addSubscription(new subscriptions.EmailSubscription(props.alarmEmail));
     }
@@ -46,6 +47,7 @@ export class UptimeStack extends Stack {
       evaluationPeriods: 2,
       treatMissingData: cloudwatch.TreatMissingData.BREACHING,
     });
+
     down.addAlarmAction(new actions.SnsAction(topic));
 
     new CfnOutput(this, 'HealthCheckId', { value: check.attrHealthCheckId });

@@ -38,6 +38,7 @@ export const verifyRoutes: FastifyPluginAsync = async (app) => {
 
       // Hits and misses take the same time, so timing does not reveal which codes exist.
       const elapsed = Date.now() - started;
+
       if (elapsed < deps.config.verifyMinDelayMs) {
         await sleep(deps.config.verifyMinDelayMs - elapsed);
       }
@@ -49,9 +50,11 @@ export const verifyRoutes: FastifyPluginAsync = async (app) => {
       }
       request.log.info({ found: true, verifyState: row.verifyState }, LOG.uploads.verifyLookup);
       let projectRef: string | null = null;
+
       if (row.projectId !== null) {
         projectRef = row.projectId.slice(0, TEXT_CUT.projectRef).toUpperCase();
       }
+
       return {
         code,
         sha256: row.sha256,

@@ -23,11 +23,13 @@ export class SyncStateRepository {
       .update(syncCounter)
       .set({ lastRev: sql`${syncCounter.lastRev} + 1` })
       .returning({ lastRev: syncCounter.lastRev });
+
     return row!.lastRev;
   }
 
   async currentRev(): Promise<number> {
     const [row] = await this.db.select({ lastRev: syncCounter.lastRev }).from(syncCounter);
+
     return row?.lastRev ?? 0;
   }
 
@@ -35,6 +37,7 @@ export class SyncStateRepository {
     const [row] = await this.db
       .select({ purgedThroughRev: syncCounter.purgedThroughRev })
       .from(syncCounter);
+
     return row?.purgedThroughRev ?? 0;
   }
 
@@ -44,11 +47,13 @@ export class SyncStateRepository {
     const cutoff = daysAgo(retentionDays);
     let purged = 0;
     let highestRev = 0;
+
     for (const table of Object.values(SYNCED_TABLES)) {
       const rows = await this.db
         .delete(table)
         .where(and(isNotNull(table.deletedAt), lt(table.deletedAt, cutoff)))
         .returning({ rev: table.rev });
+
       purged += rows.length;
       for (const row of rows) {
         highestRev = Math.max(highestRev, row.rev);
@@ -60,6 +65,7 @@ export class SyncStateRepository {
         .update(syncCounter)
         .set({ purgedThroughRev: sql`greatest(${syncCounter.purgedThroughRev}, ${highestRev})` });
     }
+
     return { purged, highestRev };
   }
 }

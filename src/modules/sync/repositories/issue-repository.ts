@@ -38,6 +38,7 @@ export class IssueRepository {
         ),
       )
       .groupBy(issues.assigneeUid, issues.projectId, projects.name);
+
     // The where clause keeps only assigned issues.
     return rows.map((row) => ({ ...row, assigneeUid: row.assigneeUid! }));
   }

@@ -8,6 +8,7 @@ export class PhraseRepository {
 
   async removeAllFor(uid: string): Promise<number> {
     const result = await this.db.delete(phrases).where(eq(phrases.uid, uid));
+
     return result.rowCount ?? 0;
   }
 }

@@ -10,6 +10,7 @@ export class ProjectRepository {
       .select({ id: projects.id, name: projects.name })
       .from(projects)
       .where(inArray(projects.id, ids));
+
     return new Map(rows.map((row) => [row.id, row.name]));
   }
 
@@ -18,6 +19,7 @@ export class ProjectRepository {
       .select({ id: projects.id })
       .from(projects)
       .where(and(inArray(projects.id, ids), isNull(projects.deletedAt)));
+
     return rows.map((row) => row.id);
   }
 }

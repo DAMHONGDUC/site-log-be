@@ -27,6 +27,7 @@ export const memberRoutes: FastifyPluginAsync = async (app) => {
     role: Type.Optional(Schemas.role()),
     projectIds: Type.Optional(Type.Array(Schemas.uuid(), { maxItems: LIMITS.projectsPerInvite })),
   });
+
   typed.patch(
     ApiRoutes.MEMBER,
     {
@@ -35,10 +36,12 @@ export const memberRoutes: FastifyPluginAsync = async (app) => {
     },
     async (request) => {
       const result = await team.changeMember(request.member, request.params.uid, request.body);
+
       request.log.info(
         { uid: request.uid, member: request.params.uid, role: result.role },
         LOG.team.memberChanged,
       );
+
       return result;
     },
   );
@@ -49,6 +52,7 @@ export const memberRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       await team.removeMember(request.member, request.params.uid);
       request.log.info({ uid: request.uid, member: request.params.uid }, LOG.team.memberRemoved);
+
       return { removed: true };
     },
   );
@@ -56,6 +60,7 @@ export const memberRoutes: FastifyPluginAsync = async (app) => {
   const ProjectBody = Type.Object({
     uids: Type.Array(Schemas.uid(), { maxItems: LIMITS.membersPerProject }),
   });
+
   typed.put(
     ApiRoutes.PROJECT_MEMBERS,
     {
@@ -65,10 +70,12 @@ export const memberRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const projectId = request.params.id.toLowerCase();
       const uids = await team.setProjectMembers(request.member, projectId, request.body.uids);
+
       request.log.info(
         { uid: request.uid, projectId, count: uids.length },
         LOG.team.projectMembersSet,
       );
+
       return { projectId, uids };
     },
   );
@@ -77,6 +84,7 @@ export const memberRoutes: FastifyPluginAsync = async (app) => {
     before: Type.Optional(Type.String({ pattern: PATTERNS.eventCursor })),
     limit: Type.Optional(Type.Integer({ minimum: 1, maximum: LIMITS.memberEventsPageMax })),
   });
+
   typed.get(
     ApiRoutes.MEMBER_EVENTS,
     { preHandler: memberMay(guards, ACTION.teamManage), schema: { querystring: EventsQuery } },

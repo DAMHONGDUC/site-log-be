@@ -22,5 +22,6 @@ export function reaches(reach: Reach, projectId: string | null): boolean {
   if (projectId === null || reach === REACH_ALL) {
     return true;
   }
+
   return reach.includes(projectId);
 }

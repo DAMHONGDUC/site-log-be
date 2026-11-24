@@ -38,6 +38,7 @@ export class MemberRepository {
       })
       .from(members)
       .where(eq(members.uid, uid));
+
     return row;
   }
 
@@ -48,11 +49,13 @@ export class MemberRepository {
       .from(members)
       .where(and(eq(members.uid, uid), isLive))
       .for('update');
+
     return row;
   }
 
   async listLive(): Promise<MemberListRow[]> {
     const projectId = projectMembers.projectId;
+
     return this.db
       .select({
         uid: members.uid,
@@ -75,6 +78,7 @@ export class MemberRepository {
       .select({ uid: members.uid })
       .from(members)
       .where(and(inArray(members.uid, uids), isLive));
+
     return rows.map((row) => row.uid);
   }
 
@@ -93,6 +97,7 @@ export class MemberRepository {
           or(inArray(members.role, [...rolesReachingAll]), inArray(members.uid, addedToProject)),
         ),
       );
+
     return rows.map((row) => row.uid);
   }
 
@@ -101,6 +106,7 @@ export class MemberRepository {
       .select({ uid: members.uid })
       .from(members)
       .where(and(eq(sql`lower(${members.email})`, sql`lower(${email})`), isLive));
+
     return rows.length > 0;
   }
 
@@ -109,6 +115,7 @@ export class MemberRepository {
       .select({ count: count() })
       .from(members)
       .where(and(eq(members.role, role), isLive));
+
     return row!.count;
   }
 
@@ -117,6 +124,7 @@ export class MemberRepository {
       .select({ name: members.name, email: members.email })
       .from(members)
       .where(eq(members.uid, uid));
+
     return row === undefined ? undefined : row.name || row.email;
   }
 
@@ -163,6 +171,7 @@ export class MemberRepository {
       .update(members)
       .set({ removedAt: sql`now()` })
       .where(and(eq(members.uid, uid), isLive));
+
     return (result.rowCount ?? 0) > 0;
   }
 }

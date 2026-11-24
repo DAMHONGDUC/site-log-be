@@ -62,6 +62,7 @@ export class MemberEventRepository {
       .where(before === null ? undefined : lt(memberEvents.id, Number(before)))
       .orderBy(desc(memberEvents.id))
       .limit(limit);
+
     // The cursor travels as text: ids are bigint.
     return rows.map((row) => ({ ...row, id: String(row.id) }));
   }

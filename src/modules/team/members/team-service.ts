@@ -43,6 +43,7 @@ export class TeamService {
 
   async me(member: Member) {
     await this.db.repos.members.touchLastSeen(member.uid);
+
     return {
       uid: member.uid,
       email: member.email,
@@ -54,6 +55,7 @@ export class TeamService {
 
   async listMembers(): Promise<MemberView[]> {
     const rows = await this.db.repos.members.listLive();
+
     return rows.map((row) => ({
       uid: row.uid,
       email: row.email,
@@ -72,10 +74,12 @@ export class TeamService {
     const result = await this.db.transaction(async (repos) => {
       const current = await this.liveMember(repos, uid);
       const role = change.role ?? current.role;
+
       if (current.role === ROLE.admin && role !== ROLE.admin) {
         await this.ensureAnotherAdmin(repos);
       }
       const roleChanged = role !== current.role;
+
       if (roleChanged) {
         await repos.members.setRole(uid, role);
         await repos.memberEvents.record({
@@ -86,6 +90,7 @@ export class TeamService {
         });
       }
       let diff: ProjectDiff = { added: [], removed: [] };
+
       if (change.projectIds !== undefined && !ROLES_REACHING_ALL.includes(role)) {
         await this.ensureProjectsExist(repos, change.projectIds);
         diff = await this.replaceProjects(repos, uid, change.projectIds, actor.uid);
@@ -101,8 +106,10 @@ export class TeamService {
       if (roleChanged || diff.added.length + diff.removed.length > 0) {
         await repos.members.requireResync(uid);
       }
+
       return { role, roleChanged, diff };
     });
+
     if (result.roleChanged) {
       await this.notifications.send({
         kind: PUSH_KIND.access,
@@ -112,6 +119,7 @@ export class TeamService {
       });
     }
     await this.notifyProjects(actor, uid, result.diff);
+
     return {
       uid,
       role: result.role,
@@ -122,6 +130,7 @@ export class TeamService {
   async removeMember(actor: Member, uid: string): Promise<void> {
     await this.db.transaction(async (repos) => {
       const current = await this.liveMember(repos, uid);
+
       if (current.role === ROLE.admin) {
         await this.ensureAnotherAdmin(repos);
       }
@@ -143,12 +152,14 @@ export class TeamService {
     const diff = await this.db.transaction(async (repos) => {
       await this.ensureProjectsExist(repos, [projectId]);
       const known = await repos.members.liveUidsAmong(wanted);
+
       if (known.length !== wanted.length) {
         throw notFound(ErrorCode.memberNotFound, ERROR_TEXT.memberMissing);
       }
       const current = await repos.projectMembers.membersOf(projectId);
       const added = wanted.filter((uid) => !current.includes(uid));
       const removed = current.filter((uid) => !wanted.includes(uid));
+
       for (const uid of removed) {
         await repos.projectMembers.remove(projectId, uid);
       }
@@ -164,20 +175,24 @@ export class TeamService {
           detail: added.includes(uid) ? { added: [projectId] } : { removed: [projectId] },
         });
       }
+
       return { added, removed };
     });
+
     for (const uid of diff.added) {
       await this.notifyProjects(actor, uid, { added: [projectId], removed: [] });
     }
     for (const uid of diff.removed) {
       await this.notifyProjects(actor, uid, { added: [], removed: [projectId] });
     }
+
     return wanted;
   }
 
   async activity(before: string | null, limit: number) {
     const rows = await this.db.repos.memberEvents.page(before, limit + 1);
     const page = rows.slice(0, limit);
+
     return {
       events: page.map((row: MemberEventRow) => ({
         id: row.id,
@@ -204,12 +219,14 @@ export class TeamService {
     const wanted = [...new Set(projectIds.map((id) => id.toLowerCase()))];
     const added = wanted.filter((id) => !before.includes(id));
     const removed = before.filter((id) => !wanted.includes(id));
+
     for (const projectId of removed) {
       await repos.projectMembers.remove(projectId, uid);
     }
     for (const projectId of added) {
       await repos.projectMembers.add(projectId, uid, actorUid);
     }
+
     return { added, removed };
   }
 
@@ -218,6 +235,7 @@ export class TeamService {
       return;
     }
     const found = await repos.projects.liveIdsAmong(ids);
+
     if (found.length !== new Set(ids).size) {
       throw notFound(ErrorCode.projectNotFound, ERROR_TEXT.projectMissing);
     }
@@ -225,9 +243,11 @@ export class TeamService {
 
   private async liveMember(repos: Repositories, uid: string): Promise<{ role: Role }> {
     const current = await repos.members.findLiveForUpdate(uid);
+
     if (current === undefined) {
       throw notFound(ErrorCode.memberNotFound, ERROR_TEXT.memberNotFound);
     }
+
     return current;
   }
 
@@ -240,10 +260,12 @@ export class TeamService {
 
   private async notifyProjects(actor: Member, uid: string, diff: ProjectDiff): Promise<void> {
     const ids = [...diff.added, ...diff.removed];
+
     if (ids.length === 0) {
       return;
     }
     const names = await this.db.repos.projects.namesByIds(ids);
+
     for (const projectId of diff.added) {
       await this.notifications.send({
         kind: PUSH_KIND.access,

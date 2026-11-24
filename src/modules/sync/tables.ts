@@ -4,11 +4,8 @@ import { SYNC_COLUMN, SYNC_SCOPE, type SyncScope } from '../../constants/data/sy
 
 // Every table the app may pull and push. A feature that adds a synced table adds it here.
 
-// F19: who may see a row.
-// - project: rows of one project (project_id), seen by the members who reach it
-// - projects: the projects table itself (its id is the project)
-// - company: one set for the whole company (report branding)
-// - personal: the caller's own rows (phrases keep uid)
+// F19: who may see a row - project (rows keyed by project_id), projects (the projects table
+// itself), company (one set per company, report branding) or personal (the caller's own, by uid).
 export type { SyncScope } from '../../constants/data/sync.js';
 
 export interface SyncTable {
@@ -46,10 +43,12 @@ interface TableOptions {
 
 function table(name: string, columns: string[], options: TableOptions): SyncTable {
   const immutable = options.immutable ?? [];
+
   // A row never moves to another project.
   if (columns.includes(SYNC_COLUMN.projectId) && !immutable.includes(SYNC_COLUMN.projectId)) {
     immutable.push(SYNC_COLUMN.projectId);
   }
+
   return {
     name,
     columns,

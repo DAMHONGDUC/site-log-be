@@ -35,9 +35,11 @@ export async function completeUpload(
   uid = 'alice',
 ) {
   let payload: object = {};
+
   if (parts !== undefined) {
     payload = { parts };
   }
+
   return context.app.inject({
     method: 'POST',
     url: ApiRoutes.uploadComplete(uploadId),

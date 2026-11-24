@@ -24,6 +24,7 @@ export async function insertCompletedUpload(
       options.code ?? 'ABCDEFGH23',
     ],
   );
+
   return result.rows[0]!.id;
 }
 

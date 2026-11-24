@@ -10,7 +10,9 @@ export async function pushAs(context: TestContext, uid: string, mutations: objec
     headers: auth(uid),
     payload: { mutations },
   });
+
   expect(response.statusCode).toBe(200);
+
   return response.json();
 }
 
@@ -21,7 +23,9 @@ export async function pullAs(context: TestContext, uid: string, since: number, l
     headers: auth(uid),
     payload: { since, limit },
   });
+
   expect(response.statusCode).toBe(200);
+
   return response.json();
 }
 

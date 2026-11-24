@@ -45,6 +45,7 @@ export class FakeTokens implements TokenVerifier {
     }
     if (token.startsWith('uid:')) {
       const [uid = '', email] = token.slice(4).split('|');
+
       return {
         uid,
         email: email ?? `${uid}@test.dev`,
@@ -76,6 +77,7 @@ export class FakePush implements PushSender {
   sent: { token: string; platform: DevicePlatform; message: PushMessage }[] = [];
   async send(token: string, platform: DevicePlatform, message: PushMessage) {
     this.sent.push({ token, platform, message });
+
     return 'sent' as const;
   }
 }
@@ -98,7 +100,9 @@ export async function createTestContext(
   const mailer = new LogMailer();
   const push = new FakePush();
   const app = await buildApp({ config, pool, tokens, storage, hub, mailer, push });
+
   await app.ready();
+
   return { app, pool, s3, tokens, hub, storage, config, mailer, push };
 }
 
@@ -112,6 +116,7 @@ export async function closeTestContext(context: TestContext): Promise<void> {
 // alice is the Admin; bob and carol are Inspectors on no project yet.
 export async function resetDatabase(pool: pg.Pool): Promise<void> {
   const tables = [...syncTables.map((table) => table.name), ...SERVER_TABLES];
+
   await pool.query(`truncate ${tables.join(', ')} restart identity`);
   await pool.query('update sync_counter set last_rev = 0, purged_through_rev = 0');
   await addMember(pool, 'alice', 'admin');
@@ -162,5 +167,6 @@ export function workerDeps(context: TestContext, push: PushSender | undefined): 
     push,
     log,
   });
+
   return { pool: context.pool, db, storage: context.storage, services, log };
 }

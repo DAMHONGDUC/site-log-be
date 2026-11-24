@@ -19,6 +19,7 @@ async function ownSameDay(
     `select (($1::timestamptz at time zone $2)::date = (now() at time zone $2)::date) as same`,
     [stored.server_created_at, context.siteTimeZone],
   );
+
   return result.rows[0]?.same === true;
 }
 
@@ -29,6 +30,7 @@ function actionFor(table: SyncTable, mutation: Mutation, isNew: boolean): Action
   if (table.scope === SYNC_SCOPE.projects && isNew) {
     return ACTION.projectCreate;
   }
+
   return table.writeAction;
 }
 
@@ -44,12 +46,14 @@ export async function permissionProblem(
   const { member } = batch.context;
   const isNew = stored === undefined;
   const action = actionFor(table, mutation, isNew);
+
   if (table.scope === SYNC_SCOPE.personal) {
     if (!isNew && stored.uid !== member.uid) {
       return RejectReason.forbidden;
     }
   } else {
     const creatingProject = table.scope === SYNC_SCOPE.projects && isNew;
+
     if (!creatingProject && !reaches(batch.reach, projectId)) {
       return RejectReason.forbiddenAction(action);
     }
@@ -58,8 +62,10 @@ export async function permissionProblem(
     mutation.op === MUTATION_OP.delete &&
     !isNew &&
     (await ownSameDay(client, stored, batch.context));
+
   if (!can(member.role, action, { ownSameDay: own })) {
     return RejectReason.forbiddenAction(action);
   }
+
   return null;
 }

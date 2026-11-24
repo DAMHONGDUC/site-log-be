@@ -40,8 +40,10 @@ function recordFor(
   projectId: string | null,
 ): Record<string, unknown> | string {
   const record: Record<string, unknown> = {};
+
   for (const [field, value] of Object.entries(mutation.fields)) {
     const column = camelToSnake(field);
+
     if (!table.columns.includes(column)) {
       return RejectReason.unknownField(field);
     }
@@ -55,6 +57,7 @@ function recordFor(
   if (table.parent !== null) {
     record.project_id = projectId;
   }
+
   return record;
 }
 
@@ -69,6 +72,7 @@ async function applyUpsert(
 ): Promise<MutationResult> {
   const uid = batch.context.member.uid;
   const record = recordFor(table, mutation, uid, rev, projectId);
+
   if (typeof record === 'string') {
     return { id: mutation.id, status: MUTATION_STATUS.rejected, reason: record };
   }
@@ -78,6 +82,7 @@ async function applyUpsert(
   await client.query(savepointSql.open(SAVEPOINT.upsert));
   try {
     const written = await client.query(upsertSql(table), [JSON.stringify(record)]);
+
     await client.query(savepointSql.release(SAVEPOINT.upsert));
     if (written.rows.length > 0) {
       if (table.name === TABLE.issues) {
@@ -88,6 +93,7 @@ async function applyUpsert(
           after: written.rows[0],
         });
       }
+
       return { id: mutation.id, status: MUTATION_STATUS.applied };
     }
   } catch (error) {
@@ -98,6 +104,7 @@ async function applyUpsert(
       !isPrimaryKeyViolation(error)
     ) {
       const owner = await rowWithSameNaturalKey(client, table, uid, record);
+
       if (owner !== undefined) {
         return { id: mutation.id, status: MUTATION_STATUS.superseded, serverRow: rowToJson(owner) };
       }
@@ -107,9 +114,11 @@ async function applyUpsert(
 
   // Nothing written: a newer write, or a tombstone.
   const after = await storedRow(client, table, mutation.id);
+
   if (after === undefined || (table.scope === SYNC_SCOPE.personal && after.uid !== uid)) {
     return { id: mutation.id, status: MUTATION_STATUS.rejected, reason: RejectReason.forbidden };
   }
+
   return { id: mutation.id, status: MUTATION_STATUS.superseded, serverRow: rowToJson(after) };
 }
 
@@ -126,14 +135,17 @@ async function applyDelete(
     mutation.clientUpdatedAt,
     rev,
   ]);
+
   if (written.rows.length > 0) {
     return { id: mutation.id, status: MUTATION_STATUS.applied };
   }
   const stored = await storedRow(client, table, mutation.id);
+
   if (stored === undefined || stored.deleted_at !== null) {
     // Never reached the server, or already deleted: nothing left to do.
     return { id: mutation.id, status: MUTATION_STATUS.applied };
   }
+
   return { id: mutation.id, status: MUTATION_STATUS.superseded, serverRow: rowToJson(stored) };
 }
 
@@ -145,6 +157,7 @@ async function applyMutation(
   mutation: Mutation,
 ): Promise<MutationResult> {
   const table = findSyncTable(mutation.table);
+
   if (table === undefined) {
     return { id: mutation.id, status: MUTATION_STATUS.rejected, reason: RejectReason.unknownTable };
   }
@@ -153,6 +166,7 @@ async function applyMutation(
     const stored = await storedRow(client, table, mutation.id);
     const projectId = await projectOf(client, batch, table, mutation.id, mutation.fields, stored);
     let result: MutationResult;
+
     if (projectId === undefined) {
       result = {
         id: mutation.id,
@@ -161,10 +175,12 @@ async function applyMutation(
       };
     } else {
       const problem = await permissionProblem(client, batch, table, mutation, stored, projectId);
+
       if (problem !== null) {
         result = { id: mutation.id, status: MUTATION_STATUS.rejected, reason: problem };
       } else {
         const rev = await repos.syncState.nextRev();
+
         result =
           mutation.op === MUTATION_OP.delete
             ? await applyDelete(client, batch, table, mutation, rev)
@@ -172,10 +188,12 @@ async function applyMutation(
       }
     }
     await client.query(savepointSql.release(SAVEPOINT.mutation));
+
     return result;
   } catch (error) {
     await client.query(savepointSql.rollback(SAVEPOINT.mutation));
     const code = pgCode(error);
+
     if (code.startsWith(PG.badValueClass) || code.startsWith(PG.ruleClass)) {
       return {
         id: mutation.id,
@@ -193,13 +211,16 @@ export async function applyBatch(
   mutations: Mutation[],
 ): Promise<PushOutcome> {
   const repos = createRepositories(client);
+
   await repos.syncState.lockCounter();
   const reach = await context.access.reach(context.member, repos);
   const batch = new Batch(context, reach, mutations);
   const results: MutationResult[] = [];
+
   for (const mutation of mutations) {
     results.push(await applyMutation(client, repos, batch, mutation));
   }
+
   return {
     results,
     serverRev: await repos.syncState.currentRev(),

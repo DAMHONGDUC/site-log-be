@@ -31,11 +31,14 @@ export const syncRoutes: FastifyPluginAsync = async (app) => {
         request.body.since,
         request.body.limit,
       );
+
       if (result.resyncRequired) {
         request.log.info({ uid: request.uid, since: request.body.since }, LOG.sync.pullResync);
+
         return { resyncRequired: true };
       }
       let pulled = 0;
+
       for (const rows of Object.values(result.changes)) {
         pulled += rows.length;
       }
@@ -49,6 +52,7 @@ export const syncRoutes: FastifyPluginAsync = async (app) => {
         },
         LOG.sync.pull,
       );
+
       return { changes: result.changes, nextRev: result.nextRev, hasMore: result.hasMore };
     },
   );
@@ -79,9 +83,11 @@ export const syncRoutes: FastifyPluginAsync = async (app) => {
         request.body.mutations,
       );
       const result = { results: outcome.results, serverRev: outcome.serverRev };
+
       await deps.services.issueNotifier.afterPush(request.member, outcome.issueChanges);
       let superseded = 0;
       let rejected = 0;
+
       for (const item of result.results) {
         if (item.status === MUTATION_STATUS.superseded) {
           superseded += 1;
@@ -101,6 +107,7 @@ export const syncRoutes: FastifyPluginAsync = async (app) => {
         },
         LOG.sync.push,
       );
+
       return result;
     },
   );

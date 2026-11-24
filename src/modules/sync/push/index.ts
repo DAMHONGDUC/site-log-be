@@ -31,11 +31,13 @@ export async function pushMutations(
 
   const results: MutationResult[] = [];
   const issueChanges: IssueChange[] = [];
+
   for (const mutation of mutations) {
     try {
       const single = await withTransaction(pool, (client) =>
         applyBatch(client, context, [mutation]),
       );
+
       results.push(single.results[0]!);
       issueChanges.push(...single.issueChanges);
     } catch (error) {
@@ -50,5 +52,6 @@ export async function pushMutations(
     }
   }
   const serverRev = await createRepositories(pool).syncState.currentRev();
+
   return { results, serverRev, issueChanges };
 }

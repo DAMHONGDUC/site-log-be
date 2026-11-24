@@ -29,8 +29,10 @@ export async function projectOf(
     return (stored.project_id as string | null) ?? null;
   }
   const unplaced = table.projectOptional ? null : undefined;
+
   if (table.parent === null) {
     const sent = fields.projectId;
+
     return typeof sent === 'string' ? sent.toLowerCase() : unplaced;
   }
   if (depth > MAX_PARENT_DEPTH) {
@@ -39,16 +41,20 @@ export async function projectOf(
   const parentTable = findSyncTable(table.parent.table)!;
   const parentId =
     table.parent.column === SYNC_COLUMN.id ? id : fields[snakeToCamel(table.parent.column)];
+
   if (typeof parentId !== 'string') {
     return unplaced;
   }
   const parentStored = await storedRow(client, parentTable, parentId);
+
   if (parentStored !== undefined) {
     return (parentStored.project_id as string | null) ?? null;
   }
   const inBatch = batch.mutations.get(parentId);
+
   if (inBatch !== undefined && inBatch.table === parentTable.name) {
     return projectOf(client, batch, parentTable, parentId, inBatch.fields, undefined, depth + 1);
   }
+
   return unplaced;
 }

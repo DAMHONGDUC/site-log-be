@@ -8,6 +8,8 @@ const BATCH = 100;
 // the parts. (The S3 lifecycle rule does the same for parts; this also closes the rows.)
 export async function abortAbandonedUploads(deps: WorkerDeps): Promise<number> {
   const aborted = await deps.services.uploads.abortAbandoned(BATCH);
+
   deps.log.info({ aborted }, LOG.worker.abandonedChecked);
+
   return aborted;
 }

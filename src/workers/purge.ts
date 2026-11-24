@@ -14,6 +14,8 @@ export async function purgeTombstones(
   const { purged, highestRev } = await withTransaction(pool, (client) =>
     createRepositories(client).syncState.purgeTombstones(retentionDays),
   );
+
   log.info({ purged, purgedThroughRev: highestRev }, LOG.worker.tombstonesPurged);
+
   return purged;
 }

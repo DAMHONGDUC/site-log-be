@@ -22,17 +22,20 @@ export interface WorkerDeps {
 // Returns false when there was nothing to do.
 export async function verifyNextUpload(deps: WorkerDeps): Promise<boolean> {
   const upload = await deps.db.repos.uploads.claimNextToVerify();
+
   if (upload === undefined) {
     return false;
   }
 
   const hash = createHash(HASH.sha256);
   const stream = await deps.storage.readStream(upload.objectKey);
+
   for await (const chunk of stream) {
     hash.update(chunk as Buffer);
   }
   const state =
     hash.digest(ENCODING.hex) === upload.sha256 ? VERIFY_STATE.verified : VERIFY_STATE.mismatch;
+
   await deps.db.repos.uploads.setVerifyState(upload.id, state);
   await notifyUploadEvent(deps.pool, {
     uid: upload.uid,
@@ -48,6 +51,7 @@ export async function verifyNextUpload(deps: WorkerDeps): Promise<boolean> {
   if (state === VERIFY_STATE.verified && upload.sessionId !== null) {
     await pushWhenSessionVerified(deps, upload.uid, upload.sessionId);
   }
+
   return true;
 }
 
@@ -59,6 +63,7 @@ async function pushWhenSessionVerified(
   sessionId: string,
 ): Promise<void> {
   const { uploads } = deps.db.repos;
+
   if (await uploads.sessionHasPending(sessionId)) {
     return;
   }
@@ -66,6 +71,7 @@ async function pushWhenSessionVerified(
   const recipients = summary?.projectId
     ? await deps.services.access.membersReaching(summary.projectId)
     : [uid];
+
   await deps.services.notifications.send({
     kind: PUSH_KIND.uploadsVerified,
     recipients,

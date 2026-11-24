@@ -14,5 +14,6 @@ const storage = new Storage(
   config.s3Bucket,
   config.presignTtlSeconds,
 );
+
 await new KeyMigrationService(new Database(pool), storage, log).run();
 await pool.end();

@@ -17,6 +17,7 @@ const response = await fetch(DEV_TOKEN.signInUrl(apiKey), {
   body: JSON.stringify({ email, password, returnSecureToken: true }),
 });
 const body = (await response.json()) as { idToken?: string; error?: { message: string } };
+
 if (body.idToken === undefined) {
   process.stderr.write(SCRIPT_TEXT.signInFailed(body.error?.message ?? response.status));
   process.exit(1);

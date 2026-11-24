@@ -6,6 +6,7 @@ import { createS3Client } from '../src/integrations/storage.js';
 import { SCRIPT_TEXT } from '../src/constants/messages/script-text.js';
 
 const config = loadConfig();
+
 if (config.s3Endpoint === undefined) {
   process.stderr.write(SCRIPT_TEXT.bucketNeedsEndpoint);
   process.exit(1);
@@ -15,6 +16,7 @@ const exists = await s3
   .send(new HeadBucketCommand({ Bucket: config.s3Bucket }))
   .then(() => true)
   .catch(() => false);
+
 if (!exists) {
   await s3.send(new CreateBucketCommand({ Bucket: config.s3Bucket }));
 }

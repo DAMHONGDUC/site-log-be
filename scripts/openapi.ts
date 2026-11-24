@@ -27,13 +27,16 @@ const app = await buildApp({
   ),
   hub: new RealtimeHub(config, pool),
 });
+
 await app.ready();
 const document = `${JSON.stringify(app.swagger(), null, 2)}\n`;
+
 await app.close();
 await pool.end();
 
 if (process.argv.includes(OPENAPI_SCRIPT.checkFlag)) {
   const committed = await readFile(OPENAPI.file, ENCODING.utf8).catch(() => '');
+
   if (committed !== document) {
     process.stderr.write(SCRIPT_TEXT.openapiStale(OPENAPI.file));
     process.exit(1);

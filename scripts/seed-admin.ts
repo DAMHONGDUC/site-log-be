@@ -9,12 +9,14 @@ import { ROLE } from '../src/constants/domain/roles.js';
 import { MEMBER_EVENT_TYPE } from '../src/constants/data/enums.js';
 
 const [email, uid] = process.argv.slice(2);
+
 if (email === undefined || uid === undefined) {
   process.stderr.write(SCRIPT_TEXT.seedUsage);
   process.exit(1);
 }
 const pool = createPool(loadConfig());
 const db = new Database(pool);
+
 if ((await db.repos.members.countLiveWithRole(ROLE.admin)) > 0) {
   process.stderr.write(SCRIPT_TEXT.adminExists);
   await pool.end();

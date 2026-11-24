@@ -37,6 +37,7 @@ export function pushMessage(
   message: PushMessage,
 ): Message {
   const account = hashedAccount(message.uid);
+
   if (platform === DEVICE_PLATFORM.ios) {
     return {
       token,
@@ -45,6 +46,7 @@ export function pushMessage(
       apns: { payload: { aps: { sound: FCM.apnsSound } } },
     };
   }
+
   return {
     token,
     data: {
@@ -65,15 +67,18 @@ export class FcmSender implements PushSender {
     const json = Buffer.from(serviceAccountBase64, ENCODING.base64).toString(ENCODING.utf8);
     const serviceAccount = JSON.parse(json);
     const firebaseApp = initializeApp({ credential: cert(serviceAccount) }, FCM.appName);
+
     this.messaging = getMessaging(firebaseApp);
   }
 
   async send(token: string, platform: DevicePlatform, message: PushMessage): Promise<PushOutcome> {
     try {
       await this.messaging.send(pushMessage(token, platform, message));
+
       return PUSH_OUTCOME.sent;
     } catch (error) {
       const code = (error as { code?: string }).code;
+
       // The app was removed or the token is stale.
       if (code !== undefined && (FCM.deadTokenErrors as readonly string[]).includes(code)) {
         return PUSH_OUTCOME.unregistered;

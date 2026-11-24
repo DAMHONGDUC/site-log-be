@@ -52,6 +52,7 @@ function isMissing(error: unknown): boolean {
   if ((S3.missingErrors as readonly string[]).includes(error.name)) {
     return true;
   }
+
   return error.$metadata.httpStatusCode === HTTP_STATUS.notFound;
 }
 
@@ -78,11 +79,13 @@ export class Storage {
       Key: key,
       ContentType: contentType,
     });
+
     return getSignedUrl(this.s3, command, { expiresIn: this.ttlSeconds });
   }
 
   async presignGet(key: string): Promise<string> {
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
+
     return getSignedUrl(this.s3, command, { expiresIn: this.ttlSeconds });
   }
 
@@ -93,9 +96,11 @@ export class Storage {
       ContentType: contentType,
     });
     const result = await this.s3.send(command);
+
     if (result.UploadId === undefined) {
       throw new Error(FAULT_TEXT.noUploadId);
     }
+
     return result.UploadId;
   }
 
@@ -106,6 +111,7 @@ export class Storage {
       UploadId: s3UploadId,
       PartNumber: partNumber,
     });
+
     return getSignedUrl(this.s3, command, { expiresIn: this.ttlSeconds });
   }
 
@@ -119,6 +125,7 @@ export class Storage {
         Parts: sorted.map((part) => ({ PartNumber: part.number, ETag: part.etag })),
       },
     });
+
     await this.s3.send(command);
   }
 
@@ -130,7 +137,9 @@ export class Storage {
         Key: key,
         UploadId: s3UploadId,
       });
+
       await this.s3.send(command);
+
       return true;
     } catch (error) {
       if (isMissing(error)) {
@@ -144,6 +153,7 @@ export class Storage {
   async head(key: string): Promise<number | undefined> {
     try {
       const result = await this.s3.send(new HeadObjectCommand({ Bucket: this.bucket, Key: key }));
+
       return result.ContentLength;
     } catch (error) {
       if (isMissing(error)) {
@@ -170,6 +180,7 @@ export class Storage {
 
   async readStream(key: string): Promise<Readable> {
     const result = await this.s3.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+
     return result.Body as Readable;
   }
 
@@ -177,6 +188,7 @@ export class Storage {
   async deletePrefix(prefix: string): Promise<number> {
     let deleted = 0;
     let token: string | undefined = undefined;
+
     do {
       const listCommand: ListObjectsV2Command = new ListObjectsV2Command({
         Bucket: this.bucket,
@@ -185,6 +197,7 @@ export class Storage {
       });
       const page = await this.s3.send(listCommand);
       const keys = (page.Contents ?? []).map((object) => ({ Key: object.Key }));
+
       if (keys.length > 0) {
         await this.s3.send(
           new DeleteObjectsCommand({ Bucket: this.bucket, Delete: { Objects: keys, Quiet: true } }),
@@ -193,6 +206,7 @@ export class Storage {
       }
       token = page.NextContinuationToken;
     } while (token !== undefined);
+
     return deleted;
   }
 
@@ -202,6 +216,7 @@ export class Storage {
     let keyMarker: string | undefined = undefined;
     let uploadIdMarker: string | undefined = undefined;
     let more = true;
+
     while (more) {
       const listCommand: ListMultipartUploadsCommand = new ListMultipartUploadsCommand({
         Bucket: this.bucket,
@@ -210,9 +225,11 @@ export class Storage {
         UploadIdMarker: uploadIdMarker,
       });
       const page = await this.s3.send(listCommand);
+
       for (const upload of page.Uploads ?? []) {
         if (upload.Key !== undefined && upload.UploadId !== undefined) {
           const didAbort = await this.abortMultipart(upload.Key, upload.UploadId);
+
           if (didAbort) {
             aborted += 1;
           }
@@ -222,6 +239,7 @@ export class Storage {
       keyMarker = page.NextKeyMarker;
       uploadIdMarker = page.NextUploadIdMarker;
     }
+
     return aborted;
   }
 }

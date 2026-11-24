@@ -17,6 +17,7 @@ import { MiB, beginUpload, completeUpload } from '../../helpers/upload-helpers.j
 
 describe('uploads: multipart', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -31,14 +32,17 @@ describe('uploads: multipart', () => {
 
   it('picks single PUT below 5 MiB and 8 MiB parts from 5 MiB', async () => {
     const below = await beginUpload(context, 5 * MiB - 1);
+
     expect(below.json().mode).toBe('single');
 
     const at = await beginUpload(context, 5 * MiB);
+
     expect(at.json().mode).toBe('multipart');
     expect(at.json().partSizeBytes).toBe(8 * MiB);
     expect(at.json().parts).toHaveLength(1);
 
     const big = await beginUpload(context, 240 * MiB);
+
     expect(big.json().parts).toHaveLength(30);
   });
 
@@ -49,6 +53,7 @@ describe('uploads: multipart', () => {
     const uploadId = begun.json().uploadId;
 
     const missingPart = await completeUpload(context, uploadId, [{ number: 1, etag: '"a"' }]);
+
     expect(missingPart.statusCode).toBe(400);
 
     const done = await completeUpload(context, uploadId, [
@@ -56,8 +61,10 @@ describe('uploads: multipart', () => {
       { number: 1, etag: '"a"' },
       { number: 2, etag: '"b"' },
     ]);
+
     expect(done.statusCode).toBe(200);
     const sent = context.s3.commandCalls(CompleteMultipartUploadCommand)[0]!.args[0].input;
+
     expect(sent.UploadId).toBe('s3-upload-1');
     expect(sent.MultipartUpload!.Parts!.map((part) => part.PartNumber)).toEqual([1, 2, 3]);
   });
@@ -71,6 +78,7 @@ describe('uploads: multipart', () => {
       headers: auth('alice'),
       payload: { numbers: [2, 5] },
     });
+
     expect(response.statusCode).toBe(200);
     expect(response.json().parts.map((part: { number: number }) => part.number)).toEqual([2, 5]);
     expect(response.json().parts[0].url).toContain('partNumber=2');
@@ -81,6 +89,7 @@ describe('uploads: multipart', () => {
       headers: auth('alice'),
       payload: { numbers: [6] },
     });
+
     expect(past.statusCode).toBe(400);
 
     const theirs = await context.app.inject({
@@ -89,6 +98,7 @@ describe('uploads: multipart', () => {
       headers: auth('bob'),
       payload: { numbers: [1] },
     });
+
     expect(theirs.statusCode).toBe(404);
   });
 
@@ -101,6 +111,7 @@ describe('uploads: multipart', () => {
       url: ApiRoutes.upload(uploadId),
       headers: auth('alice'),
     });
+
     expect(aborted.statusCode).toBe(200);
     expect(context.s3.commandCalls(AbortMultipartUploadCommand)).toHaveLength(1);
 
@@ -109,9 +120,11 @@ describe('uploads: multipart', () => {
       url: ApiRoutes.upload(uploadId),
       headers: auth('alice'),
     });
+
     expect(again.statusCode).toBe(200);
 
     const late = await completeUpload(context, uploadId, []);
+
     expect(late.statusCode).toBe(404);
   });
 });

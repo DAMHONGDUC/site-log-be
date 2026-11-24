@@ -9,6 +9,7 @@ export type ParsedKey =
 
 export function parseKey(key: string): ParsedKey | undefined {
   const capture = KEY_SHAPE.capture.exec(key);
+
   if (capture !== null) {
     return {
       kind: KEY_KIND.capture,
@@ -18,6 +19,7 @@ export function parseKey(key: string): ParsedKey | undefined {
     };
   }
   const plan = KEY_SHAPE.plan.exec(key);
+
   if (plan !== null) {
     return {
       kind: KEY_KIND.plan,
@@ -26,8 +28,10 @@ export function parseKey(key: string): ParsedKey | undefined {
     };
   }
   const branding = KEY_SHAPE.branding.exec(key);
+
   if (branding !== null) {
     return { kind: KEY_KIND.branding, projectId: null, logoId: branding[1]!.toLowerCase() };
   }
+
   return undefined;
 }

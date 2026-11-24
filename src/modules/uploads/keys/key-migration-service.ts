@@ -11,10 +11,12 @@ export function newKeyFor(oldKey: string): string | undefined {
     return undefined;
   }
   const match = LEGACY_KEY.shape.exec(oldKey);
+
   if (match === null) {
     return undefined;
   }
   const rest = match[2]!;
+
   return (rest.startsWith(LEGACY_KEY.brandingFolder) ? KEY_ROOT.company : KEY_ROOT.projects) + rest;
 }
 
@@ -29,8 +31,10 @@ export class KeyMigrationService {
 
   async run(): Promise<number> {
     let moved = 0;
+
     for (const upload of await this.db.repos.uploads.completedWithLegacyKeys()) {
       const newKey = newKeyFor(upload.objectKey);
+
       if (newKey === undefined) {
         continue;
       }
@@ -43,6 +47,7 @@ export class KeyMigrationService {
       this.log.info({ from: upload.objectKey, to: newKey }, LOG.uploads.keyMoved);
     }
     this.log.info({ moved }, LOG.uploads.moveKeysDone);
+
     return moved;
   }
 }

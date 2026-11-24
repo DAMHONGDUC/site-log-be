@@ -18,6 +18,7 @@ export class FileAccessService {
 
   async check(member: Member, key: string, mode: FileAccess): Promise<ParsedKey> {
     const parsed = parseKey(key);
+
     if (parsed === undefined) {
       throw badRequest(ErrorCode.invalidKey, ERROR_TEXT.keyShape);
     }
@@ -27,6 +28,7 @@ export class FileAccessService {
     if (mode === FILE_ACCESS.write && !can(member.role, WRITE_ACTION[parsed.kind])) {
       throw forbidden();
     }
+
     return parsed;
   }
 }

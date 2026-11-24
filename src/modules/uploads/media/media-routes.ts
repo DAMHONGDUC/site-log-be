@@ -19,11 +19,13 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: guards.requireUser, schema: { body: Body } },
     async (request) => {
       const urls: { key: string; url: string }[] = [];
+
       for (const key of request.body.keys) {
         await deps.services.files.check(request.member, key, FILE_ACCESS.read);
         urls.push({ key, url: await deps.storage.presignGet(key) });
       }
       request.log.info({ uid: request.uid, count: urls.length }, LOG.uploads.mediaSigned);
+
       return { urls, expiresAt: deps.storage.expiresAt(new Date()) };
     },
   );

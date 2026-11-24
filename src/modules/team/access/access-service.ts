@@ -11,12 +11,14 @@ export class AccessService {
 
   async lookup(uid: string): Promise<MemberLookup> {
     const row = await this.db.repos.members.find(uid);
+
     if (row === undefined) {
       return { status: MEMBER_LOOKUP.unknown };
     }
     if (row.removedAt !== null) {
       return { status: MEMBER_LOOKUP.removed };
     }
+
     return {
       status: MEMBER_LOOKUP.member,
       member: {
@@ -34,6 +36,7 @@ export class AccessService {
     if (ROLES_REACHING_ALL.includes(member.role)) {
       return REACH_ALL;
     }
+
     return repos.projectMembers.projectsOf(member.uid);
   }
 

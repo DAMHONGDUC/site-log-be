@@ -19,6 +19,7 @@ export function can(role: Role, action: Action, context: PermissionContext = {})
   if (OWN_SAME_DAY_ONLY[role]?.includes(action)) {
     return context.ownSameDay === true;
   }
+
   return true;
 }
 

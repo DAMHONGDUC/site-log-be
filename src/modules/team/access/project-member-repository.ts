@@ -11,6 +11,7 @@ export class ProjectMemberRepository {
       .from(projectMembers)
       .where(eq(projectMembers.uid, uid))
       .orderBy(asc(projectMembers.projectId));
+
     return rows.map((row) => row.projectId);
   }
 
@@ -20,6 +21,7 @@ export class ProjectMemberRepository {
       .from(projectMembers)
       .where(eq(projectMembers.projectId, projectId))
       .orderBy(asc(projectMembers.uid));
+
     return rows.map((row) => row.uid);
   }
 
@@ -36,6 +38,7 @@ export class ProjectMemberRepository {
   // Number of rows removed.
   async removeAllFor(uid: string): Promise<number> {
     const result = await this.db.delete(projectMembers).where(eq(projectMembers.uid, uid));
+
     return result.rowCount ?? 0;
   }
 }

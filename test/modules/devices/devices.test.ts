@@ -10,6 +10,7 @@ import {
 
 describe('devices', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -30,9 +31,11 @@ describe('devices', () => {
         headers: auth(uid),
         payload: { token, platform: 'ios' },
       });
+
       expect(response.statusCode).toBe(200);
     }
     const rows = await context.pool.query('select uid from devices');
+
     expect(rows.rows).toEqual([{ uid: 'bob' }]);
   });
 
@@ -49,6 +52,7 @@ describe('devices', () => {
       headers: auth('alice'),
     });
     const rows = await context.pool.query('select * from devices');
+
     expect(rows.rows).toHaveLength(0);
   });
 });

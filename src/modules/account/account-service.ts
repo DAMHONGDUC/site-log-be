@@ -21,6 +21,7 @@ export class AccountService {
 
   async leave(uid: string): Promise<{ abortedUploads: number; deletedRows: number }> {
     const lookup = await this.access.lookup(uid);
+
     if (lookup.status === MEMBER_LOOKUP.member && lookup.member.role === ROLE.admin) {
       if ((await this.db.repos.members.countLiveWithRole(ROLE.admin)) <= 1) {
         throw conflict(ErrorCode.lastAdmin, ERROR_TEXT.lastAdminLeaving);
@@ -32,6 +33,7 @@ export class AccountService {
         (await repos.phrases.removeAllFor(uid)) +
         (await repos.devices.removeAllFor(uid)) +
         (await repos.projectMembers.removeAllFor(uid));
+
       if (await repos.members.markRemoved(uid)) {
         await repos.memberEvents.record({
           actorUid: uid,
@@ -39,9 +41,12 @@ export class AccountService {
           subjectUid: uid,
         });
       }
+
       return count;
     });
+
     await this.tokens.deleteUser(uid);
+
     return { abortedUploads, deletedRows };
   }
 }

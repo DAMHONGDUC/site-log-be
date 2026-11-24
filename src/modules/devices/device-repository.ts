@@ -41,6 +41,7 @@ export class DeviceRepository {
 
   async removeAllFor(uid: string): Promise<number> {
     const result = await this.db.delete(devices).where(eq(devices.uid, uid));
+
     return result.rowCount ?? 0;
   }
 

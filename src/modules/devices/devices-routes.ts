@@ -18,24 +18,29 @@ export const deviceRoutes: FastifyPluginAsync = async (app) => {
     platform: Type.Union(DEVICE_PLATFORMS.map((platform) => Type.Literal(platform))),
     kinds: Type.Optional(Schemas.pushKinds()),
   });
+
   typed.post(
     ApiRoutes.DEVICES,
     { preHandler: guards.requireUser, schema: { body: Body } },
     async (request) => {
       const { token, platform, kinds } = request.body;
+
       await devices.register(token, request.uid, platform, kinds ?? null);
       request.log.info({ uid: request.uid, platform }, LOG.devices.registered);
+
       return { registered: true };
     },
   );
 
   const Params = Type.Object({ token: Type.String({ pattern: PATTERNS.fcmToken }) });
+
   typed.delete(
     ApiRoutes.DEVICE,
     { preHandler: guards.requireUser, schema: { params: Params } },
     async (request) => {
       await devices.removeOwn(request.params.token, request.uid);
       request.log.info({ uid: request.uid }, LOG.devices.removed);
+
       return { removed: true };
     },
   );

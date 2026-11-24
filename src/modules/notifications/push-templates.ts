@@ -56,6 +56,7 @@ export const PUSH_TEMPLATES: Templates = {
   access: (data) => {
     const actor = data.actorName || FALLBACK_NAME.admin;
     const text = PUSH_TEXT.access;
+
     if (data.change === ACCESS_CHANGE.role) {
       return {
         title: text.roleTitle(ROLE_LABEL[data.role]),
@@ -70,6 +71,7 @@ export const PUSH_TEMPLATES: Templates = {
         deepLink: DEEP_LINK.project(data.projectId),
       };
     }
+
     return {
       title: text.removedTitle(data.projectName || FALLBACK_NAME.project),
       body: text.removedBody(actor),

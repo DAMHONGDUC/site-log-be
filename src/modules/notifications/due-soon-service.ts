@@ -19,6 +19,7 @@ export class DueSoonService {
   async run(): Promise<number> {
     const groups = await this.db.repos.issues.dueTomorrowByAssignee(this.siteTimeZone);
     let sent = 0;
+
     for (const group of groups) {
       sent += await this.notifications.send({
         kind: PUSH_KIND.dueSoon,
@@ -33,6 +34,7 @@ export class DueSoonService {
       });
     }
     this.log.info({ groups: groups.length, sent }, LOG.push.dueSoon);
+
     return sent;
   }
 
@@ -45,9 +47,11 @@ export class DueSoonService {
     const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
     const { part } = SITE_CLOCK;
     const day = [get(part.year), get(part.month), get(part.day)].join(SITE_CLOCK.dateSeparator);
+
     if (Number(get(part.hour)) >= DURATIONS.dueSoonHour && day !== lastRunDay) {
       return day;
     }
+
     return undefined;
   }
 }

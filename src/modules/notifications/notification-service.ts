@@ -29,13 +29,16 @@ export class NotificationService {
     const recipients = [...new Set(delivery.recipients)].filter(
       (uid) => uid !== '' && uid !== delivery.actorUid,
     );
+
     if (recipients.length === 0) {
       return 0;
     }
     const content = PUSH_TEMPLATES[delivery.kind](delivery.data);
     let sent = 0;
+
     try {
       const devices = await this.db.repos.devices.wanting(recipients, delivery.kind);
+
       for (const device of devices) {
         try {
           const outcome = await this.push.send(device.token, device.platform, {
@@ -43,6 +46,7 @@ export class NotificationService {
             ...content,
             uid: device.uid,
           });
+
           if (outcome === PUSH_OUTCOME.unregistered) {
             await this.db.repos.devices.removeToken(device.token);
           } else {
@@ -56,6 +60,7 @@ export class NotificationService {
     } catch (error) {
       this.log.error({ err: error, kind: delivery.kind }, LOG.push.deviceLookupFailed);
     }
+
     return sent;
   }
 }

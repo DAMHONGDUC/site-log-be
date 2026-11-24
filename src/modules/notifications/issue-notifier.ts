@@ -23,6 +23,7 @@ export class IssueNotifier {
     for (const change of changes) {
       const { before, after } = change;
       const assignee = text(after.assignee_uid);
+
       if (assignee !== '' && assignee !== text(before?.assignee_uid)) {
         await this.notifications.send({
           kind: PUSH_KIND.issueAssigned,

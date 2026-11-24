@@ -34,6 +34,7 @@ function sheetMutation() {
 
 describe('plan sheets', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -48,14 +49,17 @@ describe('plan sheets', () => {
   it('lets a Manager upload a plan and refuses an Inspector of the project (F19)', async () => {
     const key = `projects/${ids.project}/plans/${sheetId}.pdf`;
     const mine = await beginUpload(context, 1000, key);
+
     expect(mine.statusCode).toBe(200);
     await addMember(context.pool, 'bob', 'inspector', [ids.project]);
     const inspector = await beginUpload(context, 1000, key, 'bob');
+
     expect(inspector.statusCode).toBe(403);
   });
 
   it('lets an issue pin to a sheet of the same project', async () => {
     const result = await pushAs(context, 'alice', [sheetMutation()]);
+
     expect(result.results[0].status).toBe('applied');
     await context.pool.query(
       `insert into issues (id, created_by, rev, client_updated_at, project_id, location_id, title, detail, severity,

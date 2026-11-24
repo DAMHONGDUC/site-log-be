@@ -16,10 +16,9 @@ const SQL_IN_REPOSITORY_RULE = {
     'Run SQL in a repository (src/modules/<feature>/*-repository.ts), not in a route or service.',
 };
 
-// No hard-coded strings: every value is a named constant in src/constants (README → Code
-// structure). Allowed: '' (no text), typeof checks, the `in` operator, SQL handed to query(),
-// Drizzle's for('update') and sql`` templates, and Fastify hook names (addHook('onClose')), which
-// the compiler already checks.
+// No hard-coded strings: every value is a named constant in src/constants. Allowed: '', typeof
+// checks, `in`, SQL handed to query(), Drizzle's for('update') and sql`` templates, and Fastify
+// hook names (addHook('onClose')), which the compiler already checks.
 const STRING = `Literal[raw=/^['"][^'"]/]`;
 const STRING_MESSAGE = 'Define the string as a constant in src/constants and use it by name.';
 const STRING_RULES = [
@@ -43,6 +42,13 @@ export default tseslint.config(
     rules: {
       // Logging goes through the Fastify / pino logger, never console.
       'no-console': 'error',
+      // A blank line after the variable declarations and before every return.
+      'padding-line-between-statements': [
+        'error',
+        { blankLine: 'always', prev: ['const', 'let', 'var'], next: '*' },
+        { blankLine: 'any', prev: ['const', 'let', 'var'], next: ['const', 'let', 'var'] },
+        { blankLine: 'always', prev: '*', next: 'return' },
+      ],
     },
   },
   {

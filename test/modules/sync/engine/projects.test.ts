@@ -12,6 +12,7 @@ import {
 // F03 has no sync yet: rows are inserted with SQL, as the push will do in F04.
 describe('project tables', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -65,8 +66,10 @@ describe('project tables', () => {
       url: ApiRoutes.ACCOUNT,
       headers: auth('bob'),
     });
+
     expect(response.statusCode).toBe(200);
     const rows = await context.pool.query('select created_by from locations');
+
     expect(rows.rows).toEqual([{ created_by: 'bob' }]);
   });
 });

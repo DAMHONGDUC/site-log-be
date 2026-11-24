@@ -17,6 +17,7 @@ import {
 
 describe('tombstone purge', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -36,8 +37,10 @@ describe('tombstone purge', () => {
     await context.pool.query(`update locations set deleted_at = now() - interval '100 days'`);
 
     const purged = await purgeTombstones(context.pool, createLogger('silent'), 90);
+
     expect(purged).toBe(2);
     const pulled = await pullAs(context, 'alice', 1);
+
     expect(pulled).toEqual({ resyncRequired: true });
   });
 

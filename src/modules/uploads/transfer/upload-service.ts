@@ -47,6 +47,7 @@ function checkParts(parts: CompletedPart[], partCount: number): void {
     throw badRequest(ErrorCode.invalidParts, ERROR_TEXT.partCount(partCount, parts.length));
   }
   const seen = new Set<number>();
+
   for (const part of parts) {
     if (part.number < 1 || part.number > partCount || seen.has(part.number)) {
       throw badRequest(ErrorCode.invalidParts, ERROR_TEXT.badPart(part.number));
@@ -71,6 +72,7 @@ export class UploadService {
   // The backend picks single PUT or multipart from the size.
   async begin(member: Member, input: BeginInput) {
     const parsed = await this.files.check(member, input.key, FILE_ACCESS.write);
+
     if (input.byteSize > this.config.maxUploadBytes) {
       throw new AppError(
         HTTP_STATUS.payloadTooLarge,
@@ -99,14 +101,17 @@ export class UploadService {
         partCount: null,
       });
       const url = await this.storage.presignPut(input.key, input.contentType);
+
       this.log.info(
         { uid: member.uid, uploadId, key: input.key, mode: UPLOAD_MODE.single },
         LOG.uploads.begun,
       );
+
       return { mode: UPLOAD_MODE.single, uploadId, url, expiresAt };
     }
 
     const partCount = Math.ceil(input.byteSize / this.config.partSizeBytes);
+
     if (partCount > LIMITS.s3MaxParts) {
       throw new AppError(
         HTTP_STATUS.payloadTooLarge,
@@ -122,6 +127,7 @@ export class UploadService {
       partCount,
     });
     const parts: { number: number; url: string }[] = [];
+
     for (let number = 1; number <= partCount; number += 1) {
       parts.push({ number, url: await this.storage.presignPart(input.key, s3UploadId, number) });
     }
@@ -129,6 +135,7 @@ export class UploadService {
       { uid: member.uid, uploadId, partCount, mode: UPLOAD_MODE.multipart },
       LOG.uploads.begun,
     );
+
     return {
       mode: UPLOAD_MODE.multipart,
       uploadId,
@@ -141,10 +148,12 @@ export class UploadService {
   // Fresh URLs for parts whose URLs expired (the app was killed for hours).
   async refreshParts(uid: string, id: string, numbers: number[]) {
     const upload = await this.db.repos.uploads.findOpenMultipart(id, uid);
+
     if (upload === undefined) {
       throw notFound(ErrorCode.uploadNotFound, ERROR_TEXT.noOpenMultipart);
     }
     const parts: { number: number; url: string }[] = [];
+
     for (const number of numbers) {
       if (number > upload.partCount!) {
         throw badRequest(ErrorCode.invalidParts, ERROR_TEXT.partPastLast(number));
@@ -155,6 +164,7 @@ export class UploadService {
       });
     }
     this.log.info({ uid, uploadId: upload.id, count: parts.length }, LOG.uploads.partsRefreshed);
+
     return { parts, expiresAt: this.storage.expiresAt(new Date()) };
   }
 
@@ -163,6 +173,7 @@ export class UploadService {
     try {
       return await this.db.transaction(async (repos, client) => {
         const upload = await repos.uploads.lockOwn(id, uid);
+
         if (upload === undefined || upload.state === UPLOAD_STATE.aborted) {
           throw notFound(ErrorCode.uploadNotFound, ERROR_TEXT.uploadGone);
         }
@@ -175,6 +186,7 @@ export class UploadService {
         }
         await this.checkStoredSize(upload);
         const row = await repos.uploads.markCompleted(upload.id, await this.uniqueCode(repos));
+
         await notifyUploadEvent(client, {
           uid,
           sessionId: row.sessionId,
@@ -182,12 +194,14 @@ export class UploadService {
           type: UPLOAD_EVENT.completed,
         });
         this.log.info({ uid, uploadId: row.id, byteSize: row.byteSize }, LOG.uploads.completed);
+
         return completedBody(row);
       });
     } catch (error) {
       if ((error as { code?: string }).code === PG_ERROR.uniqueViolation) {
         // Another upload of the same key completed first.
         const existing = await this.db.repos.uploads.completedWithSameKey(id, uid);
+
         if (existing !== undefined) {
           throw conflict(
             ErrorCode.alreadyCompleted,
@@ -204,6 +218,7 @@ export class UploadService {
   async abort(uid: string, id: string) {
     return this.db.transaction(async (repos, client) => {
       const upload = await repos.uploads.lockOwn(id, uid);
+
       if (upload === undefined) {
         throw notFound(ErrorCode.uploadNotFound, ERROR_TEXT.uploadNotFound);
       }
@@ -221,6 +236,7 @@ export class UploadService {
         });
         this.log.info({ uid, uploadId: upload.id }, LOG.uploads.aborted);
       }
+
       return { uploadId: upload.id, aborted: true };
     });
   }
@@ -241,6 +257,7 @@ export class UploadService {
 
   private async abortRows(rows: UploadRow[]): Promise<number> {
     let aborted = 0;
+
     for (const upload of rows) {
       try {
         await this.freeStorage(upload);
@@ -257,6 +274,7 @@ export class UploadService {
         this.log.error({ err: error, uploadId: upload.id }, LOG.uploads.abortFailed);
       }
     }
+
     return aborted;
   }
 
@@ -282,6 +300,7 @@ export class UploadService {
 
   private async checkStoredSize(upload: UploadRow): Promise<void> {
     const size = await this.storage.head(upload.objectKey);
+
     if (size === undefined) {
       throw notFound(ErrorCode.objectNotFound, ERROR_TEXT.nothingUploaded);
     }
@@ -293,6 +312,7 @@ export class UploadService {
   private async uniqueCode(repos: Repositories): Promise<string> {
     for (let attempt = 0; attempt < CODE_ATTEMPTS; attempt += 1) {
       const code = newVerificationCode();
+
       if (!(await repos.uploads.verificationCodeTaken(code))) {
         return code;
       }

@@ -16,6 +16,7 @@ export const uploadRoutes: FastifyPluginAsync = async (app) => {
     contentType: Type.String({ pattern: PATTERNS.contentType }),
     sha256: Type.String({ pattern: PATTERNS.sha256Hex }),
   });
+
   typed.post(
     ApiRoutes.UPLOADS,
     {
@@ -32,6 +33,7 @@ export const uploadRoutes: FastifyPluginAsync = async (app) => {
       maxItems: LIMITS.partsPerRefresh,
     }),
   });
+
   typed.post(
     ApiRoutes.UPLOAD_PARTS_REFRESH,
     { preHandler: guards.requireUser, schema: { params: Schemas.idParams(), body: RefreshBody } },
@@ -46,6 +48,7 @@ export const uploadRoutes: FastifyPluginAsync = async (app) => {
       ),
     ),
   });
+
   typed.post(
     ApiRoutes.UPLOAD_COMPLETE,
     { preHandler: guards.requireUser, schema: { params: Schemas.idParams(), body: CompleteBody } },

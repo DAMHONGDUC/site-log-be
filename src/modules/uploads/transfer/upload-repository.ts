@@ -36,6 +36,7 @@ const SNAPSHOT = {
   state: uploads.state,
   verifyState: uploads.verifyState,
 };
+
 export type UploadSnapshotRow = Pick<UploadRow, keyof typeof SNAPSHOT>;
 
 const isCompleted = eq(uploads.state, UPLOAD_STATE.completed);
@@ -47,12 +48,14 @@ export class UploadRepository {
 
   async create(upload: NewUpload): Promise<string> {
     const [row] = await this.db.insert(uploads).values(upload).returning({ id: uploads.id });
+
     return row!.id;
   }
 
   // The caller's own upload, locked for the rest of the transaction.
   async lockOwn(id: string, uid: string): Promise<UploadRow | undefined> {
     const [row] = await this.db.select().from(uploads).where(own(id, uid)).for('update');
+
     return row;
   }
 
@@ -61,6 +64,7 @@ export class UploadRepository {
       .select()
       .from(uploads)
       .where(and(own(id, uid), isOpen, eq(uploads.mode, UPLOAD_MODE.multipart)));
+
     return row;
   }
 
@@ -85,6 +89,7 @@ export class UploadRepository {
       .select({ id: uploads.id })
       .from(uploads)
       .where(eq(uploads.verificationCode, code));
+
     return rows.length > 0;
   }
 
@@ -99,6 +104,7 @@ export class UploadRepository {
       })
       .where(eq(uploads.id, id))
       .returning();
+
     return row!;
   }
 
@@ -108,6 +114,7 @@ export class UploadRepository {
       .update(uploads)
       .set({ state: UPLOAD_STATE.aborted })
       .where(and(eq(uploads.id, id), isOpen));
+
     return (result.rowCount ?? 0) > 0;
   }
 
@@ -119,6 +126,7 @@ export class UploadRepository {
       .from(uploads)
       .innerJoin(mine, eq(mine.objectKey, uploads.objectKey))
       .where(and(eq(mine.id, id), eq(mine.uid, uid), isCompleted));
+
     return row?.upload;
   }
 
@@ -127,11 +135,13 @@ export class UploadRepository {
       .select()
       .from(uploads)
       .where(and(eq(uploads.verificationCode, code), isCompleted));
+
     return row;
   }
 
   async snapshot(id: string): Promise<UploadSnapshotRow | undefined> {
     const [row] = await this.db.select(SNAPSHOT).from(uploads).where(eq(uploads.id, id));
+
     return row;
   }
 
@@ -170,6 +180,7 @@ export class UploadRepository {
       .set({ verifyClaimedAt: sql`now()` })
       .where(eq(uploads.id, sql`(${next})`))
       .returning();
+
     return row;
   }
 
@@ -191,6 +202,7 @@ export class UploadRepository {
         ),
       )
       .limit(1);
+
     return rows.length > 0;
   }
 
@@ -203,6 +215,7 @@ export class UploadRepository {
       .leftJoin(projects, eq(projects.id, uploads.projectId))
       .where(and(eq(uploads.sessionId, sessionId), isCompleted))
       .groupBy(uploads.projectId, projects.name);
+
     return row;
   }
 
@@ -217,6 +230,7 @@ export class UploadRepository {
         .from(uploads)
         .where(eq(uploads.sessionId, sessionId)),
     );
+
     return rows.map((row) => row.projectId);
   }
 

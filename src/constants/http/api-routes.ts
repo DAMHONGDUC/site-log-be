@@ -36,9 +36,11 @@ export class ApiRoutes {
   static path(template: string, params: Record<string, string>): string {
     return template.replace(/:([A-Za-z]+)/g, (_match, name: string) => {
       const value = params[name];
+
       if (value === undefined) {
         throw new Error(`Missing route parameter "${name}" for ${template}`);
       }
+
       return encodeURIComponent(value);
     });
   }

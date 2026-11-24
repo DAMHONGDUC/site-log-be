@@ -40,29 +40,36 @@ type Env = Record<string, string | undefined>;
 
 function required(env: Env, name: string): string {
   const value = env[name];
+
   if (value === undefined || value === '') {
     throw new Error(FAULT_TEXT.missingEnv(name));
   }
+
   return value;
 }
 
 function optional(env: Env, name: string): string | undefined {
   const value = env[name];
+
   if (value === undefined || value === '') {
     return undefined;
   }
+
   return value;
 }
 
 function integer(env: Env, name: string, fallback: number): number {
   const text = optional(env, name);
+
   if (text === undefined) {
     return fallback;
   }
   const value = Number(text);
+
   if (!Number.isInteger(value)) {
     throw new Error(FAULT_TEXT.notInteger(name, text));
   }
+
   return value;
 }
 
@@ -96,8 +103,10 @@ export function loadConfig(env: Env = process.env): Config {
     siteTimeZone: optional(env, ENV.siteTimeZone) ?? ENV_DEFAULT.siteTimeZone,
     invitePreviewRateLimitPerMinute: integer(env, ENV.invitePreviewRateLimitPerMinute, 30),
   };
+
   if (config.nodeEnv === NODE_ENVS.production && config.s3Endpoint !== undefined) {
     throw new Error(FAULT_TEXT.s3EndpointInProduction);
   }
+
   return config;
 }

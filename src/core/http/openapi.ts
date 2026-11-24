@@ -24,9 +24,11 @@ export async function registerOpenApi(app: FastifyInstance, config: Config): Pro
     },
     transform: ({ schema, url }) => {
       const base = schema ?? {};
+
       if (HIDDEN.has(url)) {
         return { schema: { ...base, hide: true }, url };
       }
+
       return { schema: PUBLIC.has(url) ? { ...base, security: [] } : base, url };
     },
   });

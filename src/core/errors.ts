@@ -55,10 +55,12 @@ export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((error: FastifyError, request, reply) => {
     if (error instanceof AppError) {
       request.log.warn({ code: error.code, status: error.statusCode }, LOG.http.requestFailed);
+
       return reply.status(error.statusCode).send(errorBody(error.code, error.message, error.extra));
     }
     if (error.validation !== undefined) {
       request.log.warn({ validation: error.message }, LOG.http.invalidBody);
+
       return reply
         .status(HTTP_STATUS.badRequest)
         .send(errorBody(ErrorCode.invalidBody, error.message));
@@ -80,11 +82,13 @@ export function registerErrorHandler(app: FastifyInstance): void {
     ) {
       // Malformed JSON, wrong content type and similar client mistakes.
       request.log.warn({ code: error.code }, LOG.http.badRequest);
+
       return reply
         .status(HTTP_STATUS.badRequest)
         .send(errorBody(ErrorCode.badRequest, error.message));
     }
     request.log.error({ err: error }, LOG.http.unexpected);
+
     return reply
       .status(HTTP_STATUS.internalError)
       .send(errorBody(ErrorCode.internal, ERROR_TEXT.internal));
@@ -92,6 +96,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
 
   app.setNotFoundHandler((request, reply) => {
     request.log.warn({ url: request.url }, LOG.http.routeNotFound);
+
     return reply
       .status(HTTP_STATUS.notFound)
       .send(errorBody(ErrorCode.routeNotFound, ERROR_TEXT.routeNotFound));

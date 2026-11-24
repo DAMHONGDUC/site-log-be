@@ -44,6 +44,7 @@ function isTokenProblem(error: unknown): boolean {
     return false;
   }
   const code = String(error.code);
+
   return code.startsWith(FIREBASE_AUTH_ERROR.prefix) && code !== FIREBASE_AUTH_ERROR.internal;
 }
 
@@ -58,6 +59,7 @@ export function createFirebaseVerifier(serviceAccountBase64: string): TokenVerif
       try {
         // true = also check that the token was not revoked (sign out everywhere, deleted user)
         const decoded = await auth.verifyIdToken(token, true);
+
         return {
           uid: decoded.uid,
           expiresAt: new Date(decoded.exp * MS_PER_SECOND),
@@ -87,6 +89,7 @@ export function createFirebaseVerifier(serviceAccountBase64: string): TokenVerif
         await auth.deleteUser(uid);
       } catch (error) {
         const code = (error as { code?: string }).code;
+
         if (code === FIREBASE_AUTH_ERROR.userNotFound) {
           // Already gone: deleting the account is idempotent.
           return;
@@ -102,12 +105,15 @@ export function createFirebaseVerifier(serviceAccountBase64: string): TokenVerif
 export function makeRequireSignedIn(tokens: TokenVerifier) {
   return async function requireSignedIn(request: FastifyRequest): Promise<void> {
     const header = request.headers.authorization;
+
     if (header === undefined || !header.startsWith(HTTP_HEADER.bearerPrefix)) {
       throw unauthorized(ErrorCode.missingToken);
     }
     const token = header.slice(HTTP_HEADER.bearerPrefix.length);
+
     try {
       const verified = await tokens.verify(token);
+
       request.uid = verified.uid;
       request.email = verified.email;
     } catch (error) {
@@ -126,9 +132,11 @@ export function makeRequireSignedIn(tokens: TokenVerifier) {
 // Removed member: 401 (signs out). A bad token stays 401, never 403.
 export function makeRequireUser(tokens: TokenVerifier, access: AccessService) {
   const requireSignedIn = makeRequireSignedIn(tokens);
+
   return async function requireUser(request: FastifyRequest): Promise<void> {
     await requireSignedIn(request);
     const lookup = await access.lookup(request.uid);
+
     if (lookup.status === MEMBER_LOOKUP.unknown) {
       request.log.warn({ uid: request.uid }, LOG.auth.notMember);
       throw forbidden(ErrorCode.notInvited, ERROR_TEXT.notInvited);

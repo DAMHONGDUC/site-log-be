@@ -32,6 +32,7 @@ function resultMutation(id: string, outcome: string, clientUpdatedAt: string = a
 
 describe('checklists', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -88,10 +89,12 @@ describe('checklists', () => {
     const first = await pushAs(context, 'alice', [
       resultMutation('54545454-5454-4454-8454-545454545454', 'pass'),
     ]);
+
     expect(first.results[0].status).toBe('applied');
     const second = await pushAs(context, 'alice', [
       resultMutation('55555555-0000-4000-8000-555555555555', 'fail'),
     ]);
+
     expect(second.results[0].status).toBe('superseded');
     expect(second.results[0].serverRow.outcome).toBe('pass');
   });
@@ -103,6 +106,7 @@ describe('checklists', () => {
     const changed = await pushAs(context, 'alice', [
       resultMutation('54545454-5454-4454-8454-545454545454', 'fail', '2026-11-01T10:00:00.000Z'),
     ]);
+
     expect(changed.results[0].status).toBe('applied');
   });
 });

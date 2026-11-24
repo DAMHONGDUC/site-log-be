@@ -22,6 +22,7 @@ function annotationMutation(clientUpdatedAt: string, shapes: object[]) {
 
 describe('annotations', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -35,11 +36,13 @@ describe('annotations', () => {
 
   it('stores shapes as JSON and returns them as sent', async () => {
     const shapes = [{ kind: 'arrow', from: [0.1, 0.2], to: [0.4, 0.5], color: '#FF3B30' }];
+
     await pushAs(context, 'alice', [
       captureMutation('2026-11-01T08:05:00.000Z', sha),
       annotationMutation('2026-11-01T08:06:00.000Z', shapes),
     ]);
     const pulled = await pullAs(context, 'alice', 0);
+
     expect(pulled.changes.annotations[0].shapes).toEqual(shapes);
   });
 
@@ -47,6 +50,7 @@ describe('annotations', () => {
     const result = await pushAs(context, 'alice', [
       annotationMutation('2026-11-01T08:06:00.000Z', []),
     ]);
+
     expect(result.results[0]).toEqual({
       id: ids.capture,
       status: 'rejected',

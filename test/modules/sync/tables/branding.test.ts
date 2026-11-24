@@ -19,6 +19,7 @@ function brandingMutation(id: string, companyName: string) {
 
 describe('report branding', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -36,14 +37,17 @@ describe('report branding', () => {
     const second = await pushAs(context, 'alice', [
       brandingMutation('32323232-3232-4232-8232-323232323232', 'Other'),
     ]);
+
     expect(second.results[0].status).toBe('superseded');
     expect(second.results[0].serverRow.companyName).toBe('DD Build');
   });
 
   it('rejects a colour that is not #RRGGBB', async () => {
     const mutation = brandingMutation('31313131-3131-4131-8131-313131313131', 'DD Build');
+
     mutation.fields.accentHex = 'blue';
     const result = await pushAs(context, 'alice', [mutation]);
+
     expect(result.results[0].reason).toBe('invalid_row:23514');
   });
 });

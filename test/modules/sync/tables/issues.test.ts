@@ -48,6 +48,7 @@ function phraseMutation(id: string) {
 
 describe('issues and phrases', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -61,15 +62,19 @@ describe('issues and phrases', () => {
 
   it('stores an issue with a plain date', async () => {
     const result = await pushAs(context, 'alice', [issueMutation()]);
+
     expect(result.results[0].status).toBe('applied');
     const row = await context.pool.query('select due_date from issues');
+
     expect(row.rows[0].due_date).toBe('2026-11-20');
   });
 
   it('rejects an unknown severity and a half pin', async () => {
     const badSeverity = await pushAs(context, 'alice', [issueMutation({ severity: 'huge' })]);
+
     expect(badSeverity.results[0].reason).toBe('invalid_row:23514');
     const halfPin = await pushAs(context, 'alice', [issueMutation({ pinX: 0.5 })]);
+
     expect(halfPin.results[0].reason).toBe('invalid_row:23514');
   });
 
@@ -78,6 +83,7 @@ describe('issues and phrases', () => {
     const result = await pushAs(context, 'alice', [
       phraseMutation('99999999-9999-4999-8999-999999999992'),
     ]);
+
     expect(result.results[0].status).toBe('superseded');
     expect(result.results[0].serverRow.id).toBe('99999999-9999-4999-8999-999999999991');
   });

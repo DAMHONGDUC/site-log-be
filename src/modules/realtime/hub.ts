@@ -41,6 +41,7 @@ export class RealtimeHub {
   // false when the user already has the maximum number of sockets open.
   add(client: ClientSocket): boolean {
     let set = this.sockets.get(client.uid);
+
     if (set === undefined) {
       set = new Set();
       this.sockets.set(client.uid, set);
@@ -49,11 +50,13 @@ export class RealtimeHub {
       return false;
     }
     set.add(client);
+
     return true;
   }
 
   remove(client: ClientSocket): void {
     const set = this.sockets.get(client.uid);
+
     if (set === undefined) {
       return;
     }
@@ -80,6 +83,7 @@ export class RealtimeHub {
   private async connect(): Promise<void> {
     // A dedicated connection outside the pool: LISTEN must stay on one connection.
     const listener = new pg.Client(connectionOptions(this.config));
+
     listener.on(SOCKET_EVENT.notification, (message) => {
       void this.onNotification(message.payload);
     });
@@ -113,16 +117,19 @@ export class RealtimeHub {
     }
     try {
       const event = JSON.parse(payload) as UploadEvent;
+
       if (event.sessionId === null) {
         return;
       }
       // F19: every member watching the session gets it, not only the uploader.
       // The payload holds ids only: read the current state of the row.
       const row = await new UploadRepository(toDrizzle(this.pool)).snapshot(event.uploadId);
+
       if (row === undefined) {
         return;
       }
       const message = uploadMessage(row);
+
       if (message === undefined) {
         return;
       }
@@ -157,6 +164,7 @@ export function uploadMessage(row: UploadSnapshotRow): object | undefined {
   if (row.verifyState === VERIFY_STATE.mismatch) {
     return { type: WS_MESSAGE.jobFailed, jobID: row.id, reason: JOB_FAILURE.integrity };
   }
+
   return {
     type: WS_MESSAGE.jobCompleted,
     jobID: row.id,

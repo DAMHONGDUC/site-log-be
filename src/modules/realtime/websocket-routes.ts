@@ -21,6 +21,7 @@ interface IncomingMessage {
 // /ws: an observation channel. The token comes in the first message, never in the URL.
 export const websocketRoutes: FastifyPluginAsync = async (app) => {
   const { deps } = app;
+
   app.get(ApiRoutes.WEBSOCKET, { websocket: true }, (socket: WebSocket, request) => {
     let client: ClientSocket | undefined = undefined;
     let member: Member | undefined = undefined;
@@ -33,26 +34,32 @@ export const websocketRoutes: FastifyPluginAsync = async (app) => {
     async function authenticate(token: unknown): Promise<void> {
       if (typeof token !== 'string') {
         socket.close(WS_CLOSE.token, WS_CLOSE_REASON.missingToken);
+
         return;
       }
       try {
         const verified = await deps.tokens.verify(token);
         const lookup = await deps.services.access.lookup(verified.uid);
+
         if (lookup.status !== MEMBER_LOOKUP.member) {
           clearTimeout(authTimer);
           socket.close(WS_CLOSE.forbidden, WS_CLOSE_REASON.notMember);
+
           return;
         }
         member = lookup.member;
         clearTimeout(authTimer);
         const candidate: ClientSocket = { socket, uid: verified.uid, sessions: new Set() };
+
         if (!deps.hub.add(candidate)) {
           socket.close(WS_CLOSE.tooManySockets, WS_CLOSE_REASON.tooManySockets);
+
           return;
         }
         client = candidate;
         // Close when the token expires; the app refreshes it and reconnects.
         const msLeft = verified.expiresAt.getTime() - Date.now();
+
         expiryTimer = setTimeout(
           () => socket.close(WS_CLOSE.token, WS_CLOSE_REASON.tokenExpired),
           Math.max(msLeft, 0),
@@ -74,10 +81,12 @@ export const websocketRoutes: FastifyPluginAsync = async (app) => {
       // F19: the session's project must be reachable, else the socket closes.
       const projects = await deps.db.repos.uploads.projectsOfSession(sessionId);
       const reach = await deps.services.access.reach(member!);
+
       for (const projectId of projects) {
         if (!reaches(reach, projectId)) {
           request.log.warn({ uid: current.uid }, LOG.ws.unreachableSession);
           socket.close(WS_CLOSE.forbidden, WS_CLOSE_REASON.forbidden);
+
           return;
         }
       }
@@ -87,12 +96,15 @@ export const websocketRoutes: FastifyPluginAsync = async (app) => {
       const rows = await deps.db.repos.uploads.finishedInSession(sessionId);
       const completed: object[] = [];
       const failed: object[] = [];
+
       for (const row of rows) {
         const message = uploadMessage(row) as { type: string; [key: string]: unknown } | undefined;
+
         if (message === undefined) {
           continue;
         }
         const { type, ...item } = message;
+
         if (type === WS_MESSAGE.jobCompleted) {
           completed.push(item);
         } else {
@@ -104,10 +116,12 @@ export const websocketRoutes: FastifyPluginAsync = async (app) => {
 
     async function handle(raw: string): Promise<void> {
       let message: IncomingMessage;
+
       try {
         message = JSON.parse(raw) as IncomingMessage;
       } catch {
         request.log.warn(LOG.ws.notJson);
+
         return;
       }
       if (client === undefined) {
@@ -116,6 +130,7 @@ export const websocketRoutes: FastifyPluginAsync = async (app) => {
         } else {
           socket.close(WS_CLOSE.token, WS_CLOSE_REASON.authFirst);
         }
+
         return;
       }
       if (message.type === WS_MESSAGE.subscribe) {
@@ -127,6 +142,7 @@ export const websocketRoutes: FastifyPluginAsync = async (app) => {
 
     // Messages are handled one at a time, in order: a subscribe never overtakes its auth.
     let queue: Promise<void> = Promise.resolve();
+
     socket.on(SOCKET_EVENT.message, (data) => {
       queue = queue
         .then(() => handle(data.toString()))

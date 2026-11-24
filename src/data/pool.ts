@@ -13,11 +13,14 @@ pg.types.setTypeParser(PG_TYPE_ID.date, (text) => text);
 // Shared by the pool and by the realtime hub's own LISTEN connection.
 export function connectionOptions(config: Config): pg.ClientConfig {
   let ssl: pg.PoolConfig['ssl'] = undefined;
+
   if (config.databaseSslCaPath !== undefined) {
     // AWS RDS: verify the server certificate against the RDS CA bundle.
     const ca = readFileSync(config.databaseSslCaPath, ENCODING.utf8);
+
     ssl = { ca, rejectUnauthorized: true };
   }
+
   return {
     connectionString: config.databaseUrl,
     ssl,
@@ -28,6 +31,7 @@ export function connectionOptions(config: Config): pg.ClientConfig {
 
 export function createPool(config: Config): pg.Pool {
   const options = connectionOptions(config);
+
   return new pg.Pool({ ...options, max: config.pgPoolMax });
 }
 
@@ -38,10 +42,13 @@ export async function withTransaction<T>(
 ): Promise<T> {
   const client = await pool.connect();
   let broken = false;
+
   try {
     await client.query('begin');
     const result = await work(client);
+
     await client.query('commit');
+
     return result;
   } catch (error) {
     try {

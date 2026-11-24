@@ -31,6 +31,7 @@ export interface Repositories {
 
 export function createRepositories(client: Queryable): Repositories {
   const db = toDrizzle(client);
+
   return {
     members: new MemberRepository(db),
     projectMembers: new ProjectMemberRepository(db),

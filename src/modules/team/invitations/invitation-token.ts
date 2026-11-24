@@ -17,6 +17,7 @@ export function hashToken(token: string): Buffer {
 // "vu@eastline.vn" → "v••@eastline.vn": the preview never shows the whole address.
 export function maskEmail(email: string): string {
   const [local = '', domain = ''] = email.split(EMAIL_AT);
+
   return `${local.slice(0, VISIBLE_EMAIL_CHARACTERS)}${EMAIL_MASK}${EMAIL_AT}${domain}`;
 }
 

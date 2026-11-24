@@ -51,6 +51,7 @@ export class InvitationRepository {
         expiresAt: daysFromNow(input.ttlDays),
       })
       .returning({ id: invitations.id, expiresAt: invitations.expiresAt });
+
     return row!;
   }
 
@@ -68,6 +69,7 @@ export class InvitationRepository {
       .from(invitations)
       .where(eq(invitations.tokenHash, tokenHash));
     const [row] = lock ? await query.for('update') : await query;
+
     return row;
   }
 
@@ -77,6 +79,7 @@ export class InvitationRepository {
       .from(invitations)
       .where(eq(invitations.id, id))
       .for('update');
+
     return row;
   }
 
@@ -101,6 +104,7 @@ export class InvitationRepository {
       .set({ tokenHash, expiresAt: daysFromNow(ttlDays), cancelledAt: null })
       .where(eq(invitations.id, id))
       .returning({ expiresAt: invitations.expiresAt });
+
     return row!.expiresAt;
   }
 

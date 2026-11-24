@@ -23,25 +23,30 @@ export const invitationRoutes: FastifyPluginAsync = async (app) => {
     role: Type.String(),
     projectIds: Type.Array(Schemas.uuid(), { maxItems: LIMITS.projectsPerInvite }),
   });
+
   typed.post(
     ApiRoutes.INVITATIONS,
     { preHandler: memberMay(guards, ACTION.teamManage), schema: { body: InviteBody } },
     async (request) => {
       const { role } = request.body;
+
       if (!isRole(role)) {
         throw badRequest(ErrorCode.invalidRole, ERROR_TEXT.invalidRole);
       }
       const result = await invitations.invite(request.member, { ...request.body, role });
+
       request.log.info(
         { uid: request.uid, invitationId: result.invitationId, role },
         LOG.team.invited,
       );
+
       return result;
     },
   );
 
   // No Authorization: the link itself is the key. Rate limited per address.
   const TokenParams = Type.Object({ token: Type.String({ pattern: PATTERNS.inviteToken }) });
+
   typed.get(
     ApiRoutes.INVITATION_PREVIEW,
     {
@@ -52,6 +57,7 @@ export const invitationRoutes: FastifyPluginAsync = async (app) => {
   );
 
   const AcceptBody = Type.Object({ token: Type.String({ pattern: PATTERNS.inviteToken }) });
+
   typed.post(
     ApiRoutes.INVITATION_ACCEPT,
     { preHandler: guards.requireSignedIn, schema: { body: AcceptBody } },
@@ -61,10 +67,12 @@ export const invitationRoutes: FastifyPluginAsync = async (app) => {
         request.email,
         request.body.token,
       );
+
       request.log.info(
         { uid: request.uid, invitationId, role: joined.role },
         LOG.team.inviteAccepted,
       );
+
       return joined;
     },
   );
@@ -74,10 +82,12 @@ export const invitationRoutes: FastifyPluginAsync = async (app) => {
     { preHandler: memberMay(guards, ACTION.teamManage), schema: { params: Schemas.idParams() } },
     async (request) => {
       const result = await invitations.resend(request.member, request.params.id);
+
       request.log.info(
         { uid: request.uid, invitationId: result.invitationId },
         LOG.team.inviteResent,
       );
+
       return result;
     },
   );
@@ -91,6 +101,7 @@ export const invitationRoutes: FastifyPluginAsync = async (app) => {
         { uid: request.uid, invitationId: request.params.id },
         LOG.team.inviteCancelled,
       );
+
       return { cancelled: true };
     },
   );

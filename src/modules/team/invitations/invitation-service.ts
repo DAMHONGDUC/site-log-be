@@ -27,10 +27,12 @@ export class InvitationService {
 
   async invite(actor: Member, input: { email: string; role: Role; projectIds: string[] }) {
     const email = input.email.trim().toLowerCase();
+
     if (!PATTERNS.email.test(email)) {
       throw badRequest(ErrorCode.invalidEmail, ERROR_TEXT.notAnEmail);
     }
     const projectIds = [...new Set(input.projectIds.map((id) => id.toLowerCase()))];
+
     await this.team.ensureProjectsExist(this.db.repos, projectIds);
     if (await this.db.repos.members.liveEmailExists(email)) {
       throw conflict(ErrorCode.alreadyMember, ERROR_TEXT.alreadyMember);
@@ -46,15 +48,19 @@ export class InvitationService {
         invitedBy: actor.uid,
         ttlDays: this.config.inviteTtlDays,
       });
+
       await repos.memberEvents.record({
         actorUid: actor.uid,
         type: MEMBER_EVENT_TYPE.invited,
         invitationId: row.id,
         detail: { email, role: input.role, projectIds },
       });
+
       return row;
     });
+
     await this.sendMail(email, actor.name, input.role, token);
+
     return { invitationId: created.id, expiresAt: created.expiresAt };
   }
 
@@ -62,6 +68,7 @@ export class InvitationService {
     const row = await this.validToken(this.db.repos, token, false);
     const inviter = await this.db.repos.members.displayName(row.invitedBy);
     const names = await this.db.repos.projects.namesByIds(row.projectIds);
+
     return {
       invitedBy: inviter || FALLBACK_NAME.admin,
       role: row.role,
@@ -75,6 +82,7 @@ export class InvitationService {
   async accept(uid: string, email: string | undefined, token: string) {
     const row = await this.db.transaction(async (repos) => {
       const invite = await this.validToken(repos, token, true);
+
       if ((email ?? '').toLowerCase() !== invite.email.toLowerCase()) {
         throw conflict(ErrorCode.emailMismatch, ERROR_TEXT.emailMismatch);
       }
@@ -93,9 +101,11 @@ export class InvitationService {
         invitationId: invite.id,
         detail: { role: invite.role, projectIds: invite.projectIds },
       });
+
       return invite;
     });
     const projectIds: Reach = ROLES_REACHING_ALL.includes(row.role) ? REACH_ALL : row.projectIds;
+
     return { uid, role: row.role, projectIds, invitationId: row.id };
   }
 
@@ -109,20 +119,25 @@ export class InvitationService {
         hashToken(token),
         this.config.inviteTtlDays,
       );
+
       await repos.memberEvents.record({
         actorUid: actor.uid,
         type: MEMBER_EVENT_TYPE.invite_resent,
         invitationId: invite.id,
       });
+
       return { invite, expiresAt };
     });
+
     await this.sendMail(result.invite.email, actor.name, result.invite.role, token);
+
     return { invitationId: result.invite.id, expiresAt: result.expiresAt };
   }
 
   async cancel(actor: Member, id: string): Promise<void> {
     await this.db.transaction(async (repos) => {
       const invite = await this.openInvitation(repos, id);
+
       await repos.invitations.cancel(invite.id);
       await repos.memberEvents.record({
         actorUid: actor.uid,
@@ -134,6 +149,7 @@ export class InvitationService {
 
   async listOpen() {
     const rows = await this.db.repos.invitations.listOpen();
+
     return rows.map((row) => ({
       id: row.id,
       email: row.email,
@@ -149,6 +165,7 @@ export class InvitationService {
     lock: boolean,
   ): Promise<InvitationRow> {
     const row = await repos.invitations.findByTokenHash(hashToken(token), lock);
+
     if (row === undefined) {
       throw notFound(ErrorCode.inviteNotFound, ERROR_TEXT.inviteMissing);
     }
@@ -158,17 +175,20 @@ export class InvitationService {
     if (row.cancelledAt !== null || row.expiresAt.getTime() < Date.now()) {
       throw conflict(ErrorCode.inviteExpired, ERROR_TEXT.inviteExpired);
     }
+
     return row;
   }
 
   private async openInvitation(repos: Repositories, id: string): Promise<InvitationRow> {
     const row = await repos.invitations.findForUpdate(id);
+
     if (row === undefined) {
       throw notFound(ErrorCode.inviteNotFound, ERROR_TEXT.inviteNotFound);
     }
     if (row.acceptedAt !== null) {
       throw conflict(ErrorCode.inviteAccepted, ERROR_TEXT.inviteAccepted);
     }
+
     return row;
   }
 

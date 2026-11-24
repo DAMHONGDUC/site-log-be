@@ -25,6 +25,7 @@ const storage = new Storage(
   config.presignTtlSeconds,
 );
 let push: PushSender | undefined = undefined;
+
 if (config.firebaseServiceAccountBase64 !== undefined) {
   push = new FcmSender(config.firebaseServiceAccountBase64);
 }
@@ -46,6 +47,7 @@ process.once(SIGNAL.interrupt, () => {
 log.info(LOG.worker.started);
 while (running) {
   let didWork = false;
+
   try {
     didWork = await verifyNextUpload(deps);
     if (Date.now() - lastAbandonedRun > DURATIONS.abandonedCheckEveryMs) {
@@ -57,6 +59,7 @@ while (running) {
       lastPurgeRun = Date.now();
     }
     const dueDay = services.dueSoon.dueDay(lastDueSoonDay);
+
     if (dueDay !== undefined) {
       lastDueSoonDay = dueDay;
       await services.dueSoon.run();

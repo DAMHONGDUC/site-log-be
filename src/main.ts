@@ -13,6 +13,7 @@ import { SIGNAL } from './constants/platform/external.js';
 
 // Starts the HTTP + WebSocket server.
 const config = loadConfig();
+
 if (config.firebaseServiceAccountBase64 === undefined) {
   throw new Error(FAULT_TEXT.missingEnv(ENV.firebaseServiceAccount));
 }
@@ -27,6 +28,7 @@ const storage = new Storage(
 const hub = new RealtimeHub(config, pool);
 // F19: invite emails through Amazon SES when a sender is set; otherwise only logged.
 let mailer: Mailer = new LogMailer();
+
 if (config.inviteFromEmail !== undefined) {
   mailer = new SesMailer(config.awsRegion, config.inviteFromEmail);
 }

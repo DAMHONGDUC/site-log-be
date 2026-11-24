@@ -44,6 +44,7 @@ export function createCoreServices(deps: CoreDeps): CoreServices {
   const access = new AccessService(deps.db);
   const notifications = new NotificationService(deps.db, deps.push, deps.log);
   const files = new FileAccessService(access);
+
   return {
     access,
     notifications,
@@ -60,6 +61,7 @@ export function createServices(
 ): Services {
   const core = createCoreServices(deps);
   const team = new TeamService(deps.db, core.access, core.notifications, deps.tokens);
+
   return {
     ...core,
     team,

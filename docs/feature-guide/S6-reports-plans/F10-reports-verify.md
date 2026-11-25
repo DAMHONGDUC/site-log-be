@@ -29,7 +29,7 @@
 | Step | Hours | Files |
 |---|---|---|
 | [1](#1-branding-table) | 1 | `migrations/0007_report_branding.sql`, `src/modules/sync/tables.ts` |
-| [2](#2-verify-endpoint) | 2 | `src/modules/uploads/verify-routes.ts`, `src/app.ts` |
+| [2](#2-verify-endpoint) | 2 | `src/modules/uploads/verify/verify-routes.ts`, `src/app.ts` |
 | [Tests](#tests) | 1 | `test/fixtures.ts`, `test/verify.test.ts`, `test/branding.test.ts` |
 
 ```mermaid
@@ -244,7 +244,7 @@ export function findSyncTable(name: string): SyncTable | undefined {
 
 | Action | File | Holds |
 |---|---|---|
-| <b class="tag-new">New</b> | `src/modules/uploads/verify-routes.ts` | `GET /verify/:code`: case-insensitive, rate limited per IP, constant minimum delay, facts only |
+| <b class="tag-new">New</b> | `src/modules/uploads/verify/verify-routes.ts` | `GET /verify/:code`: case-insensitive, rate limited per IP, constant minimum delay, facts only |
 | <b class="tag-edit">Edit</b> | `src/app.ts` | Registers it (no `requireUser`) |
 
 </dd></dl>
@@ -257,7 +257,7 @@ export function findSyncTable(name: string): SyncTable | undefined {
 <summary><strong>2.1 Route</strong></summary>
 <dl><dd>
 
-<b>File</b> · <b class="tag-new">New</b> · `src/modules/uploads/verify-routes.ts`
+<b>File</b> · <b class="tag-new">New</b> · `src/modules/uploads/verify/verify-routes.ts`
 
 <b>Explain</b> · A hit and a miss both wait until `VERIFY_MIN_DELAY_MS` has passed, so response time does not reveal which codes exist. The IP comes from `X-Forwarded-For` because Caddy is in front (`trustProxy`).
 

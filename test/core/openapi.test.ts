@@ -1,5 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ApiRoutes } from '../../src/constants/http/api-routes.js';
+import { ERROR_CONTRACT } from '../../src/constants/http/api-guide/index.js';
+import { ErrorCode } from '../../src/constants/http/error-codes.js';
+import { WS_CLOSE } from '../../src/constants/runtime/websocket.js';
 import { closeTestContext, createTestContext, type TestContext } from '../helpers/helpers.js';
 
 describe('openapi', () => {
@@ -31,6 +34,24 @@ describe('openapi', () => {
     );
 
     expect(new Set(shapes).size).toBe(shapes.length);
+  });
+
+  it('lists every error code in the guide exactly once', () => {
+    const listed = ERROR_CONTRACT.flatMap(({ codes }) => [...codes]);
+
+    expect([...listed].sort()).toEqual(Object.values(ErrorCode).sort());
+  });
+
+  it('carries the guide in the description: errors, WebSocket, flows', async () => {
+    const response = await context.app.inject({ method: 'GET', url: `${ApiRoutes.DOCS}/json` });
+    const description: string = response.json().info.description;
+
+    expect(description).toContain('Error contract');
+    expect(description).toContain(ErrorCode.notInvited);
+    expect(description).toContain(`WebSocket \`${ApiRoutes.WEBSOCKET}\``);
+    expect(description).toContain(String(WS_CLOSE.tooManySockets));
+    expect(description).toContain('Flows');
+    expect(description).toContain('`/uploads/{id}/complete`');
   });
 
   it('serves the invite preview under its own path', async () => {

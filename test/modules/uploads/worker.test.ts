@@ -16,6 +16,7 @@ import {
 describe('worker', () => {
   let context: TestContext;
   let deps: WorkerDeps;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -34,6 +35,7 @@ describe('worker', () => {
 
     expect(await verifyNextUpload(deps)).toBe(true);
     const row = await context.pool.query('select verify_state, verified_at from uploads');
+
     expect(row.rows[0].verify_state).toBe('verified');
     expect(row.rows[0].verified_at).not.toBeNull();
     expect(await verifyNextUpload(deps)).toBe(false);
@@ -44,6 +46,7 @@ describe('worker', () => {
     context.s3.on(GetObjectCommand).callsFake(() => ({ Body: objectBody('other bytes') }) as never);
     await verifyNextUpload(deps);
     const row = await context.pool.query('select verify_state from uploads');
+
     expect(row.rows[0].verify_state).toBe('mismatch');
   });
 
@@ -55,6 +58,7 @@ describe('worker', () => {
     );
     expect(await abortAbandonedUploads(deps)).toBe(1);
     const row = await context.pool.query('select state from uploads');
+
     expect(row.rows[0].state).toBe('aborted');
   });
 });

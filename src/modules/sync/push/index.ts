@@ -1,10 +1,12 @@
 import type pg from 'pg';
-import { RejectReason } from '../../../constants/error-codes.js';
+import { RejectReason } from '../../../constants/http/error-codes.js';
 import { withTransaction } from '../../../data/pool.js';
-import type { IssueChange } from '../../notifications/issue-notifier.js';
+import { createRepositories } from '../../../data/repositories.js';
+import type { IssueChange } from '../../notifications/index.js';
 import { applyBatch } from './apply.js';
-import { PG, currentRev, pgCode } from './sql.js';
+import { PG, pgCode } from './sql.js';
 import type { Mutation, MutationResult, PushContext, PushOutcome } from './types.js';
+import { MUTATION_STATUS } from '../../../constants/data/sync.js';
 
 export type { Mutation, MutationResult, PushContext, PushOutcome, PushResult } from './types.js';
 
@@ -29,19 +31,27 @@ export async function pushMutations(
 
   const results: MutationResult[] = [];
   const issueChanges: IssueChange[] = [];
+
   for (const mutation of mutations) {
     try {
       const single = await withTransaction(pool, (client) =>
         applyBatch(client, context, [mutation]),
       );
+
       results.push(single.results[0]!);
       issueChanges.push(...single.issueChanges);
     } catch (error) {
       if (!isForeignKeyViolation(error)) {
         throw error;
       }
-      results.push({ id: mutation.id, status: 'rejected', reason: RejectReason.missingParent });
+      results.push({
+        id: mutation.id,
+        status: MUTATION_STATUS.rejected,
+        reason: RejectReason.missingParent,
+      });
     }
   }
-  return { results, serverRev: await currentRev(pool), issueChanges };
+  const serverRev = await createRepositories(pool).syncState.currentRev();
+
+  return { results, serverRev, issueChanges };
 }

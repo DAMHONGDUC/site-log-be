@@ -1,6 +1,7 @@
 import type pg from 'pg';
+import { UPLOAD_EVENTS_CHANNEL, type UploadEventType } from '../../constants/domain/realtime.js';
 
-export type UploadEventType = 'completed' | 'aborted' | 'verified' | 'mismatch';
+export type { UploadEventType } from '../../constants/domain/realtime.js';
 
 export interface UploadEvent {
   uid: string;
@@ -15,5 +16,5 @@ export async function notifyUploadEvent(
   client: pg.PoolClient | pg.Pool,
   event: UploadEvent,
 ): Promise<void> {
-  await client.query(`select pg_notify('upload_events', $1)`, [JSON.stringify(event)]);
+  await client.query('select pg_notify($1, $2)', [UPLOAD_EVENTS_CHANNEL, JSON.stringify(event)]);
 }

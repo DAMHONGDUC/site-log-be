@@ -1,10 +1,10 @@
 import rateLimitPlugin from '@fastify/rate-limit';
 import websocket from '@fastify/websocket';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyPluginAsync } from 'fastify';
 import type pg from 'pg';
 import { makeRequireSignedIn, makeRequireUser, type TokenVerifier } from './core/auth.js';
 import type { Config } from './core/config.js';
-import { LIMITS } from './constants/limits.js';
+import { LIMITS } from './constants/runtime/limits.js';
 import { Database } from './data/database.js';
 import { registerErrorHandler } from './core/errors.js';
 import type { Guards } from './core/http/guards.js';
@@ -12,22 +12,33 @@ import { registerOpenApi } from './core/http/openapi.js';
 import { loggerOptions } from './core/logger.js';
 import { LogMailer, type Mailer } from './integrations/mailer.js';
 import type { PushSender } from './integrations/fcm.js';
-import type { RealtimeHub } from './modules/realtime/hub.js';
-import { websocketRoutes } from './modules/realtime/websocket-routes.js';
-import { accountRoutes } from './modules/account/account-routes.js';
-import { deviceRoutes } from './modules/devices/devices-routes.js';
-import { healthRoutes } from './modules/health/health-routes.js';
-import { invitationRoutes } from './modules/team/invitations-routes.js';
-import { mediaRoutes } from './modules/uploads/media-routes.js';
-import { memberRoutes } from './modules/team/members-routes.js';
-import { syncRoutes } from './modules/sync/sync-routes.js';
-import { uploadRoutes } from './modules/uploads/uploads-routes.js';
-import { verifyRoutes } from './modules/uploads/verify-routes.js';
+import { type RealtimeHub, websocketRoutes } from './modules/realtime/index.js';
+import { accountRoutes } from './modules/account/index.js';
+import { deviceRoutes } from './modules/devices/index.js';
+import { healthRoutes } from './modules/health/index.js';
+import { invitationRoutes, memberRoutes } from './modules/team/index.js';
+import { mediaRoutes, uploadRoutes, verifyRoutes } from './modules/uploads/index.js';
+import { syncRoutes } from './modules/sync/index.js';
 import { createServices, type Services } from './services.js';
 import type { Storage } from './integrations/storage.js';
+import { APP_DECORATION, REQUEST_UID } from './constants/http/fastify.js';
 
 // FCM tokens (~160 chars) travel in the path of DELETE /devices/:token; Fastify's default is 100.
 const MAX_PARAM_LENGTH = 4096;
+
+// Every feature's routes, in registration order.
+const FEATURE_PLUGINS: FastifyPluginAsync[] = [
+  healthRoutes,
+  accountRoutes,
+  memberRoutes,
+  invitationRoutes,
+  syncRoutes,
+  uploadRoutes,
+  mediaRoutes,
+  verifyRoutes,
+  deviceRoutes,
+  websocketRoutes,
+];
 
 // What the entry point (or a test) provides.
 export interface AppInput {
@@ -47,6 +58,14 @@ export interface AppDeps extends AppInput {
   mailer: Mailer;
   db: Database;
   services: Services;
+}
+
+// Each feature is a plugin; it reads its dependencies from the instance it is registered on.
+declare module 'fastify' {
+  interface FastifyInstance {
+    deps: AppDeps;
+    guards: Guards;
+  }
 }
 
 export async function buildApp(input: AppInput): Promise<FastifyInstance> {
@@ -72,7 +91,7 @@ export async function buildApp(input: AppInput): Promise<FastifyInstance> {
   const deps: AppDeps = { ...input, mailer, db, services };
 
   registerErrorHandler(app);
-  app.decorateRequest('uid', '');
+  app.decorateRequest(REQUEST_UID.field, REQUEST_UID.empty);
 
   // Before any route, so every schema lands in the document.
   await registerOpenApi(app, input.config);
@@ -85,16 +104,13 @@ export async function buildApp(input: AppInput): Promise<FastifyInstance> {
     requireSignedIn: makeRequireSignedIn(input.tokens),
   };
 
-  healthRoutes(app, deps);
-  accountRoutes(app, deps, guards);
-  memberRoutes(app, deps, guards);
-  invitationRoutes(app, deps, guards);
-  syncRoutes(app, deps, guards);
-  uploadRoutes(app, deps, guards);
-  mediaRoutes(app, deps, guards);
-  verifyRoutes(app, deps);
-  deviceRoutes(app, deps, guards);
-  websocketRoutes(app, deps);
+  app.decorate(APP_DECORATION.deps, deps);
+  app.decorate(APP_DECORATION.guards, guards);
+
+  // One encapsulated plugin per feature: what one registers stays inside it.
+  for (const feature of FEATURE_PLUGINS) {
+    await app.register(feature);
+  }
 
   return app;
 }

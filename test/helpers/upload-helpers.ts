@@ -1,4 +1,4 @@
-import { ApiRoutes } from '../../src/constants/api-routes.js';
+import { ApiRoutes } from '../../src/constants/http/api-routes.js';
 import { S3ServiceException } from '@aws-sdk/client-s3';
 import { auth, ids, sha, type TestContext } from './helpers.js';
 
@@ -35,9 +35,11 @@ export async function completeUpload(
   uid = 'alice',
 ) {
   let payload: object = {};
+
   if (parts !== undefined) {
     payload = { parts };
   }
+
   return context.app.inject({
     method: 'POST',
     url: ApiRoutes.uploadComplete(uploadId),

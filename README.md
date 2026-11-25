@@ -3,7 +3,7 @@
 <dl><dd>
 
 - The server behind the SiteLog [iOS](https://github.com/DAMHONGDUC/site_log_swift_ui) and [Android](https://github.com/DAMHONGDUC/site-log-android) apps: sign-in check, delta sync, presigned S3 uploads, verification codes, realtime upload state, push (Firebase Cloud Messaging).
-- Node 24 · TypeScript · Fastify · PostgreSQL 16 · AWS (EC2 + Docker Compose, RDS, S3), infrastructure in AWS CDK.
+- Node 24 · TypeScript · Fastify · PostgreSQL 16 (Drizzle ORM) · AWS (EC2 + Docker Compose, RDS, S3), infrastructure in AWS CDK.
 - Built step by step from the guides in [docs/feature-guide](docs/feature-guide/README.md), sprint by sprint, next to the iOS and Android apps.
 
 </dd></dl>
@@ -26,7 +26,7 @@
 
 <dl><dd>
 
-- The code of S0–S10 is in the repository: every call of [01-api §3](docs/feature-docs/01-api.md#3-endpoints), the worker, migrations `0001`–`0012`, the AWS CDK app (`infra/`) and CI. `npm test`: 99 tests green against Postgres 16; format, lint, typecheck, the OpenAPI check, build and `cdk synth` pass.
+- The code of S0–S10 is in the repository: every call of [01-api §3](docs/feature-docs/01-api.md#3-endpoints), the worker, migrations `0001`–`0012`, the AWS CDK app (`infra/`) and CI. `npm test`: 104 tests green against Postgres 16; format, lint, typecheck, the OpenAPI check, build and `cdk synth` pass.
 - Not running anywhere yet: AWS, Firebase and SES accounts, DNS and the first deploy are still to do ([ROADMAP](docs/ROADMAP.md) P0, S0.3, S9, S10.9, P4).
 - S0–S9 code comes from the guides as written; S10 (team and roles) was built from [05-team-and-roles](docs/feature-docs/05-team-and-roles.md) and is described in [F19](docs/feature-guide/S10-team-roles/F19-team-roles.md).
 
@@ -36,18 +36,16 @@
 
 <dl><dd>
 
-- After S0 the backend runs on your Mac like this (full steps: [F00a](docs/feature-guide/S0-foundation/F00a-setup.md), [local testing with the app](docs/feature-guide/local-testing-with-ios.md)):
-
-```bash
-docker compose up -d
-```
+- The backend runs on your Mac with Postgres and S3 (RustFS) in Docker; full steps, app wiring and memory tips: [local development](docs/feature-guide/local-development.md).
 
 ```bash
 cp .env.example .env
 ```
 
+- Fill `FIREBASE_SERVICE_ACCOUNT_BASE64` in `.env`, then start everything (Docker, packages, migrations, bucket, API and worker; Ctrl+C stops it):
+
 ```bash
-npm ci && npm run migrate && npm run dev
+npm run dev:all
 ```
 
 ```bash
@@ -70,6 +68,7 @@ curl localhost:3000/health
 | [05-team-and-roles](docs/feature-docs/05-team-and-roles.md) | One company, four roles, project members, invitations, shared sync |
 | [ROADMAP](docs/ROADMAP.md) | Plan to finish the backend: phases, steps with hours and ticks, done-when, risks |
 | [Feature guides](docs/feature-guide/README.md) | Step-by-step build, one folder per sprint |
+| [Local development](docs/feature-guide/local-development.md) | Postgres and S3 (RustFS) in Docker, the API on your Mac, the iOS and Android apps pointed at it |
 | [Local testing with iOS](docs/feature-guide/local-testing-with-ios.md) | Run the backend on your Mac and point the simulator or an iPhone at it |
 | [App design](https://github.com/DAMHONGDUC/site_log_swift_ui/blob/main/docs/design/00-design-plan.md) | No UI here; the app screens the API serves (Team and roles: T1–T8) are in the iOS repo's design pages and the [Figma file](https://www.figma.com/design/uJZcCP6lzw8QTSkcu8uqvV/Site-Log-iOS-Design) |
 
@@ -121,20 +120,29 @@ site-log-be/
 │   ├── main.ts · worker.ts # entry points: HTTP + WebSocket server · background jobs
 │   ├── app.ts              # composition root: builds Database, services, guards, registers routes
 │   ├── services.ts         # builds every service once (API and worker)
-│   ├── constants/          # every fixed value: ApiRoutes, ErrorCode, roles + permissions, push kinds,
-│   │                       # limits, patterns, durations, HTTP status, WebSocket close codes, OpenAPI
+│   ├── constants/          # every fixed value, by kind:
+│   │                       #   http/ (ApiRoutes, ErrorCode, HTTP status, OpenAPI) · data/ (table and
+│   │                       #   enum names, enum values) · domain/ (roles + permissions, push kinds,
+│   │                       #   issues, object keys, team, realtime) · runtime/ (limits, patterns, durations,
+│   │                       #   units, env names, WebSocket close codes) · messages/ (log, error, push, mail
+│   │                       #   and script text) · platform/ (encodings, Firebase/FCM/S3/Postgres codes)
 │   ├── core/               # config, logger, errors, auth, log; http/ (guards, schemas, openapi)
-│   ├── data/               # pool, Database (repositories on the pool or one transaction), table lists
+│   ├── data/               # pool, Database (repositories on the pool or one transaction), Drizzle client,
+│   │                       # schema/ (every table, for typed queries)
 │   ├── integrations/       # S3 storage, SES mailer, FCM sender
-│   ├── modules/            # one folder per feature: *-routes · *-service · *-repository · rules
+│   ├── modules/            # one folder per feature, one Fastify plugin each; index.ts is its public API:
+│   │                       # *-routes (plugin) · *-service · *-repository · rules
 │   │   ├── account/  devices/  health/  notifications/
 │   │   ├── realtime/       # WebSocket channel and pg_notify fan-out
-│   │   ├── sync/           # table registry, pull, push/ (sql · placement · authorization · apply)
-│   │   ├── team/           # members, invitations, access, permissions
-│   │   └── uploads/        # uploads, media URLs, /verify, object keys, key migration
+│   │   ├── sync/           # table registry, pull, push/ (sql · placement · authorization · apply),
+│   │   │                   # repositories/ (projects, phrases, issues, rev counter)
+│   │   ├── team/           # members/ · invitations/ · access/ (reach, permissions, project members)
+│   │   └── uploads/        # transfer/ (uploads) · media/ (media URLs) · verify/ (/verify) ·
+│   │                       # keys/ (object keys, key migration)
 │   └── workers/            # worker jobs
 ├── migrations/             # numbered .sql files, run once each, forward only
-├── test/                   # vitest against a real Postgres: core/, modules/<feature>/, helpers/
+├── test/                   # vitest against a real Postgres: core/, data/, modules/<feature>/ (sync: engine/ ·
+│                           # tables/), helpers/
 ├── scripts/                # dev token, seed the first Admin, move pre-F19 keys, OpenAPI
 ├── docs/                   # feature docs, guides, openapi.json (generated)
 ├── deploy/ · infra/        # what runs on EC2 · AWS CDK app
@@ -151,14 +159,20 @@ site-log-be/
 | Rule | How it is kept |
 |---|---|
 | One folder per feature | `src/modules/<feature>/` holds that feature's routes, services and repositories; shared code lives in `core/`, `data/`, `integrations/`, `constants/` |
+| Features are Fastify plugins | Each feature's routes are an encapsulated plugin registered from `FEATURE_PLUGINS` in `app.ts`; it reads `app.deps` (config, db, services, storage, hub) and `app.guards`, decorated once on the root instance |
+| Features meet through `index.ts` | Code outside `modules/<feature>/` imports it only from `modules/<feature>/index.ts`; `constants/` imports only constants. Two local ESLint rules (`tools/eslint/boundaries.js`) fail otherwise |
 | Routes are thin | A route only declares its schema and guard, calls one service, returns the result |
-| SQL only in repositories | ESLint fails on `.query(` anywhere in `src/modules` and `src/core` except `*-repository.ts` and the sync and realtime engines |
-| Every path from `ApiRoutes` | `src/constants/api-routes.ts` holds every endpoint (`ApiRoutes.UPLOAD_COMPLETE`, `ApiRoutes.uploadComplete(id)`); ESLint fails on a literal path in a route; tests build paths with it |
+| SQL only in repositories | Repositories query through Drizzle (`src/data/schema/`); ESLint fails on `.query(` or a `drizzle-orm` import anywhere in `src/modules` and `src/core` except `*-repository.ts` and the sync and realtime engines. The sync push and pull keep raw SQL: they build it from `syncTables` metadata (`jsonb_populate_record`, savepoints) |
+| Migrations own the schema | `migrations/*.sql` create the tables; `src/data/schema/` only describes them for Drizzle. `test/data/schema.test.ts` fails when a column or its nullability differs, or a synced table is missing |
+| No hard-coded strings | Every string value is a named constant in `src/constants/`: table and enum names in `data/db.ts`, enum values in `data/enums.ts` (`UPLOAD_STATE.completed`, `ROLE.admin`), sync values in `data/sync.ts`, every log, error, push and mail text in `messages/`, codes of outside services in `platform/`. ESLint fails on a string literal in `src/` and `scripts/` outside those files; it lets through `''`, `typeof` checks, SQL handed to `query()`, Drizzle `sql` templates, and the sync table registry and SQL builder (`sync/tables.ts`, `sync/pull.ts`, `sync/push/sql.ts`) |
+| Features grouped by folder | A folder holds at most 6 files; past that it splits into one sub-folder per sub-feature (`team/members/`, `team/invitations/`, `team/access/`) |
+| Every path from `ApiRoutes` | `src/constants/http/api-routes.ts` holds every endpoint (`ApiRoutes.UPLOAD_COMPLETE`, `ApiRoutes.uploadComplete(id)`); ESLint fails on a literal path in a route; tests build paths with it |
 | No magic numbers | ESLint `no-magic-numbers` on `src/` (constants and Config excepted) |
 | Small files | ESLint `max-lines` 300 per file |
 | Depend on interfaces | Services take `TokenVerifier`, `PushSender`, `Mailer`, `Storage`, `Database` through the constructor; tests pass fakes |
 | Open for extension | A new role or action: `ROLE_PERMISSIONS`; a new push kind: `PUSH_KINDS` + one template in `PUSH_TEMPLATES`; a new synced table: one entry in `syncTables`; a new endpoint: `ApiRoutes` + a route + a service method |
 | One transaction, many repositories | `db.transaction((repos) => …)` gives every repository the same client |
+| Clean shutdown | `app.close()` finishes open requests; an `onClose` hook in `main.ts` then stops the realtime listener and ends the pool |
 | API contract | `docs/openapi.json` is generated from the route schemas (`npm run openapi`); CI fails when it is stale; `/docs` serves the explorer outside production |
 
 - The S0–S9 guides show the first form of each file (all in the route, under the old flat folders); the repository has since been split into these layers and feature folders with the same behaviour and tests.
@@ -173,7 +187,10 @@ site-log-be/
 |---|---|
 | `npm run dev` | API with reload, reads `.env` |
 | `npm run worker:dev` | Worker with reload |
+| `npm run dev:all` | Everything local in one go: Docker, packages, migrations, bucket, API and worker |
+| `npm run dev:stop` | Stops the API, the worker and the containers (data stays); `-- --colima` also stops Colima |
 | `npm run migrate` | Runs new migrations |
+| `npm run s3:bucket` | Creates the bucket on the local S3 server, once |
 | `npm test` | All tests against `sitelog_test` |
 | `npm run lint` · `npm run typecheck` · `npm run format` | Code checks |
 | `npm run token -- <email> <password>` | A Firebase ID token for curl |

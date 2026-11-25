@@ -1,7 +1,10 @@
-import type { PushKind } from '../../constants/push.js';
-import type { Queryable } from '../../data/database.js';
+import { and, arrayContains, eq, inArray, isNull, or, sql } from 'drizzle-orm';
+import type { DevicePlatform } from '../../constants/data/enums.js';
+import type { PushKind } from '../../constants/domain/push.js';
+import type { SqlDb } from '../../data/drizzle.js';
+import { devices, members } from '../../data/schema/index.js';
 
-export type DevicePlatform = 'ios' | 'android';
+export type { DevicePlatform } from '../../constants/data/enums.js';
 
 export interface DeviceRow {
   token: string;
@@ -10,7 +13,7 @@ export interface DeviceRow {
 }
 
 export class DeviceRepository {
-  constructor(private readonly db: Queryable) {}
+  constructor(private readonly db: SqlDb) {}
 
   // A token moves to whoever signed in last on that phone.
   async register(
@@ -19,35 +22,40 @@ export class DeviceRepository {
     platform: DevicePlatform,
     kinds: PushKind[] | null,
   ): Promise<void> {
-    await this.db.query(
-      `insert into devices (token, uid, platform, kinds) values ($1, $2, $3, $4)
-       on conflict (token) do update
-         set uid = excluded.uid, platform = excluded.platform, kinds = excluded.kinds, updated_at = now()`,
-      [token, uid, platform, kinds],
-    );
+    await this.db
+      .insert(devices)
+      .values({ token, uid, platform, kinds })
+      .onConflictDoUpdate({
+        target: devices.token,
+        set: { uid, platform, kinds, updatedAt: sql`now()` },
+      });
   }
 
   async removeOwn(token: string, uid: string): Promise<void> {
-    await this.db.query('delete from devices where token = $1 and uid = $2', [token, uid]);
+    await this.db.delete(devices).where(and(eq(devices.token, token), eq(devices.uid, uid)));
   }
 
   async removeToken(token: string): Promise<void> {
-    await this.db.query('delete from devices where token = $1', [token]);
+    await this.db.delete(devices).where(eq(devices.token, token));
   }
 
   async removeAllFor(uid: string): Promise<number> {
-    const result = await this.db.query('delete from devices where uid = $1', [uid]);
+    const result = await this.db.delete(devices).where(eq(devices.uid, uid));
+
     return result.rowCount ?? 0;
   }
 
   // Devices of live members that want this kind (kinds null = all).
   async wanting(uids: string[], kind: PushKind): Promise<DeviceRow[]> {
-    const result = await this.db.query<DeviceRow>(
-      `select d.token, d.uid, d.platform from devices d
-         join members m on m.uid = d.uid and m.removed_at is null
-        where d.uid = any($1) and (d.kinds is null or $2 = any(d.kinds))`,
-      [uids, kind],
-    );
-    return result.rows;
+    return this.db
+      .select({ token: devices.token, uid: devices.uid, platform: devices.platform })
+      .from(devices)
+      .innerJoin(members, and(eq(members.uid, devices.uid), isNull(members.removedAt)))
+      .where(
+        and(
+          inArray(devices.uid, uids),
+          or(isNull(devices.kinds), arrayContains(devices.kinds, [kind])),
+        ),
+      );
   }
 }

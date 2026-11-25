@@ -272,7 +272,8 @@ flowchart LR
 | 400 and 404 | Only for permanent problems: the app aborts an upload on them |
 | SQL | Parameterized (`$1`) only; every user query filters `uid` |
 | Logging | Every action logs one line with ids (`uid`, `uploadId`, counts, `elapsedMs`); every `catch` logs; never tokens, URLs or service-account JSON; never `console` |
-| Comments | Only when the code cannot say it, one short line; no file headers beyond one purpose line |
+| Comments | Only when the code cannot say it; inside code at most 2 lines, on a declaration at most 3; no file headers beyond one purpose line |
+| Blank lines | One after the variable declarations, one before every `return` unless it opens its block; ESLint `padding-line-between-statements` enforces both |
 | Dependencies | Well-known, maintained packages only; versions pinned by `package-lock.json` |
 | Tests | Written after a feature works end to end; real Postgres, faked Firebase and S3 |
 | Docs | Short, bullets and tables, contents at the top; run `python3 tools/docs/indent-md.py` after editing |

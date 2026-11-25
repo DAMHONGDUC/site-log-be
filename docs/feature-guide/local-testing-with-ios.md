@@ -48,7 +48,7 @@ flowchart LR
 |---|---|---|
 | API, worker, Postgres | Your Mac | Fast restart, your logs, your data |
 | Firebase Auth | Real `sitelog-dev` project | The app's sign-in is real Firebase; the backend checks the same tokens |
-| S3 | Real dev bucket (`SiteLog-Dev`) | Presigned URLs, ETags and multipart behave exactly as on AWS; costs cents |
+| S3 | Local RustFS from `docker-compose.yml` by default ([local development](local-development.md)); or the real dev bucket (`SiteLog-Dev`) | Presigned URLs, ETags and multipart behave as on AWS; the real bucket costs cents |
 | Push (F16) | Real FCM through `sitelog-dev` | FCM and APNs only deliver real tokens; an Apple silicon simulator or a real iPhone gets them |
 
 </dd></dl>
@@ -62,12 +62,10 @@ cd ~/Documents/GitHub/BE/site-log-be && docker compose up -d
 ```
 
 ```bash
-aws sso login --profile sitelog
+npm run migrate && npm run s3:bucket && npm run dev
 ```
 
-```bash
-npm run migrate && npm run dev
-```
+- With the real dev bucket instead of the local one, sign in first: `aws sso login --profile sitelog`.
 
 - From F15 on, in a second terminal:
 
@@ -84,7 +82,7 @@ curl localhost:3000/health
 | `.env` line | Value for local testing |
 |---|---|
 | `DATABASE_URL` | `postgres://sitelog:sitelog@localhost:5432/sitelog` |
-| `AWS_PROFILE` · `AWS_REGION` · `S3_BUCKET` | `sitelog` · `ap-southeast-1` · `sitelog-dev-<account>` |
+| `S3_ENDPOINT` · `S3_BUCKET` · `AWS_REGION` | `http://localhost:9000` · `sitelog-dev` · `ap-southeast-1` (as in `.env.example`) |
 | `FIREBASE_SERVICE_ACCOUNT_BASE64` | the `sitelog-dev` key (F00a §3) |
 
 </dd></dl>

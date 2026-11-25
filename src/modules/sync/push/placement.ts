@@ -3,6 +3,7 @@ import { snakeToCamel } from '../case.js';
 import { findSyncTable, type SyncTable } from '../tables.js';
 import { storedRow } from './sql.js';
 import type { Batch } from './types.js';
+import { SYNC_COLUMN, SYNC_SCOPE } from '../../../constants/data/sync.js';
 
 // How deep a parent chain may go (results → runs → sessions).
 const MAX_PARENT_DEPTH = 4;
@@ -18,35 +19,42 @@ export async function projectOf(
   stored: Record<string, unknown> | undefined,
   depth = 0,
 ): Promise<string | null | undefined> {
-  if (table.scope === 'projects') {
+  if (table.scope === SYNC_SCOPE.projects) {
     return id;
   }
-  if (table.scope !== 'project') {
+  if (table.scope !== SYNC_SCOPE.project) {
     return null;
   }
   if (stored !== undefined) {
     return (stored.project_id as string | null) ?? null;
   }
   const unplaced = table.projectOptional ? null : undefined;
+
   if (table.parent === null) {
     const sent = fields.projectId;
+
     return typeof sent === 'string' ? sent.toLowerCase() : unplaced;
   }
   if (depth > MAX_PARENT_DEPTH) {
     return undefined;
   }
   const parentTable = findSyncTable(table.parent.table)!;
-  const parentId = table.parent.column === 'id' ? id : fields[snakeToCamel(table.parent.column)];
+  const parentId =
+    table.parent.column === SYNC_COLUMN.id ? id : fields[snakeToCamel(table.parent.column)];
+
   if (typeof parentId !== 'string') {
     return unplaced;
   }
   const parentStored = await storedRow(client, parentTable, parentId);
+
   if (parentStored !== undefined) {
     return (parentStored.project_id as string | null) ?? null;
   }
   const inBatch = batch.mutations.get(parentId);
+
   if (inBatch !== undefined && inBatch.table === parentTable.name) {
     return projectOf(client, batch, parentTable, parentId, inBatch.fields, undefined, depth + 1);
   }
+
   return unplaced;
 }

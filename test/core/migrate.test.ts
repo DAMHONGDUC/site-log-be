@@ -8,6 +8,7 @@ import { testDatabaseUrl } from '../helpers/global-setup.js';
 
 describe('runMigrations', () => {
   let pool: pg.Pool;
+
   beforeAll(() => {
     pool = new pg.Pool({ connectionString: testDatabaseUrl });
   });
@@ -19,6 +20,7 @@ describe('runMigrations', () => {
 
   it('runs each file once, in order, and stops at a broken one', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'migrations-'));
+
     await writeFile(path.join(dir, 'test_0001_a.sql'), 'create table migrate_test_a (id int);');
     await writeFile(path.join(dir, 'test_0002_b.sql'), 'create table migrate_test_b (id int);');
 
@@ -30,6 +32,7 @@ describe('runMigrations', () => {
     const done = await pool.query(
       `select name from schema_migrations where name = 'test_0003_broken.sql'`,
     );
+
     expect(done.rows).toHaveLength(0);
   });
 });

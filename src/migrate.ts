@@ -5,12 +5,17 @@ import type pg from 'pg';
 import { loadConfig } from './core/config.js';
 import { createPool } from './data/pool.js';
 import { createLogger } from './core/logger.js';
+import { ENCODING } from './constants/platform/encoding.js';
+import { FAULT_TEXT } from './constants/messages/error-text.js';
+import { LOG } from './constants/messages/log.js';
+import { MIGRATIONS } from './constants/data/db.js';
 
 // Forward-only migrations: every file in migrations/ runs once, in file-name order,
 // each in its own transaction. A file that already ran is never edited, only followed.
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-export const defaultMigrationsDir = path.resolve(here, '..', 'migrations');
+
+export const defaultMigrationsDir = path.resolve(here, MIGRATIONS.parentDir, MIGRATIONS.dir);
 
 // Any number works; it only has to be the same for every process running migrations.
 const MIGRATION_LOCK_ID = 7_241_001;
@@ -21,6 +26,7 @@ export async function runMigrations(
 ): Promise<string[]> {
   const client = await pool.connect();
   const applied: string[] = [];
+
   try {
     // Two deploys at once must not run the same file twice.
     await client.query('select pg_advisory_lock($1)', [MIGRATION_LOCK_ID]);
@@ -33,12 +39,14 @@ export async function runMigrations(
     const done = await client.query<{ name: string }>('select name from schema_migrations');
     const doneNames = new Set(done.rows.map((row) => row.name));
 
-    const files = (await readdir(dir)).filter((file) => file.endsWith('.sql')).sort();
+    const files = (await readdir(dir)).filter((file) => file.endsWith(MIGRATIONS.extension)).sort();
+
     for (const file of files) {
       if (doneNames.has(file)) {
         continue;
       }
-      const sql = await readFile(path.join(dir, file), 'utf8');
+      const sql = await readFile(path.join(dir, file), ENCODING.utf8);
+
       await client.query('begin');
       try {
         await client.query(sql);
@@ -47,13 +55,16 @@ export async function runMigrations(
         applied.push(file);
       } catch (error) {
         await client.query('rollback');
-        throw new Error(`Migration ${file} failed: ${(error as Error).message}`, { cause: error });
+        throw new Error(FAULT_TEXT.migrationFailed(file, (error as Error).message), {
+          cause: error,
+        });
       }
     }
   } finally {
     await client.query('select pg_advisory_unlock($1)', [MIGRATION_LOCK_ID]);
     client.release();
   }
+
   return applied;
 }
 
@@ -62,11 +73,13 @@ async function main(): Promise<void> {
   const config = loadConfig();
   const logger = createLogger(config.logLevel);
   const pool = createPool(config);
+
   try {
     const applied = await runMigrations(pool);
-    logger.info({ applied }, 'migrations done');
+
+    logger.info({ applied }, LOG.migrate.done);
   } catch (error) {
-    logger.error({ err: error }, 'migrations failed');
+    logger.error({ err: error }, LOG.migrate.failed);
     process.exitCode = 1;
   } finally {
     await pool.end();

@@ -24,6 +24,7 @@ class FakePush implements PushSender {
   outcome: PushOutcome = 'sent';
   async send(_token: string, _platform: DevicePlatform, message: PushMessage) {
     this.sent.push(message);
+
     return this.outcome;
   }
 }
@@ -32,6 +33,7 @@ describe('push when a session is verified', () => {
   let context: TestContext;
   let push: FakePush;
   let deps: WorkerDeps;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -65,6 +67,7 @@ describe('push when a session is verified', () => {
     await insertCompletedUpload(context.pool, { sha256: contentHash });
     await verifyNextUpload(deps);
     const devices = await context.pool.query('select * from devices');
+
     expect(devices.rows).toHaveLength(0);
   });
 
@@ -78,6 +81,7 @@ describe('push when a session is verified', () => {
     };
     const ios = pushMessage('token', 'ios', message);
     const android = pushMessage('token', 'android', message);
+
     expect(JSON.stringify(ios)).not.toContain('alice');
     expect(JSON.stringify(android)).not.toContain('alice');
     expect('notification' in ios).toBe(true);

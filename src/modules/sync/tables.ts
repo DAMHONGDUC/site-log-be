@@ -1,13 +1,12 @@
-import type { Action } from '../../constants/roles.js';
+import { TABLE } from '../../constants/data/db.js';
+import { ACTION, type Action } from '../../constants/domain/roles.js';
+import { SYNC_COLUMN, SYNC_SCOPE, type SyncScope } from '../../constants/data/sync.js';
 
 // Every table the app may pull and push. A feature that adds a synced table adds it here.
 
-// F19: who may see a row.
-// - project: rows of one project (project_id), seen by the members who reach it
-// - projects: the projects table itself (its id is the project)
-// - company: one set for the whole company (report branding)
-// - personal: the caller's own rows (phrases keep uid)
-export type SyncScope = 'project' | 'projects' | 'company' | 'personal';
+// F19: who may see a row - project (rows keyed by project_id), projects (the projects table
+// itself), company (one set per company, report branding) or personal (the caller's own, by uid).
+export type { SyncScope } from '../../constants/data/sync.js';
 
 export interface SyncTable {
   // SQL table name, also the `table` value in a mutation.
@@ -44,17 +43,19 @@ interface TableOptions {
 
 function table(name: string, columns: string[], options: TableOptions): SyncTable {
   const immutable = options.immutable ?? [];
+
   // A row never moves to another project.
-  if (columns.includes('project_id') && !immutable.includes('project_id')) {
-    immutable.push('project_id');
+  if (columns.includes(SYNC_COLUMN.projectId) && !immutable.includes(SYNC_COLUMN.projectId)) {
+    immutable.push(SYNC_COLUMN.projectId);
   }
+
   return {
     name,
     columns,
     immutable,
     monotonic: options.monotonic ?? [],
     naturalKey: options.naturalKey ?? null,
-    scope: options.scope ?? 'project',
+    scope: options.scope ?? SYNC_SCOPE.project,
     parent: options.parent ?? null,
     projectOptional: options.projectOptional ?? false,
     writeAction: options.write,
@@ -64,24 +65,28 @@ function table(name: string, columns: string[], options: TableOptions): SyncTabl
 
 export const syncTables: SyncTable[] = [
   // F03
-  table('projects', ['name', 'address', 'client_name', 'created_at'], {
+  table(TABLE.projects, ['name', 'address', 'client_name', 'created_at'], {
     immutable: ['created_at'],
-    scope: 'projects',
-    write: 'project.edit',
-    delete: 'project.delete',
+    scope: SYNC_SCOPE.projects,
+    write: ACTION.projectEdit,
+    delete: ACTION.projectDelete,
   }),
-  table('locations', ['project_id', 'parent_id', 'code', 'kind', 'sort_index'], {
+  table(TABLE.locations, ['project_id', 'parent_id', 'code', 'kind', 'sort_index'], {
     immutable: ['project_id'],
-    write: 'location.edit',
+    write: ACTION.locationEdit,
   }),
-  table('sessions', ['project_id', 'started_at', 'ended_at', 'surveyor_name', 'note', 'state'], {
-    immutable: ['project_id', 'started_at'],
-    monotonic: ['state'],
-    write: 'session.write',
-  }),
+  table(
+    TABLE.sessions,
+    ['project_id', 'started_at', 'ended_at', 'surveyor_name', 'note', 'state'],
+    {
+      immutable: ['project_id', 'started_at'],
+      monotonic: ['state'],
+      write: ACTION.sessionWrite,
+    },
+  ),
   // F05: evidence columns never change after the first insert.
   table(
-    'captures',
+    TABLE.captures,
     [
       'project_id',
       'session_id',
@@ -117,13 +122,13 @@ export const syncTables: SyncTable[] = [
         'duration_seconds',
         'device_reading',
       ],
-      write: 'capture.write',
-      delete: 'capture.delete',
+      write: ACTION.captureWrite,
+      delete: ACTION.captureDelete,
     },
   ),
   // F08
   table(
-    'issues',
+    TABLE.issues,
     [
       'project_id',
       'location_id',
@@ -141,38 +146,38 @@ export const syncTables: SyncTable[] = [
       'resolved_by_issue_id',
       'source_checklist_result_id',
     ],
-    { write: 'issue.write', delete: 'issue.delete' },
+    { write: ACTION.issueWrite, delete: ACTION.issueDelete },
   ),
-  table('issue_captures', ['issue_id', 'capture_id'], {
+  table(TABLE.issueCaptures, ['issue_id', 'capture_id'], {
     immutable: ['issue_id', 'capture_id'],
     naturalKey: ['issue_id', 'capture_id'],
-    parent: { table: 'issues', column: 'issue_id' },
-    write: 'issue.write',
+    parent: { table: TABLE.issues, column: 'issue_id' },
+    write: ACTION.issueWrite,
   }),
-  table('phrases', ['text', 'usage_count'], {
+  table(TABLE.phrases, ['text', 'usage_count'], {
     immutable: ['text'],
     naturalKey: ['text'],
-    scope: 'personal',
-    write: 'phrase.write',
+    scope: SYNC_SCOPE.personal,
+    write: ACTION.phraseWrite,
   }),
   // F09: the markup of a capture shares the capture's id.
-  table('annotations', ['shapes'], {
-    parent: { table: 'captures', column: 'id' },
-    write: 'markup.write',
+  table(TABLE.annotations, ['shapes'], {
+    parent: { table: TABLE.captures, column: 'id' },
+    write: ACTION.markupWrite,
   }),
   // F10, F19: one live row for the whole company, so the natural key is empty.
   table(
-    'report_branding',
+    TABLE.reportBranding,
     ['company_name', 'logo_key', 'accent_hex', 'client_block', 'footer_text'],
     {
       naturalKey: [],
-      scope: 'company',
-      write: 'branding.edit',
+      scope: SYNC_SCOPE.company,
+      write: ACTION.brandingEdit,
     },
   ),
   // F11
   table(
-    'plan_sheets',
+    TABLE.planSheets,
     [
       'project_id',
       'location_id',
@@ -183,39 +188,43 @@ export const syncTables: SyncTable[] = [
       'sha256',
       'remote_key',
     ],
-    { immutable: ['project_id', 'sha256', 'pixel_width', 'pixel_height'], write: 'plan.edit' },
+    { immutable: ['project_id', 'sha256', 'pixel_width', 'pixel_height'], write: ACTION.planEdit },
   ),
   // F12
-  table('checklist_templates', ['project_id', 'name', 'applies_to', 'is_built_in', 'usage_count'], {
-    projectOptional: true,
-    write: 'template.edit',
-  }),
   table(
-    'checklist_template_items',
-    ['template_id', 'ordinal', 'text', 'default_severity', 'requires_photo_on_fail'],
+    TABLE.checklistTemplates,
+    ['project_id', 'name', 'applies_to', 'is_built_in', 'usage_count'],
     {
-      parent: { table: 'checklist_templates', column: 'template_id' },
       projectOptional: true,
-      write: 'template.edit',
+      write: ACTION.templateEdit,
     },
   ),
   table(
-    'checklist_runs',
+    TABLE.checklistTemplateItems,
+    ['template_id', 'ordinal', 'text', 'default_severity', 'requires_photo_on_fail'],
+    {
+      parent: { table: TABLE.checklistTemplates, column: 'template_id' },
+      projectOptional: true,
+      write: ACTION.templateEdit,
+    },
+  ),
+  table(
+    TABLE.checklistRuns,
     ['template_id', 'session_id', 'location_id', 'started_at', 'completed_at'],
     {
       immutable: ['template_id', 'session_id', 'location_id', 'started_at'],
-      parent: { table: 'sessions', column: 'session_id' },
-      write: 'checklist.run',
+      parent: { table: TABLE.sessions, column: 'session_id' },
+      write: ACTION.checklistRun,
     },
   ),
   table(
-    'checklist_results',
+    TABLE.checklistResults,
     ['run_id', 'template_item_id', 'outcome', 'note', 'issue_id', 'answered_at'],
     {
       immutable: ['run_id', 'template_item_id'],
       naturalKey: ['run_id', 'template_item_id'],
-      parent: { table: 'checklist_runs', column: 'run_id' },
-      write: 'checklist.run',
+      parent: { table: TABLE.checklistRuns, column: 'run_id' },
+      write: ACTION.checklistRun,
     },
   ),
 ];

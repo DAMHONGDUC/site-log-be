@@ -1,19 +1,19 @@
-import type { Member, Reach } from '../../team/member.js';
-import type { AccessService } from '../../team/access-service.js';
-import type { IssueChange } from '../../notifications/issue-notifier.js';
+import type { Member, Reach, AccessService } from '../../team/index.js';
+import type { IssueChange } from '../../notifications/index.js';
+import { MUTATION_STATUS, type MutationOp } from '../../../constants/data/sync.js';
 
 export interface Mutation {
   table: string;
   id: string;
-  op: 'upsert' | 'delete';
+  op: MutationOp;
   clientUpdatedAt: string;
   fields: Record<string, unknown>;
 }
 
 export type MutationResult =
-  | { id: string; status: 'applied' }
-  | { id: string; status: 'superseded'; serverRow: Record<string, unknown> }
-  | { id: string; status: 'rejected'; reason: string };
+  | { id: string; status: typeof MUTATION_STATUS.applied }
+  | { id: string; status: typeof MUTATION_STATUS.superseded; serverRow: Record<string, unknown> }
+  | { id: string; status: typeof MUTATION_STATUS.rejected; reason: string };
 
 export interface PushResult {
   results: MutationResult[];

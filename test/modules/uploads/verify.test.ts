@@ -1,4 +1,4 @@
-import { ApiRoutes } from '../../../src/constants/api-routes.js';
+import { ApiRoutes } from '../../../src/constants/http/api-routes.js';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { insertCompletedUpload } from '../../helpers/fixtures.js';
 import {
@@ -10,6 +10,7 @@ import {
 
 describe('GET /verify/:code', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext({ VERIFY_RATE_LIMIT_PER_MINUTE: '5' });
   });
@@ -27,8 +28,10 @@ describe('GET /verify/:code', () => {
       url: ApiRoutes.verify('abcdefgh23'),
       remoteAddress: '10.0.0.1',
     });
+
     expect(response.statusCode).toBe(200);
     const body = response.json();
+
     expect(Object.keys(body).sort()).toEqual(
       [
         'byteSize',
@@ -52,18 +55,21 @@ describe('GET /verify/:code', () => {
       url: ApiRoutes.verify('ZZZZZZZZZZ'),
       remoteAddress: '10.0.0.2',
     });
+
     expect(response.statusCode).toBe(404);
     expect(Date.now() - started).toBeGreaterThanOrEqual(45);
   });
 
   it('rate limits one IP', async () => {
     let last = 0;
+
     for (let index = 0; index < 6; index += 1) {
       const response = await context.app.inject({
         method: 'GET',
         url: ApiRoutes.verify('ZZZZZZZZZZ'),
         remoteAddress: '10.0.0.3',
       });
+
       last = response.statusCode;
     }
     expect(last).toBe(429);

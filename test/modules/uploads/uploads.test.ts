@@ -1,4 +1,4 @@
-import { ApiRoutes } from '../../../src/constants/api-routes.js';
+import { ApiRoutes } from '../../../src/constants/http/api-routes.js';
 import { DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -20,6 +20,7 @@ import {
 
 describe('uploads: single PUT', () => {
   let context: TestContext;
+
   beforeAll(async () => {
     context = await createTestContext();
   });
@@ -38,12 +39,14 @@ describe('uploads: single PUT', () => {
     `projects/${ids.project}/${ids.session}/${ids.capture}.exe`,
   ])('rejects the key %s', async (badKey) => {
     const response = await beginUpload(context, 1000, badKey);
+
     expect(response.statusCode).toBe(400);
     expect(response.json().error.code).toBe('invalid_key');
   });
 
   it('signs a PUT URL without checksum parameters', async () => {
     const response = await beginUpload(context, 1000);
+
     expect(response.statusCode).toBe(200);
     expect(response.json().mode).toBe('single');
     expect(response.json().url).toContain('X-Amz-Signature');
@@ -55,11 +58,13 @@ describe('uploads: single PUT', () => {
     context.s3.on(HeadObjectCommand).resolves({ ContentLength: 1000 });
     const begun = await beginUpload(context, 1000);
     const first = await completeUpload(context, begun.json().uploadId);
+
     expect(first.statusCode).toBe(200);
     expect(first.json().verificationCode).toMatch(/^[2-9A-HJKMNP-Z]{10}$/);
     expect(first.json().verified).toBe(false);
 
     const again = await completeUpload(context, begun.json().uploadId);
+
     expect(again.statusCode).toBe(200);
     expect(again.body).toBe(first.body);
   });
@@ -72,6 +77,7 @@ describe('uploads: single PUT', () => {
       completeUpload(context, uploadId),
       completeUpload(context, uploadId),
     ]);
+
     expect(a.statusCode).toBe(200);
     expect(b.statusCode).toBe(200);
     expect(a.body).toBe(b.body);
@@ -81,10 +87,12 @@ describe('uploads: single PUT', () => {
     context.s3.on(HeadObjectCommand).rejects(notFoundError());
     const begun = await beginUpload(context, 1000);
     const missing = await completeUpload(context, begun.json().uploadId);
+
     expect(missing.statusCode).toBe(404);
 
     context.s3.on(HeadObjectCommand).resolves({ ContentLength: 999 });
     const wrong = await completeUpload(context, begun.json().uploadId);
+
     expect(wrong.statusCode).toBe(400);
     expect(wrong.json().error.code).toBe('size_mismatch');
   });
@@ -92,6 +100,7 @@ describe('uploads: single PUT', () => {
   it('does not let another user complete my upload', async () => {
     const begun = await beginUpload(context, 1000);
     const response = await completeUpload(context, begun.json().uploadId, undefined, 'bob');
+
     expect(response.statusCode).toBe(404);
   });
 
@@ -105,15 +114,18 @@ describe('uploads: single PUT', () => {
       url: ApiRoutes.upload(uploadId),
       headers: auth('alice'),
     });
+
     expect(aborted.statusCode).toBe(200);
     expect(context.s3.commandCalls(DeleteObjectCommand)).toHaveLength(1);
 
     const late = await completeUpload(context, uploadId);
+
     expect(late.statusCode).toBe(404);
   });
 
   it('refuses to begin an upload in a project the caller does not reach (403)', async () => {
     const response = await beginUpload(context, 1000, captureKey, 'bob');
+
     expect(response.statusCode).toBe(403);
     expect(response.json().error.code).toBe('forbidden');
   });
@@ -127,8 +139,10 @@ describe('uploads: single PUT', () => {
       headers: auth('vera'),
       payload: { keys: [captureKey] },
     });
+
     expect(read.statusCode).toBe(200);
     const write = await beginUpload(context, 1000, captureKey, 'vera');
+
     expect(write.statusCode).toBe(403);
   });
 
@@ -139,6 +153,7 @@ describe('uploads: single PUT', () => {
       headers: auth('alice'),
       payload: { keys: [captureKey] },
     });
+
     expect(mine.statusCode).toBe(200);
     expect(mine.json().urls[0].url).toContain('X-Amz-Signature');
 
@@ -148,14 +163,17 @@ describe('uploads: single PUT', () => {
       headers: auth('bob'),
       payload: { keys: [captureKey] },
     });
+
     expect(theirs.statusCode).toBe(403);
   });
 
   it('rate limits begin per user', async () => {
     const limited = await createTestContext({ UPLOAD_RATE_LIMIT_PER_MINUTE: '2' });
     const statuses: number[] = [];
+
     for (let index = 0; index < 3; index += 1) {
       const response = await beginUpload(limited, 10, captureKey, 'alice');
+
       statuses.push(response.statusCode);
     }
     await closeTestContext(limited);

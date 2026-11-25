@@ -5,6 +5,7 @@ import type { Config } from '../config.js';
 import { ApiRoutes } from '../../constants/http/api-routes.js';
 import { NODE_ENVS } from '../../constants/runtime/environments.js';
 import { OPENAPI } from '../../constants/http/openapi.js';
+import { SWAGGER_UI } from '../../constants/http/swagger-ui.js';
 
 const PUBLIC = new Set<string>(OPENAPI.publicRoutes);
 const HIDDEN = new Set<string>(OPENAPI.hiddenRoutes);
@@ -33,6 +34,10 @@ export async function registerOpenApi(app: FastifyInstance, config: Config): Pro
     },
   });
   if (config.nodeEnv !== NODE_ENVS.production) {
-    await app.register(swaggerUi, { routePrefix: ApiRoutes.DOCS });
+    await app.register(swaggerUi, {
+      routePrefix: ApiRoutes.DOCS,
+      theme: { css: [...SWAGGER_UI.theme.css], js: [...SWAGGER_UI.theme.js] },
+      uiConfig: { ...SWAGGER_UI.uiConfig },
+    });
   }
 }

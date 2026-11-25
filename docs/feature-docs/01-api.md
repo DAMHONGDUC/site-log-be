@@ -439,8 +439,8 @@ POST /devices
 | Close code | Meaning | The app |
 |---|---|---|
 | `4000` | No `auth` within 5 s | Reconnect, send `auth` first |
-| `4001` | Token invalid or expired | Refresh the token, reconnect |
-| `4003` | Subscribed to another account's session | Bug: log, do not retry that session |
+| `4001` | Token missing, invalid or expired, or a message sent before `auth` | Refresh the token, reconnect |
+| `4003` | Not a member, or subscribed to another account's session | Not a member: ask an Admin to invite you. Other session: bug, do not retry it |
 | `4008` | More than 5 sockets for this account | Close older sockets |
 | `1009` | Message over 64 KiB | Bug |
 

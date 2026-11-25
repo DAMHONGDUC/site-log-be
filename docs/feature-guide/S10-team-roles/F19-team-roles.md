@@ -34,11 +34,11 @@
 | Step | Hours | Files |
 |---|---|---|
 | [1](#1-migration) | 3 | `migrations/0012_team.sql` |
-| [2](#2-access) | 2 | `src/constants/roles.ts`, `src/modules/team/permissions.ts`, `src/modules/team/member.ts`, `src/modules/team/access-service.ts`, `src/core/auth.ts`, `src/core/http/guards.ts`, `scripts/seed-admin.ts` |
+| [2](#2-access) | 2 | `src/constants/domain/roles.ts`, `src/modules/team/access/permissions.ts`, `src/modules/team/members/member.ts`, `src/modules/team/access/access-service.ts`, `src/core/auth.ts`, `src/core/http/guards.ts`, `scripts/seed-admin.ts` |
 | [3](#3-sync-scope) | 3 | `src/modules/sync/tables.ts`, `src/modules/sync/pull.ts`, `src/modules/sync/push/` (`sql`, `placement`, `authorization`, `apply`) |
-| [4](#4-files) | 2 | `src/modules/uploads/object-keys.ts`, `src/modules/uploads/file-access-service.ts`, `src/modules/uploads/upload-service.ts`, `src/modules/uploads/key-migration-service.ts`, `scripts/move-keys.ts` |
-| [5](#5-team-api-and-invites) | 5 | `src/modules/team/members-routes.ts`, `src/modules/team/invitations-routes.ts`, `src/modules/team/team-service.ts`, `src/modules/team/invitation-service.ts`, `src/modules/account/account-service.ts`, `src/modules/team/*-repository.ts`, `src/integrations/mailer.ts`, `src/modules/team/invitation-mail.ts` |
-| [6](#6-realtime-and-push) | 5 | `src/constants/push.ts`, `src/modules/notifications/push-templates.ts`, `src/modules/notifications/notification-service.ts`, `src/modules/notifications/issue-notifier.ts`, `src/modules/notifications/due-soon-service.ts`, `src/modules/realtime/websocket-routes.ts`, `src/workers/verify.ts` |
+| [4](#4-files) | 2 | `src/modules/uploads/keys/object-keys.ts`, `src/modules/uploads/media/file-access-service.ts`, `src/modules/uploads/transfer/upload-service.ts`, `src/modules/uploads/keys/key-migration-service.ts`, `scripts/move-keys.ts` |
+| [5](#5-team-api-and-invites) | 5 | `src/modules/team/members/members-routes.ts`, `src/modules/team/invitations/invitations-routes.ts`, `src/modules/team/members/team-service.ts`, `src/modules/team/invitations/invitation-service.ts`, `src/modules/account/account-service.ts`, `src/modules/team/*/*-repository.ts`, `src/integrations/mailer.ts`, `src/modules/team/invitations/invitation-mail.ts` |
+| [6](#6-realtime-and-push) | 5 | `src/constants/domain/push.ts`, `src/modules/notifications/push-templates.ts`, `src/modules/notifications/notification-service.ts`, `src/modules/notifications/issue-notifier.ts`, `src/modules/notifications/due-soon-service.ts`, `src/modules/realtime/websocket-routes.ts`, `src/workers/verify.ts` |
 | [Tests](#tests) | 6 | `test/team.test.ts`; S1–S8 tests updated to the project keys, roles and `ApiRoutes` |
 
 ```mermaid
@@ -84,9 +84,9 @@ flowchart LR
 
 | File | Holds |
 |---|---|
-| `src/modules/team/access-service.ts` | `lookup(uid)`, `reach(member)` (all for `ROLES_REACHING_ALL`, `project_members` otherwise), `membersReaching(projectId)` |
-| `src/constants/roles.ts` | The table of [05 §3](../../feature-docs/05-team-and-roles.md#3-permissions) as data: `ROLE_PERMISSIONS`, `OWN_SAME_DAY_ONLY` |
-| `src/modules/team/permissions.ts` | `can(role, action, { ownSameDay })` over that table |
+| `src/modules/team/access/access-service.ts` | `lookup(uid)`, `reach(member)` (all for `ROLES_REACHING_ALL`, `project_members` otherwise), `membersReaching(projectId)` |
+| `src/constants/domain/roles.ts` | The table of [05 §3](../../feature-docs/05-team-and-roles.md#3-permissions) as data: `ROLE_PERMISSIONS`, `OWN_SAME_DAY_ONLY` |
+| `src/modules/team/access/permissions.ts` | `can(role, action, { ownSameDay })` over that table |
 | `src/core/auth.ts`, `src/core/http/guards.ts` | After the token: no member → `403 not_invited`; removed member → `401`; `requireAction(action)` for team routes |
 | `scripts/seed-admin.ts` | `npm run seed:admin -- <email> <firebase-uid>`: the first Admin, once |
 
@@ -164,7 +164,7 @@ flowchart LR
 | `issueAssigned` | `src/modules/sync/push/index.ts` after commit, when an issue row's `assignee_uid` changed |
 | `issueRechecked` | `src/modules/sync/push/index.ts` after commit, when a re-check row is inserted |
 | `dueSoon` | `src/workers/due-soon.ts`: worker job at 8:00 site time, one push per assignee per project |
-| `access` | `src/modules/team/team-service.ts` after a project or role change |
+| `access` | `src/modules/team/members/team-service.ts` after a project or role change |
 
 </dd></dl>
 

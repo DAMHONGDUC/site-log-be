@@ -60,9 +60,11 @@ npm run --silent worker:dev 2>&1 | prefix '[worker]' &
 worker=$!
 
 api_port=$(env_value PORT)
-wait_port "${api_port:-$API_PORT_DEFAULT}"
-printf '\n\033[32m✓ API http://localhost:%s  ·  docs /docs  ·  S3 console http://localhost:9001\033[0m\n\n' \
-  "${api_port:-$API_PORT_DEFAULT}"
+api_port="${api_port:-$API_PORT_DEFAULT}"
+wait_port "$api_port"
+api_url="$LOCAL_HOST_URL:$api_port"
+printf '\n\033[32m✓ API %s  ·  docs %s  ·  S3 console %s\033[0m\n\n' \
+  "$api_url$API_HEALTH_PATH" "$api_url$API_DOCS_PATH" "$LOCAL_HOST_URL:$S3_CONSOLE_PORT"
 
 # Stop everything as soon as either process exits.
 while kill -0 "$api" 2>/dev/null && kill -0 "$worker" 2>/dev/null; do sleep 1; done

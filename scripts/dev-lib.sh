@@ -3,7 +3,12 @@
 
 readonly PG_PORT=5432
 readonly S3_PORT=9000
+readonly S3_CONSOLE_PORT=9001
 readonly API_PORT_DEFAULT=3000
+# Same paths as ApiRoutes.DOCS and ApiRoutes.HEALTH in src/constants/http/api-routes.ts.
+readonly API_DOCS_PATH=/docs
+readonly API_HEALTH_PATH=/health
+readonly LOCAL_HOST_URL=http://localhost
 readonly WAIT_SECONDS=30
 readonly RETRIES=5
 
